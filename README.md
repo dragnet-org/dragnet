@@ -33,3 +33,14 @@ Based on [Language Independent Content Extraction from Web Pages](
     r = requests.get(
         'http://www.wired.com/wiredscience/2012/06/latest-higgs-rumors/')
     print Arias.analyze(r.content)
+
+Kohlschütter et al.
+-------------------
+Based on [Boilerplate Detection using Shallow Text Features](
+    http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf)
+    
+    from dragnet import Kohlschuetter
+    import requests
+    r = requests.get(
+        'http://www.wired.com/wiredscience/2012/06/latest-higgs-rumors/')
+    print Kohlschuetter.analyze(r.content)
