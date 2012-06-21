@@ -110,7 +110,7 @@ class Arias(object):
         return results
     
     @staticmethod
-    def plot(L, name, low, high, cutoff):
+    def plot(L, name, low, hi, cutoff):
         '''
         Helper method to plot the document (like in the paper)
         '''
@@ -198,4 +198,5 @@ class Arias(object):
                 best_low  = low
                 best_high = high
         
+        #Arias.plot(L, url, best_low, best_high, cutoff)
         return best
