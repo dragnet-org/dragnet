@@ -1,4 +1,9 @@
-# This code was originally taken from (retrieved June 21, 2012):
+
+
+import json
+import re
+
+# The Levenshtein distance code was originally taken from (retrieved June 21, 2012):
 #    http://mwh.geek.nz/2009/04/26/python-damerau-levenshtein-distance/
 #
 # It may eventually be updated to use different scores for insrtions, deletions,
@@ -48,3 +53,41 @@ def dameraulevenshtein(seq1, seq2):
                 and seq1[x-1] == seq2[y] and seq1[x] != seq2[y]):
                 thisrow[y] = min(thisrow[y], twoago[y - 2] + 1)
     return thisrow[len(seq2) - 1]
+
+
+
+def evaluation_metrics(predicted, actual):
+    """
+    Input:
+        predicted, actual = lists of the predicted and actual tokens
+    Returns:
+        precision, recall, F1, Levenshtein distance
+
+    Uses a bag of words assumption"""
+    p = set(predicted)
+    a = set(actual)
+
+    true_positive = 0
+    for token in p:
+        if token in a:
+            true_positive += 1
+
+    if len(p) == 0:
+        precision = 0.0
+    else:
+        precision = true_positive / float(len(p))
+
+    if len(a) == 0:
+        recall = 0.0
+    else:
+        recall = true_positive / float(len(a))
+
+    if precision + recall == 0:
+        f1 = 0.0
+    else:
+        f1 = 2.0 * precision * recall / (precision + recall)
+
+    return (precision, recall, f1, dameraulevenshtein(predicted, actual))
+
+
+
