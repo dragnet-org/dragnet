@@ -167,13 +167,17 @@ class KohlschuetterBase(object):
         return [ele for ele in blocks if re.sub('[\W_]', '', ele.text).strip() != '']
 
 
-    def analyze(self, s):
+    def analyze(self, s, blocks=False):
         """s = HTML string
-        returns the content as a string
+        returns the content as a string, or if `block`, then the blocks
+        themselves are returned.
         """
-        features, blocks = self.make_features(s)
+        features, blocks_ = self.make_features(s)
         content_mask = self.block_analyze(features)
-        return ' '.join([ele[0].text for ele in zip(blocks, content_mask) if ele[1]])
+        results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
+        if blocks:
+            return results
+        return ' '.join(blk.text for blk in results)
 
 
     @staticmethod
