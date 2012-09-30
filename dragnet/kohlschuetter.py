@@ -284,7 +284,10 @@ class KohlschuetterNormalized(Kohlschuetter):
                     'std':[list of std] """
         import json
         Kohlschuetter.__init__(self)
-        self._mean_std = json.load(open(mean_std, 'r'))
+        if isinstance(mean_std, basestring):
+            self._mean_std = json.load(open(mean_std, 'r'))
+        else:
+            self._mean_std = mean_std
 
     def make_features(self, s):
         "Make text, anchor features and some normalization"
