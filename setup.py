@@ -28,7 +28,7 @@ except ImportError:
 
 setup(
     name             = 'dragnet',
-    version          = '0.1.0',
+    version          = '0.2.0',
     description      = 'Just the facts, ma\'am',
     author           = 'Dan Lecocq, Matt Peters',
     author_email     = 'dan@seomoz.org, matt@seomoz.org',
@@ -42,5 +42,9 @@ setup(
         'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
-        'Topic :: Internet :: WWW/HTTP'],
+        'Topic :: Internet :: WWW/HTTP',
+        'Topic :: Scientific/Engineering',
+        'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Intended Audience :: Science/Research'
+        ],
 )
