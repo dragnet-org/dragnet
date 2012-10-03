@@ -61,12 +61,17 @@ class LogisticRegression(object):
 
     @classmethod
     def load_model(cls, model_file):
+        '''If a string is provided, it's assumed to be a path to a file
+        containing a JSON blob describing the model. Otherwise, it should
+        be a dictionary representing the model'''
+        if isinstance(model_file, basestring):
+            params = json.load(open(model_file, 'r'))
+        else:
+            params = model_file
         ret = cls()
-        params = json.load(open(model_file, 'r'))
         ret.b = float(params['b'])
         ret.w = np.array(params['w'])
         return ret
-
 
     @staticmethod
     def _sigmoid(x, b, w):

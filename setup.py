@@ -48,3 +48,4 @@ setup(
         'Intended Audience :: Science/Research'
         ],
 )
+)
