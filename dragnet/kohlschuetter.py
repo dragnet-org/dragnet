@@ -11,17 +11,12 @@ from itertools import chain
 import scipy.weave
 
 class Block(object):
-    def __init__(self, text, link_density, text_density, anchors, link_tokens, css):
+    def __init__(self, text, link_density, text_density, anchors, link_tokens):
         self.text = text
         self.link_density = link_density
         self.text_density = text_density
         self.anchors = anchors
         self.link_tokens = link_tokens  # a hook for testing
-        self.css = css
-        #self.css = {}
-        #for k in PartialBlock.css_attrib:
-        #    self.css[k] = list(css[k])   # a copy
-#        print("Added %s" % self.css)
 
 
 class PartialBlock(object):
@@ -32,27 +27,14 @@ class PartialBlock(object):
     This class maintains that state, as well as provides methods
     to modify it."""
 
-    css_attrib = ['id', 'class']
-
     def __init__(self):
         self.reinit()
-        self.reinit_css()
 
     def reinit(self):
         self.text = []
         self.link_tokens = []
         self.anchors = []
 
-    def reinit_css(self):
-        # we want to keep track of the id and class # attributes.
-        # however, these need to be nested in a different manner
-        # then the blocks (imagine nested divs, a new block starts
-        # as the inner div but the id/class need to be accumulated)
-        # so we will keep track of a list and push/pop them onto it
-        # as we recurse through the subtrees
-        self.css = {}
-        for k in PartialBlock.css_attrib:
-            self.css[k] = []
 
     def add_block_to_results(self, results):
         """Create a block from the current partial block
@@ -68,12 +50,7 @@ class PartialBlock(object):
             link_d = PartialBlock.link_density(block_text, link_text)
             text_d = PartialBlock.text_density(block_text)
 
-            # get the id, class attributes
-            css = {}
-            for k in PartialBlock.css_attrib:
-                css[k] = ' '.join(PartialBlock.tokens_from_text(self.css[k])).lower()
-
-            results.append(Block(block_text, link_d, text_d, self.anchors, self.link_tokens, css))
+            results.append(Block(block_text, link_d, text_d, self.anchors, self.link_tokens))
         self.reinit()
 
     def add_text(self, ele, text_or_tail):
@@ -172,7 +149,6 @@ class PartialBlock(object):
     @staticmethod
     def recurse(subtree, partial_block, results):
         # both partial_block and results are modified
-#        print("%s %s" % ( subtree.tag, partial_block.css))
         for child in subtree.iterchildren():
 
             if child.tag in KohlschuetterBase.blacklist:
@@ -185,12 +161,9 @@ class PartialBlock(object):
                 # this is the start of a new block
                 # add the existing block to the list,
                 # start the new block and recurse
-#                print("sdfsadf %s " % partial_block.css)
                 partial_block.add_block_to_results(results)
                 partial_block.add_text(child, 'text')
-                partial_block.update_css(child)
                 PartialBlock.recurse(child, partial_block, results)
-                partial_block.pop_css()
                 partial_block.add_text(child, 'tail')
 
             elif child.tag == 'a':
@@ -201,23 +174,8 @@ class PartialBlock(object):
                 # a standard tag.
                 # we need to get it's text and then recurse over the subtree
                 partial_block.add_text(child, 'text')
-                partial_block.update_css(child)
                 PartialBlock.recurse(child, partial_block, results)
-                partial_block.pop_css()
                 partial_block.add_text(child, 'tail')
-
-    def update_css(self, child):
-        """Add the child's tag to the id, class lists"""
-        for k in PartialBlock.css_attrib:
-            try:
-                self.css[k].append(child.attrib[k])
-            except KeyError:
-                self.css[k].append('')
-
-    def pop_css(self):
-        """pop the last entry off the css lists"""
-        for k in PartialBlock.css_attrib:
-            self.css[k].pop()
 
 
 class KohlschuetterBase(object):
