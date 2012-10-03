@@ -87,7 +87,9 @@ def evaluation_metrics(predicted, actual):
     else:
         f1 = 2.0 * precision * recall / (precision + recall)
 
-    return (precision, recall, f1, dameraulevenshtein(predicted, actual))
+    #return (precision, recall, f1, dameraulevenshtein(predicted, actual))
+    return (precision, recall, f1)
+
 
 
 
