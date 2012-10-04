@@ -362,6 +362,33 @@ def normalize_features(features, mean_std):
             features[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
 
 
+class KohlschuetterNormalized(Kohlschuetter):
+    """Use the Kohlschuetter, but do some mean/std normalization"""
+
+    @staticmethod
+    def load_mean_std(mean_std):
+        """mean_std is either a filename string,
+        or a json blob.
+        if a string, load it, otherwise just return"""
+        import json
+        if isinstance(mean_std, basestring):
+            return json.load(open(mean_std, 'r'))
+        else:
+            return mean_std
+
+    def __init__(self, mean_std):
+        """mean_std = the json file with mean/std of the features
+        mean_std = {'mean':[list of means],
+                    'std':[list of std] """
+        Kohlschuetter.__init__(self)
+        self._mean_std = KohlschuetterNormalized.load_mean_std(mean_std)
+
+    def make_features(self, s):
+        "Make text, anchor features and some normalization"
+        features, blocks = Kohlschuetter.make_features(s)
+        normalize_features(features, self._mean_std)
+        return features, blocks
+
 
 re_capital = re.compile('[A-Z]')
 re_digit = re.compile('\d')
@@ -404,16 +431,9 @@ def token_feature(blocks):
 
 
 
-class KohlschuetterExpanded(Kohlschuetter):
-
-    def __init__(self, mean_std):
-        """mean_std = the json file with mean/std of the features
-        mean_std = {'mean':[list of means],
-                    'std':[list of std] """
-        import json
-        Kohlschuetter.__init__(self)
-        self._mean_std = json.load(open(mean_std, 'r'))
-
+class KohlschuetterExpanded(KohlschuetterNormalized):
+    """An model that takes the Kohlschuetter features and adds
+    some additional ones"""
     def make_features(self, s):
         from scipy import percentile
 
@@ -477,25 +497,6 @@ class KohlschuetterExpanded(Kohlschuetter):
         return ret
 
 
-class KohlschuetterNormalized(Kohlschuetter):
-    def __init__(self, mean_std):
-        """mean_std = the json file with mean/std of the features
-        mean_std = {'mean':[list of means],
-                    'std':[list of std] """
-        import json
-        Kohlschuetter.__init__(self)
-        if isinstance(mean_std, basestring):
-            self._mean_std = json.load(open(mean_std, 'r'))
-        else:
-            self._mean_std = mean_std
-
-    def make_features(self, s):
-        "Make text, anchor features and some normalization"
-        features, blocks = Kohlschuetter.make_features(s)
-        normalize_features(features, self._mean_std)
-        return features, blocks
-
-
 class DragnetModel(KohlschuetterBase):
     """
     Machine learning models that predict whether
@@ -526,8 +527,7 @@ class DragnetModelKohlschuetterFeatures(DragnetModel, KohlschuetterNormalized):
 
 
 class DragnetModelKohlschuetterExpanded(DragnetModel, KohlschuetterExpanded):
-    """machine learning models that use the two features from
-    Kohlschuetter as the model features"""
+    """machine learning models that use an expanded set of features"""
     # according to use Python's MRO DragnetModelBase.block_analyze
     # is inherited 
     def __init__(self, block_model, mean_std, threshold=0.5):
