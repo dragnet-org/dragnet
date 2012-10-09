@@ -18,6 +18,12 @@ class Block(object):
         self.anchors = anchors
         self.link_tokens = link_tokens  # a hook for testing
 
+class BlockifyError(Exception):
+    """Raised when there is a fatal problem in blockify
+    (if lxml fails to parse the document)
+    """
+    pass
+
 
 class PartialBlock(object):
     """As we create blocks by recursing through subtrees
@@ -123,6 +129,11 @@ class PartialBlock(object):
         Assuming both input texts are stripped of excess whitespace, return the 
         link density of this block
         '''
+        # NOTE: in the case where link_text == '', this re.split
+        # returns [''], which incorrectly
+        # has 1 token by it's length instead of 0
+        # however, fixing this bug decreases model performance by about 1%,
+        # so we keep it
         anchor_tokens = re.split(r'\W+', link_text)
         block_tokens  = re.split(r'\W+', block_text)
         return float(len(anchor_tokens)) / len(block_tokens)
@@ -227,7 +238,14 @@ class KohlschuetterBase(object):
         Take a string of HTML and return a series of blocks
         '''
         # First, we need to parse the thing
-        html = etree.fromstring(s, etree.HTMLParser(recover=True))
+        try:
+            html = etree.fromstring(s, etree.HTMLParser(recover=True))
+        except:
+            raise BlockifyError
+        if html is None:
+            # lxml sometimes doesn't raise an error but returns None
+            raise BlockifyError
+
         blocks = KohlschuetterBase.blocks_from_tree(html)
         # only return blocks with some text content
         return [ele for ele in blocks if re.sub('[\W_]', '', ele.text).strip() != '']
@@ -239,8 +257,12 @@ class KohlschuetterBase(object):
         themselves are returned.
         """
         features, blocks_ = self.make_features(s)
-        content_mask = self.block_analyze(features)
-        results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
+        if features is not None:
+            content_mask = self.block_analyze(features)
+            results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
+        else:
+            # doc is too short. return all content
+            results = blocks_
         if blocks:
             return results
         return ' '.join(blk.text for blk in results)
@@ -273,6 +295,10 @@ class Kohlschuetter(KohlschuetterBase):
         return a numpy array of the features + the associated raw content"""
         blocks = KohlschuetterBase.blockify(s)
 
+        # doc needs to be at least three blocks, otherwise return everything
+        if len(blocks) < 3:
+            return None, blocks
+
         features = np.zeros((len(blocks), 6))
         for i in range(1, len(blocks)-1):
             previous = blocks[i-1]
@@ -293,7 +319,12 @@ class Kohlschuetter(KohlschuetterBase):
 
     def block_analyze(self, features):
         """Takes a the features
-        Returns a list True/False of ones classified as content"""
+        Returns a list True/False of ones classified as content
+        
+        Note: this is the decision tree published in the original paper
+        We benchmarked it against our data set and it performed poorly,
+        and we attribute it to differences the blockify implementation.
+        """
         # curr_linkDensity <= 0.333333
         # | prev_linkDensity <= 0.555556
         # | | curr_textDensity <= 9
@@ -351,13 +382,15 @@ def normalize_features(features, mean_std):
             If present, it includes a flag whether to take a log first.
             If not None, then it gives a value to do a transform:
                 log(x + exp(-value)) + value
-       the lists are the same length as features.shape[1]"""
-    if 'log' in mean_std:
-        for k in xrange(features.shape[1]):
-            if mean_std['log'][k] is not None:
-                features[:, k] = np.log(features[:, k] + np.exp(-mean_std['log'][k])) + mean_std['log'][k]
-            features[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
-    else:
+       the lists are the same length as features.shape[1]
+       
+       if features is None, then do nothing"""
+    if features is not None:
+        if 'log' in mean_std:
+            for k in xrange(features.shape[1]):
+                if mean_std['log'][k] is not None:
+                    features[:, k] = np.log(features[:, k] + np.exp(-mean_std['log'][k])) + mean_std['log'][k]
+
         for k in xrange(features.shape[1]):
             features[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
 
@@ -438,6 +471,9 @@ class KohlschuetterExpanded(KohlschuetterNormalized):
         from scipy import percentile
 
         features_koh, blocks = Kohlschuetter.make_features(s)
+        if features_koh is None:
+            return None, blocks
+
         features = np.zeros((features_koh.shape[0], 6 + 4 + 2))
         features[:, :6] = features_koh[:]
 
