@@ -1,10 +1,11 @@
 
 import unittest
-from dragnet import KohlschuetterBase, PartialBlock
+from dragnet import KohlschuetterBase, PartialBlock, BlockifyError, Kohlschuetter
 from lxml import etree
 import re
+import numpy as np
 
-class TestKohlschuetterBase(unittest.TestCase):
+class KohlschuetterUnitBase(unittest.TestCase):
     def block_output_tokens(self, blocks, true_tokens):
         """blocks = the output from blockify
            true_tokens = a list of true tokens"""
@@ -21,6 +22,20 @@ class TestKohlschuetterBase(unittest.TestCase):
         link_tokens = [ele.link_tokens for ele in blocks]
         for k in xrange(len(link_tokens)):
             self.assertEqual(link_tokens[k], true_tokens[k])
+
+class TestKohlschuetterBase(KohlschuetterUnitBase):
+    def test_lxml_error(self):
+        """tests the case where lxml raises an error during parsing
+
+        also handles case where lxml returns None for the tree"""
+        # this raises an error in parsing
+        self.assertRaises(etree.XMLSyntaxError, etree.fromstring, '', etree.HTMLParser(recover=True))
+        self.assertRaises(BlockifyError, KohlschuetterBase.blockify, '')
+
+        # this returns None in lxml
+        self.assertTrue(None == etree.fromstring('<!--', etree.HTMLParser(recover=True)) )
+        self.assertRaises(BlockifyError, KohlschuetterBase.blockify, '<!--')
+
 
     def test_very_simple(self):
         """test_very_simple"""
@@ -192,6 +207,35 @@ class TestKohlschuetterBase(unittest.TestCase):
             ['and', 'some', 'comment', 'spam'],
             [],
             []])
+
+
+class TestKohlschuetter(KohlschuetterUnitBase):
+    def test_small_doc(self):
+        # need an instance to call analyze
+        koh = Kohlschuetter()
+
+        self.assertEqual((None, []), Kohlschuetter.make_features('<html></html>'))
+        self.assertEqual('', koh.analyze('<html></html>'))
+
+        s = '<html> <p>a</p> <div>b</div> </html>'
+        features, blocks = Kohlschuetter.make_features(s)
+        self.assertTrue(features is None)
+        self.block_output_tokens(blocks, [['a'], ['b']])
+        self.assertEqual('a b', koh.analyze(s))
+
+
+    def test_make_features(self):
+        s = '<html> <p>first </p> <div> <p>second block with <a href=''>anchor</a> </p> <p>the third block</p> </div> </html>'
+        features, blocks = Kohlschuetter.make_features(s)
+        self.block_output_tokens(blocks, [['first'], ['second', 'block', 'with', 'anchor'], ['the', 'third', 'block']])
+        self.link_output_tokens(blocks, [[], ['anchor'], []])
+
+        text_density = [1.0, 4.0, 3.0]
+        link_density = [1.0, 0.25, 1.0 / 3.0]
+
+        self.assertTrue(np.allclose(features[0, :], [0.0, 0.0, link_density[0], text_density[0], link_density[1], text_density[1]]))
+        self.assertTrue(np.allclose(features[1, :], [link_density[0], text_density[0], link_density[1], text_density[1], link_density[2], text_density[2]]))
+        self.assertTrue(np.allclose(features[2, :], [link_density[1], text_density[1], link_density[2], text_density[2], 0.0, 0.0]))
 
 
 
