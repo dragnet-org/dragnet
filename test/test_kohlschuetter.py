@@ -23,6 +23,12 @@ class KohlschuetterUnitBase(unittest.TestCase):
         for k in xrange(len(link_tokens)):
             self.assertEqual(link_tokens[k], true_tokens[k])
 
+    def css_output_tokens(self, blocks, attrib, true_tokens):
+        self.assertEqual(len(blocks), len(true_tokens))
+        for k in xrange(len(blocks)):
+            css_tokens = re.split('\s+', blocks[k].css[attrib].strip())
+            self.assertEqual(css_tokens, true_tokens[k])
+
 class TestKohlschuetterBase(KohlschuetterUnitBase):
     def test_lxml_error(self):
         """tests the case where lxml raises an error during parsing
@@ -35,7 +41,6 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
         # this returns None in lxml
         self.assertTrue(None == etree.fromstring('<!--', etree.HTMLParser(recover=True)) )
         self.assertRaises(BlockifyError, KohlschuetterBase.blockify, '<!--')
-
 
     def test_very_simple(self):
         """test_very_simple"""
@@ -131,6 +136,29 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
             [['the', 'registered', 'trademark', u'\xae']])
         self.link_output_tokens(blocks,
             [['the', 'registered', 'trademark', u'\xae']])
+
+
+    def test_class_id(self):
+        s = """<div CLASS='d1'>text in div
+                <h1 id="HEADER">header</h1>
+                <div class="nested">dragnet</div>
+                </div>"""
+        blocks = KohlschuetterBase.blockify(s)
+
+        self.block_output_tokens(blocks,
+            [['text', 'in', 'div'],
+            ['header'],
+            ['dragnet']])
+
+        self.css_output_tokens(blocks, 'id',
+            [[''],
+             ['header'],
+             ['']])
+
+        self.css_output_tokens(blocks, 'class',
+            [['d1'],
+             ['d1'],
+             ['d1', 'nested']])
 
 
     def test_text_from_subtree(self):
