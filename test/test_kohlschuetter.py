@@ -23,6 +23,12 @@ class KohlschuetterUnitBase(unittest.TestCase):
         for k in xrange(len(link_tokens)):
             self.assertEqual(link_tokens[k], true_tokens[k])
 
+    def css_output_tokens(self, blocks, attrib, true_tokens):
+        self.assertEqual(len(blocks), len(true_tokens))
+        for k in xrange(len(blocks)):
+            css_tokens = re.split('\s+', blocks[k].css[attrib].strip())
+            self.assertEqual(css_tokens, true_tokens[k])
+
 class TestKohlschuetterBase(KohlschuetterUnitBase):
     # Result from the callback test
     div_count = -1
@@ -38,7 +44,6 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
         # this returns None in lxml
         self.assertTrue(None == etree.fromstring('<!--', etree.HTMLParser(recover=True)) )
         self.assertRaises(BlockifyError, KohlschuetterBase.blockify, '<!--')
-
 
     def test_very_simple(self):
         """test_very_simple"""
@@ -150,18 +155,27 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
             [['the', 'registered', 'trademark', u'\xae']])
 
 
-    def test_all_non_english(self):
-        s = u"""<div> <div> \u03b4\u03bf\u03b3 </div> <div> <a href="summer">\xe9t\xe9</a> </div>
-         <div> \u62a5\u9053\u4e00\u51fa </div> </div>"""
+    def test_class_id(self):
+        s = """<div CLASS='d1'>text in div
+                <h1 id="HEADER">header</h1>
+                <div class="nested">dragnet</div>
+                </div>"""
         blocks = KohlschuetterBase.blockify(s)
+
         self.block_output_tokens(blocks,
-            [[u'\u03b4\u03bf\u03b3'],
-            [u'\xe9t\xe9'],
-            [u'\u62a5\u9053\u4e00\u51fa']])
-        self.link_output_tokens(blocks,
-            [[],
-             [u'\xe9t\xe9'],
-             []])
+            [['text', 'in', 'div'],
+            ['header'],
+            ['dragnet']])
+
+        self.css_output_tokens(blocks, 'id',
+            [[''],
+             ['header'],
+             ['']])
+
+        self.css_output_tokens(blocks, 'class',
+            [['d1'],
+             ['d1'],
+             ['d1', 'nested']])
 
 
     def test_text_from_subtree(self):

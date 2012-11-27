@@ -9,14 +9,16 @@ from lxml import etree
 import numpy as np
 from itertools import chain
 import scipy.weave
+from copy import deepcopy
 
 class Block(object):
-    def __init__(self, text, link_density, text_density, anchors, link_tokens):
+    def __init__(self, text, link_density, text_density, anchors, link_tokens, css):
         self.text = text
         self.link_density = link_density
         self.text_density = text_density
         self.anchors = anchors
         self.link_tokens = link_tokens  # a hook for testing
+        self.css = css
 
 class BlockifyError(Exception):
     """Raised when there is a fatal problem in blockify
@@ -33,13 +35,40 @@ class PartialBlock(object):
     This class maintains that state, as well as provides methods
     to modify it."""
 
+    css_attrib = ['id', 'class']
+
     def __init__(self):
         self.reinit()
+        self.reinit_css(init_tree=True)
 
     def reinit(self):
         self.text = []
         self.link_tokens = []
         self.anchors = []
+
+    def reinit_css(self, init_tree=False):
+        # we want to keep track of the id and class CSS attributes.
+        # we will accumulate a few sources of them
+        # (1) the CSS attributes for the current tag and all tags in trees containing
+        #     the current one
+        # (2) the CSS attributes for all tags inside this block
+
+        # css_tree will hold the attributes for all trees containing this tag
+        # css will hold the accumulated attributes for this block,
+        #   and will be initialized with the tree
+
+        if init_tree:
+            # the initial init
+            self.css_tree = {}
+            self.css = {}
+            for k in PartialBlock.css_attrib:
+                self.css_tree[k] = []
+                self.css[k] = []
+        else:
+            # we are re-initializing after creating a block
+            # css_tree is unchanged and css is set to css_tree
+            self.css = deepcopy(self.css_tree)
+
 
 
     def add_block_to_results(self, results):
@@ -56,8 +85,14 @@ class PartialBlock(object):
             link_d = PartialBlock.link_density(block_text, link_text)
             text_d = PartialBlock.text_density(block_text)
 
-            results.append(Block(block_text, link_d, text_d, self.anchors, self.link_tokens))
+            # get the id, class attributes
+            css = {}
+            for k in PartialBlock.css_attrib:
+                css[k] = ' '.join(PartialBlock.tokens_from_text(self.css[k])).lower()
+
+            results.append(Block(block_text, link_d, text_d, self.anchors, self.link_tokens, css))
         self.reinit()
+        self.reinit_css()
 
     def add_text(self, ele, text_or_tail):
         """Add the text/tail from the element
@@ -160,33 +195,63 @@ class PartialBlock(object):
     @staticmethod
     def recurse(subtree, partial_block, results):
         # both partial_block and results are modified
+#        print("%s %s" % ( subtree.tag, partial_block.css_tree))
+
+        # for CSS, we want to output all CSS tags for all levels in subtree
+        # we will add them on entry, and pop them on exit
+        partial_block.update_css(subtree, True)
+
         for child in subtree.iterchildren():
 
             if child.tag in KohlschuetterBase.blacklist:
                 # in this case, skip the entire tag,
                 # but it might have some tail text we need
                 partial_block.add_text(child, 'tail')
-                continue
 
             elif child.tag in KohlschuetterBase.blocks:
                 # this is the start of a new block
                 # add the existing block to the list,
                 # start the new block and recurse
+#                print("sdfsadf %s %s " % (child.tag, partial_block.css_tree))
                 partial_block.add_block_to_results(results)
                 partial_block.add_text(child, 'text')
+                partial_block.update_css(child, False)
                 PartialBlock.recurse(child, partial_block, results)
                 partial_block.add_text(child, 'tail')
 
             elif child.tag == 'a':
                 # an anchor tag
                 partial_block.add_anchor(child)
+                partial_block.update_css(child, False)
 
             else:
                 # a standard tag.
                 # we need to get it's text and then recurse over the subtree
                 partial_block.add_text(child, 'text')
+                partial_block.update_css(child, False)
                 PartialBlock.recurse(child, partial_block, results)
                 partial_block.add_text(child, 'tail')
+
+        partial_block.pop_css_tree()
+
+    def update_css(self, child, tree):
+        """Add the child's tag to the id, class lists"""
+        if tree:
+            css_to_update = self.css_tree
+        else:
+            css_to_update = self.css
+
+        for k in PartialBlock.css_attrib:
+            try:
+                css_to_update[k].append(child.attrib[k])
+            except KeyError:
+                css_to_update[k].append('')
+
+
+    def pop_css_tree(self):
+        """pop the last entry off the css lists"""
+        for k in PartialBlock.css_attrib:
+            self.css_tree[k].pop()
 
 
 class KohlschuetterBase(object):
