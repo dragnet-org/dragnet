@@ -67,7 +67,10 @@ class PartialBlock(object):
         else:
             # we are re-initializing after creating a block
             # css_tree is unchanged and css is set to css_tree
-            self.css = deepcopy(self.css_tree)
+#            self.css = deepcopy(self.css_tree)
+            self.css = {}
+            for k in PartialBlock.css_attrib:
+                self.css[k] = []
 
 
 
