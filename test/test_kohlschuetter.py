@@ -157,8 +157,10 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
 
         self.css_output_tokens(blocks, 'class',
             [['d1'],
-             ['d1'],
-             ['d1', 'nested']])
+             [''],
+             ['nested']])
+
+
 
 
     def test_text_from_subtree(self):
@@ -176,8 +178,8 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
 <body>
 <h1>Inside the h1 tag </h1>
 <div id="content">
-    <b>First line of the content in bold</b>
-    <p>A paragraph with <a href="link_target.html">a link</a> and some 
+    <b class="title">First line of the content in bold</b>
+    <p id="para">A paragraph with <a class="link" href="link_target.html">a link</a> and some 
 
     additional words.
 
@@ -235,6 +237,34 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
             ['and', 'some', 'comment', 'spam'],
             [],
             []])
+
+        self.css_output_tokens(blocks, 'class',
+            [[''],
+            ['title'],
+            ['link'],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            ['footer']])
+
+
+        self.css_output_tokens(blocks, 'id',
+            [[''],
+            ['content'],
+            ['para'],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            ['']])
+
 
 
 class TestKohlschuetter(KohlschuetterUnitBase):
