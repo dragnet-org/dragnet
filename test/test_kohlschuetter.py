@@ -1,9 +1,53 @@
 
 import unittest
-from dragnet import KohlschuetterBase, PartialBlock, BlockifyError, Kohlschuetter
+from dragnet import KohlschuetterBase, PartialBlock, BlockifyError, Kohlschuetter, DragnetModelKohlschuetterFeatures
 from lxml import etree
 import re
 import numpy as np
+from mozsci.models import LogisticRegression
+
+
+# document for testing
+big_html_doc = """
+<html>
+
+<body>
+<h1>Inside the h1 tag </h1>
+<div id="content">
+    <b class="title">First line of the content in bold</b>
+    <p id="para">A paragraph with <a class="link" href="link_target.html">a link</a> and some 
+
+    additional words.
+
+    <p>Second paragraph
+
+    <blockquote>Insert a block quote here</blockquote>
+
+    <div class="image_css" id="image1"><img src="img.jpg"></div>
+    
+    <p>Some more text after the image
+    <h2>An h2 tag just for kicks</h2>
+    <p>Finally more text at the end of the content
+</div>
+
+
+<div class="begin_comments">
+    <div id="comment1">
+        <p>This is a comment</p>
+        <p>with two paragraphs <a href="spam_link.html">and some comment spam</a>
+    </div>
+    <div id="comment2">
+        <p>Second comment</p>
+    </div>
+</div>
+
+
+<div class="footer"><a href="footer_link.html"><img src="footer_image.jpg" alt="image as anchor text"></a>Footer text
+</div>
+
+</html>
+"""
+
 
 class KohlschuetterUnitBase(unittest.TestCase):
     def block_output_tokens(self, blocks, true_tokens):
@@ -28,6 +72,10 @@ class KohlschuetterUnitBase(unittest.TestCase):
         for k in xrange(len(blocks)):
             css_tokens = re.split('\s+', blocks[k].css[attrib].strip())
             self.assertEqual(css_tokens, true_tokens[k])
+
+
+
+
 
 class TestKohlschuetterBase(KohlschuetterUnitBase):
     def test_lxml_error(self):
@@ -171,45 +219,10 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
         self.assertEqual(text_str,
             'WILL THIS PASS THE TEST ??')
 
+
+
     def test_big_html(self):
-        s = """
-<html>
-
-<body>
-<h1>Inside the h1 tag </h1>
-<div id="content">
-    <b class="title">First line of the content in bold</b>
-    <p id="para">A paragraph with <a class="link" href="link_target.html">a link</a> and some 
-
-    additional words.
-
-    <p>Second paragraph
-
-    <blockquote>Insert a block quote here</blockquote>
-
-    <div class="image_css" id="image1"><img src="img.jpg"></div>
-    
-    <p>Some more text after the image
-    <h2>An h2 tag just for kicks</h2>
-    <p>Finally more text at the end of the content
-</div>
-
-
-<div class="begin_comments">
-    <div id="comment1">
-        <p>This is a comment</p>
-        <p>with two paragraphs <a href="spam_link.html">and some comment spam</a>
-    </div>
-    <div id="comment2">
-        <p>Second comment</p>
-    </div>
-</div>
-
-<div class="footer"><a href="footer_link.html"><img src="footer_image.jpg" alt="image as anchor text"></a>Footer text
-</div>
-
-</html>
-"""
+        s = big_html_doc
         blocks = KohlschuetterBase.blockify(s)
 
         self.block_output_tokens(blocks,
@@ -296,6 +309,30 @@ class TestKohlschuetter(KohlschuetterUnitBase):
         self.assertTrue(np.allclose(features[2, :], [link_density[1], text_density[1], link_density[2], text_density[2], 0.0, 0.0]))
 
 
+
+class TestDragnetModelKohlschuetterFeatures(unittest.TestCase):
+    def test_dragnet_model(self):
+        params = {'b':0.2, 'w':[0.4, -0.2, 0.9, 0.8, -0.3, -0.5]}
+        block_model = LogisticRegression.load_model(params)
+        mean_std = {'mean':[0.0, 0.1, 0.2, 0.5, 0.0, 0.3], 'std':[1.0, 2.0, 0.5, 1.2, 0.75, 1.3]}
+    
+        dm = DragnetModelKohlschuetterFeatures(block_model, mean_std, threshold=0.5)
+        content = dm.analyze(big_html_doc)
+    
+        # make prediction from individual components
+        # this assumes:  Kohlschuetter.make_features and uses LogisticRegression
+        features, blocks = Kohlschuetter.make_features(big_html_doc)
+        nblocks = len(blocks)
+        features_normalized = np.zeros(features.shape)
+        for k in xrange(6):
+            features_normalized[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
+        blocks_keep_indices = np.arange(nblocks)[block_model.predict(features_normalized) > 0.5]
+    
+        actual_content = ' '.join([blocks[index].text for index in blocks_keep_indices])
+    
+        # check that the tokens are the same!
+        self.assertEqual(re.split('\s+', actual_content.strip()),
+                        re.split('\s+', content.strip()))
 
 
 
