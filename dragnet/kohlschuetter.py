@@ -21,7 +21,7 @@ from copy import deepcopy
 #  features = callable that takes list of blocks
 #             and returns a numpy array of features (len(blocks), nfeatures)
 #           feature.nfeatures = attribute that gives number of features
-#           optionally feature.init_params(blocks) that sets some global state
+#           optionally feature.init_params(features) that sets some global state
 #
 #  machine learning model = implements sklearn interface
 
@@ -385,8 +385,7 @@ class NormalizedFeature(object):
         normalize_features(features, self._mean_std)
         return features
 
-    def init_params(self, blocks):
-        features = self._feature(blocks)
+    def init_params(self, features):
         self._mean_std = {'mean':features.mean(axis=0),
                           'std':features.std(axis=0) }
 
@@ -742,5 +741,10 @@ class KohlschuetterBlockModel(object):
         return results
 
 kohlschuetter = ContentExtractionModel(Blockifier, [kohlschuetter_features], KohlschuetterBlockModel)
+
+# make a map of possible features we know
+all_features = {'kohlschuetter':NormalizedFeature(kohlschuetter_features),
+                'css':CSSFeatures(),
+                'arias':AriasFeatures()}
 
 
