@@ -257,6 +257,7 @@ class PartialBlock(object):
             self.css_tree[k].pop()
 
 
+
 class KohlschuetterBase(object):
     """A base class for web-page de-chroming that loosely follows the approach in
         Kohlschütter et al.:
@@ -266,7 +267,7 @@ class KohlschuetterBase(object):
 
       This base class contains functionality to blockify an input HTML page.
       Subclasses implement the feature extraction and machine learning model
-      for a particular approach via the methods
+      for a particular approach.
     """
 
     # All of these tags will be /completely/ ignored
@@ -364,6 +365,9 @@ class KohlschuetterBase(object):
 
 
 class Kohlschuetter(KohlschuetterBase):
+
+    nfeatures = 6
+
     @staticmethod
     def make_features(s, parse_callback=None):
         """s = the HTML string
@@ -472,7 +476,7 @@ def normalize_features(features, mean_std):
 
 
 class KohlschuetterNormalized(Kohlschuetter):
-    """Use the Kohlschuetter, but do some mean/std normalization"""
+    """Use the Kohlschuetter features, but do some mean/std normalization"""
 
     @staticmethod
     def load_mean_std(mean_std):
@@ -500,10 +504,17 @@ class KohlschuetterNormalized(Kohlschuetter):
         return features, blocks
 
 
+# interface for expanded models.
+# each set of features has the interface:
+#  feature.nfeatures = the number of features
+#  feature(blocks) returns a (len(blocks), nfeatures) array with features
+
+
 re_capital = re.compile('[A-Z]')
 re_digit = re.compile('\d')
 def capital_digit_features(blocks):
     """percent of block that is capitalized and numeric"""
+    capital_digit_features.nfeatures = 2
     features = np.zeros((len(blocks), 2))
     features[:, 0] = [len(re_capital.findall(ele.text)) / float(len(ele.text)) for ele in blocks]
     features[:, 1] = [len(re_digit.findall(ele.text)) / float(len(ele.text)) for ele in blocks]
@@ -512,6 +523,7 @@ def capital_digit_features(blocks):
 
 def token_feature(blocks):
     """A global token count feature"""
+    token_features.nfeatures = 1
     from collections import defaultdict
     word_dict = defaultdict(lambda: 0)
     block_tokens = []
@@ -525,7 +537,7 @@ def token_feature(blocks):
     token_count = float(token_count)
 
     nblocks = len(blocks)
-    feature = np.zeros(nblocks)
+    feature = np.zeros((nblocks, 1))
     for k in xrange(nblocks):
         ntokens = len(block_tokens[k])
 
@@ -540,36 +552,86 @@ def token_feature(blocks):
     return feature
 
 
+class CSSFeatures(object):
+    """Class of features from id/class attributes.
 
-class KohlschuetterExpanded(KohlschuetterNormalized):
-    """An model that takes the Kohlschuetter features and adds
-    some additional ones
-    parse_callback, if not None, will be called on the parse result."""
-    def make_features(self, s, parse_callback=None):
+    The features are 0/1 flags whether the attributes have
+    a give set of tokens"""
+
+    # we have set of tokens that we search for in each
+    # attribute.
+    # The features are 0/1 flags whether these tokens
+    # appear in the CSS tags
+    attribute_tokens = {'id':['nav',
+                              'ss',
+                              'top',
+                              'content',
+                              'link',
+                              'title',
+                              'comment',
+                              'tools',
+                              'rating'],
+                     'class':['menu',
+                              'widget',
+                              'nav',
+                              'share',
+                              'facebook',
+                              'cat',
+                              'top',
+                              'content',
+                              'item',
+                              'twitter',
+                              'button',
+                              'title',
+                              'header',
+                              'ss',
+                              'post',
+                              'comment',
+                              'meta',
+                              'alt',
+                              'time',
+                              'depth',
+                              'thread',
+                              'author',
+                              'tools',
+                              'reply'
+                              'url',
+                              'avatar']}
+
+    _attribute_order = ['id', 'class']
+
+    nfeatures = sum(len(ele) for ele in attribute_tokens.itervalues())
+
+    def __call__(self, blocks):
+        ret = np.zeros((len(blocks), CSSFeatures.nfeatures))
+        feature = 0
+        for attrib in CSSFeatures._attribute_order:
+            for token in CSSFeatures.attribute_tokens[attrib]:
+                ret[:, feature] = [re.search(token, block.css[attrib]) is not None for block in blocks]
+                feature += 1
+        return ret
+
+
+class AriasFeatures(object):
+    """A global feature based on connected blocks of long text
+      inspired by Arias"""
+    nfeatures = 4
+
+    def __call__(self, blocks):
         from scipy import percentile
+        features = np.zeros((len(blocks), AriasFeatures.nfeatures))
 
-        features_koh, blocks = Kohlschuetter.make_features(s, parse_callback)
-        if features_koh is None:
-            return None, blocks
-
-        features = np.zeros((features_koh.shape[0], 6 + 4 + 2))
-        features[:, :6] = features_koh[:]
-
-        # a global feature based on connected blocks of long text
-        # inspired by Arias
         block_lengths = np.array([len(block.text) for block in blocks])
         index = block_lengths.argmax()
-        k = 6
+        k = 0
         for c in [0.15, 0.3333]:
             for window in [1, 4]:
                 cutoff = int(percentile(block_lengths, 97) * c)
-                lowindex, highindex = KohlschuetterExpanded.strip(block_lengths, index, window, cutoff)
+                lowindex, highindex = AriasFeatures.strip(block_lengths, index, window, 
+cutoff)
                 features[lowindex:(highindex + 1), k] = 1.0
                 k += 1
-
-        features[:, -2:] = capital_digit_features(blocks)
-        normalize_features(features, self._mean_std)
-        return features, blocks
+        return features
 
 
     @staticmethod
@@ -611,6 +673,48 @@ class KohlschuetterExpanded(KohlschuetterNormalized):
         return ret
 
 
+
+
+
+
+class KohlschuetterExpanded(KohlschuetterNormalized):
+    """A model that takes the Kohlschuetter features and adds
+    some additional ones"""
+    def __init__(self, mean_std, expanded_features=[]):
+        """mean_std = the mean/std passed down to KohlschuetterNormalized
+        expanded_features = the additonal features to add
+            each implements the expanded features interface
+            (is callable, and has attribute nfeatures)
+        """
+        KohlschuetterNormalized.__init__(self, mean_std)
+
+        # check the expanded features
+        self._nfeatures_expanded = sum(ele.nfeatures for ele in expanded_features)
+        for f in expanded_features:
+            assert callable(f)
+        self._expanded_features = expanded_features
+
+
+    def make_features(self, s):
+        koh_features, blocks = super(KohlschuetterNormalized, self).make_features(s)
+        if koh_features is None:
+            return None, blocks
+
+        # else we have a long enough document
+        ret = np.zeros((features_koh.shape[0], 6 + self._nfeatures_expanded))
+        ret[:, :6] = features_koh[:, :]
+
+        # make the additional features
+        offset = 6
+        for f in self._expanded_features:
+            offset_end = offset + f.nfeatures
+            ret[:, offset:offset_end] = f(blocks)
+            offset = offset_end
+
+        return ret, blocks
+
+
+
 class DragnetModel(KohlschuetterBase):
     """
     Machine learning models that predict whether
@@ -618,9 +722,9 @@ class DragnetModel(KohlschuetterBase):
     """
     def __init__(self, block_model, threshold=0.5): 
         """block_model is a model with these methods:
-                block_model.train(X, y) = train the model
-                block_model.pred(X) = make predictions (0-1)
-           threshold = anything with block_model.pred(X) > threshold
+                block_model.fit(X, y) = train the model
+                block_model.predict(X) = make predictions (0-1)
+           threshold = anything with block_model.predict(X) > threshold
                 is considered content
         """
         KohlschuetterBase.__init__(self)
@@ -628,7 +732,8 @@ class DragnetModel(KohlschuetterBase):
         self._threshold = threshold
 
     def block_analyze(self, features):
-        return self.block_model.pred(features) > self._threshold
+        return self.block_model.predict(features) > self._threshold
+
 
 class DragnetModelKohlschuetterFeatures(DragnetModel, KohlschuetterNormalized):
     """machine learning models that use the two features from
@@ -644,12 +749,9 @@ class DragnetModelKohlschuetterExpanded(DragnetModel, KohlschuetterExpanded):
     """machine learning models that use an expanded set of features"""
     # according to use Python's MRO DragnetModelBase.block_analyze
     # is inherited 
-    def __init__(self, block_model, mean_std, threshold=0.5):
+    def __init__(self, block_model, mean_std, expanded_features=[], threshold=0.5):
         DragnetModel.__init__(self, block_model, threshold)
         KohlschuetterExpanded.__init__(self, mean_std)
-
-
-
 
 
 
