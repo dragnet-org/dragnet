@@ -11,6 +11,21 @@ from itertools import chain
 import scipy.weave
 from copy import deepcopy
 
+# design
+# abstract base classes for blockifier, features and machine learning model
+# and a model class that chains them together and encapsuates all three
+#
+#  blockifier = implements blockify that takes string and returns
+#           an list of Block instances
+#
+#  features = callable that takes list of blocks
+#             and returns a numpy array of features (len(blocks), nfeatures)
+#           feature.nfeatures = attribute that gives number of features
+#           optionally feature.init_params(blocks) that sets some global state
+#
+#  machine learning model = implements sklearn interface
+
+
 class Block(object):
     def __init__(self, text, link_density, text_density, anchors, link_tokens, css):
         self.text = text
@@ -29,7 +44,7 @@ class BlockifyError(Exception):
 
 class PartialBlock(object):
     """As we create blocks by recursing through subtrees
-    in KohlschuetterBase, we need to maintain some state
+    in Blockifier, we need to maintain some state
     of the incomplete blocks.
 
     This class maintains that state, as well as provides methods
@@ -116,7 +131,7 @@ class PartialBlock(object):
         tree = the etree a element"""
         self.anchors.append(tree)
         # need all the text from the subtree
-        anchor_text_list = PartialBlock._text_from_subtree(tree, tags_exclude=KohlschuetterBase.blacklist, tail=False)
+        anchor_text_list = PartialBlock._text_from_subtree(tree, tags_exclude=Blockifier.blacklist, tail=False)
         self.text.extend(anchor_text_list)
         try:
             self.text.append(tree.tail or '')
@@ -206,12 +221,12 @@ class PartialBlock(object):
 
         for child in subtree.iterchildren():
 
-            if child.tag in KohlschuetterBase.blacklist:
+            if child.tag in Blockifier.blacklist:
                 # in this case, skip the entire tag,
                 # but it might have some tail text we need
                 partial_block.add_text(child, 'tail')
 
-            elif child.tag in KohlschuetterBase.blocks:
+            elif child.tag in Blockifier.blocks:
                 # this is the start of a new block
                 # add the existing block to the list,
                 # start the new block and recurse
@@ -258,16 +273,14 @@ class PartialBlock(object):
 
 
 
-class KohlschuetterBase(object):
-    """A base class for web-page de-chroming that loosely follows the approach in
+class Blockifier(object):
+    """A blockifier for web-page de-chroming that loosely follows the approach in
         Kohlschütter et al.:
         http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
       In this approach a machine learning model is used to identify blocks of text
       as content or not.
 
-      This base class contains functionality to blockify an input HTML page.
-      Subclasses implement the feature extraction and machine learning model
-      for a particular approach.
+      Implements the blockify interface
     """
 
     # All of these tags will be /completely/ ignored
@@ -317,24 +330,110 @@ class KohlschuetterBase(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError
 
-        blocks = KohlschuetterBase.blocks_from_tree(html)
-
-        if parse_callback is not None:
-            parse_callback(html)
-
+        blocks = Blockifier.blocks_from_tree(html)
         # only return blocks with some text content
         return [ele for ele in blocks if KohlschuetterBase.re_non_alpha.sub('', ele.text) != '']
 
 
-    def analyze(self, s, blocks=False, parse_callback=None):
+def normalize_features(features, mean_std):
+    """Normalize the features IN PLACE.
+
+       This a utility function.
+
+       mean_std = {'mean':[list of means],
+                   'std':[list of std] }
+        mean_std HAS AN OPTIONAL 'log' key.
+            If present, it includes a flag whether to take a log first.
+            If not None, then it gives a value to do a transform:
+                log(x + exp(-value)) + value
+       the lists are the same length as features.shape[1]
+       
+       if features is None, then do nothing"""
+    if features is not None:
+        if 'log' in mean_std:
+            for k in xrange(features.shape[1]):
+                if mean_std['log'][k] is not None:
+                    features[:, k] = np.log(features[:, k] + np.exp(-mean_std['log'][k])) + mean_std['log'][k]
+
+        for k in xrange(features.shape[1]):
+            features[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
+
+
+
+class NormalizedFeature(object):
+    """Normalize a feature with mean/std
+
+    This is an abstraction of a normalized feature
+    It that acts sort of like a decorator on anything 
+    that implements the feature interface.
+
+    Instances of this object also implement the feature interface"""
+
+    def __init__(self, feature_to_normalize, mean_std=None):
+        """feature_to_normalize = implements feature interface
+        mean_std = a json blob of mean, std or a string with the file location
+            or None"""
+        self._feature = feature_to_normalize
+        self._mean_std = NormalizedFeature.load_mean_std(mean_std)
+        self.nfeatures = feature_to_normalize.nfeatures
+
+    def __call__(self, blocks):
+        # compute features and normalize
+        if self._mean_std is None:
+            raise ValueError("You must provide mean_std or call init_params")
+
+        features = self._feature(blocks)
+        normalize_features(features, self._mean_std)
+        return features
+
+    def init_params(self, blocks):
+        features = self._feature(blocks)
+        self._mean_std = {'mean':features.mean(axis=0),
+                          'std':features.std(axis=0) }
+
+
+    @staticmethod
+    def load_mean_std(mean_std):
+        """mean_std is either a filename string,
+        or a json blob.
+        if a string, load it, otherwise just return"""
+        import json
+        if isinstance(mean_std, basestring):
+            return json.load(open(mean_std, 'r'))
+        else:
+            return mean_std
+
+
+class ContentExtractionModel(object):
+    """Content extraction model
+
+    Encapsulates a blockifier, some feature generators and a
+    machine learing block model"""
+
+    def __init__(self, blockifier, features, block_model, threshold=0.5):
+        """blockifier = implements blockify
+        features = list of things that implement features interface
+        block_model = sklearn interface model"""
+
+        self._blockifier = blockifier
+        self._features = features
+        self._block_model = block_model
+        self._threshold = threshold
+
+        # check the features
+        self._nfeatures = sum(ele.nfeatures for ele in self._features)
+        for f in self._features:
+            assert callable(f)
+
+
+    def analyze(self, s, blocks=False):
         """s = HTML string
         returns the content as a string, or if `block`, then the blocks
         themselves are returned.
-        parse_callback, if not None, will be called on the parse result.
         """
-        features, blocks_ = self.make_features(s, parse_callback)
+        features, blocks_ = self.make_features(s)
         if features is not None:
-            content_mask = self.block_analyze(features)
+            content_mask = self._block_model.predict(features) > self._threshold
             results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
         else:
             # doc is too short. return all content
@@ -342,6 +441,31 @@ class KohlschuetterBase(object):
         if blocks:
             return results
         return ' '.join(blk.text for blk in results)
+
+
+    def make_features(self, s):
+        """s = HTML string
+           return features, blocks
+
+           raises BlockifyError if there is an error parsing the doc
+           and None if doc is too short (< 3 blocks)"""
+
+        blocks = self._blockifier.blockify(s)
+
+        # doc needs to be at least three blocks, otherwise return everything
+        if len(blocks) < 3:
+            return None, blocks
+
+        # compute the features
+        features = np.zeros((len(blocks), self._nfeatures))
+        offset = 0
+        for f in self._features:
+            offset_end = offset + f.nfeatures
+            features[:, offset:offset_end] = f(blocks)
+            offset = offset_end
+
+        return features, blocks
+
 
 
     @staticmethod
@@ -362,168 +486,50 @@ class KohlschuetterBase(object):
         fig.show()
 
 
+# now we need some features for our models!
+def kohlschuetter_features(blocks):
+    """The text density/link density features
+    from Kohlschuetter.  Implements the features interface"""
+    # need at least 3 blocks to make features
+    assert len(blocks) >= 3
+
+    features = np.zeros((len(blocks), 6))
+    for i in range(1, len(blocks)-1):
+        previous = blocks[i-1]
+        current  = blocks[i]
+        next     = blocks[i+1]
+        features[i, :] = [previous.link_density, previous.text_density,
+                              current.link_density, current.text_density,
+                              next.link_density, next.text_density]
+    i = 0
+    features[0, :] = [0.0, 0.0,
+                      blocks[i].link_density, blocks[i].text_density,
+                      blocks[i + 1].link_density, blocks[i + 1].text_density]
+    i = len(blocks) - 1
+    features[-1, :] = [blocks[i - 1].link_density, blocks[i - 1].text_density,
+                      blocks[i].link_density, blocks[i].text_density,
+                      0.0, 0.0]
+
+    return features
+kohlschuetter_features.nfeatures = 6
 
 
-class Kohlschuetter(KohlschuetterBase):
 
-    nfeatures = 6
-
-    @staticmethod
-    def make_features(s, parse_callback=None):
-        """s = the HTML string
-        return a numpy array of the features + the associated raw content
-        parse_callback, if not None, will be called on the parse result."""
-        blocks = KohlschuetterBase.blockify(s, parse_callback)
-
-        # doc needs to be at least three blocks, otherwise return everything
-        if len(blocks) < 3:
-            return None, blocks
-
-        features = np.zeros((len(blocks), 6))
-        for i in range(1, len(blocks)-1):
-            previous = blocks[i-1]
-            current  = blocks[i]
-            next     = blocks[i+1]
-            features[i, :] = [previous.link_density, previous.text_density,
-                                  current.link_density, current.text_density,
-                                  next.link_density, next.text_density]
-        i = 0
-        features[0, :] = [0.0, 0.0,
-                          blocks[i].link_density, blocks[i].text_density,
-                          blocks[i + 1].link_density, blocks[i + 1].text_density]
-        i = len(blocks) - 1
-        features[-1, :] = [blocks[i - 1].link_density, blocks[i - 1].text_density,
-                          blocks[i].link_density, blocks[i].text_density,
-                          0.0, 0.0]
-        return features, blocks
-
-    def block_analyze(self, features):
-        """Takes a the features
-        Returns a list True/False of ones classified as content
-        
-        Note: this is the decision tree published in the original paper
-        We benchmarked it against our data set and it performed poorly,
-        and we attribute it to differences the blockify implementation.
-        """
-        # curr_linkDensity <= 0.333333
-        # | prev_linkDensity <= 0.555556
-        # | | curr_textDensity <= 9
-        # | | | next_textDensity <= 10
-        # | | | | prev_textDensity <= 4: BOILERPLATE
-        # | | | | prev_textDensity > 4: CONTENT
-        # | | | next_textDensity > 10: CONTENT
-        # | | curr_textDensity > 9
-        # | | | next_textDensity = 0: BOILERPLATE
-        # | | | next_textDensity > 0: CONTENT
-        # | prev_linkDensity > 0.555556
-        # | | next_textDensity <= 11: BOILERPLATE
-        # | | next_textDensity > 11: CONTENT
-        # curr_linkDensity > 0.333333: BOILERPLATE
-
-        results = []
-        
-        for i in xrange(features.shape[0]):
-            (previous_link_density, previous_text_density,
-            current_link_density, current_text_density,
-            next_link_density, next_text_density) = features[i, :]
-            if current_link_density <= 0.333333:
-                if previous_link_density <= 0.555556:
-                    if current_text_density <= 9:
-                        if next_text_density <= 10:
-                            if previous_text_density <= 4:
-                                # Boilerplate
-                                results.append(False)
-                            else: # previous.text_density > 4
-                                results.append(True)
-                        else: # next.text_density > 10
-                            results.append(True)
-                    else: # current.text_density > 9
-                        if next_text_density == 0:
-                            results.append(False)
-                        else: # next.text_density > 0
-                            results.append(True)
-                else: # previous.link_density > 0.555556
-                    if next_text_density <= 11:
-                        # Boilerplate
-                        results.append(False)
-                    else: # next.text_density > 11
-                        results.append(True)
-            else: # current.link_density > 0.333333
-                # Boilerplace
-                results.append(False)
-
-        return results
-
-def normalize_features(features, mean_std):
-    """Normalize the features IN PLACE.
-       mean_std = {'mean':[list of means],
-                   'std':[list of std] }
-        mean_std HAS AN OPTIONAL 'log' key.
-            If present, it includes a flag whether to take a log first.
-            If not None, then it gives a value to do a transform:
-                log(x + exp(-value)) + value
-       the lists are the same length as features.shape[1]
-       
-       if features is None, then do nothing"""
-    if features is not None:
-        if 'log' in mean_std:
-            for k in xrange(features.shape[1]):
-                if mean_std['log'][k] is not None:
-                    features[:, k] = np.log(features[:, k] + np.exp(-mean_std['log'][k])) + mean_std['log'][k]
-
-        for k in xrange(features.shape[1]):
-            features[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
-
-
-class KohlschuetterNormalized(Kohlschuetter):
-    """Use the Kohlschuetter features, but do some mean/std normalization"""
-
-    @staticmethod
-    def load_mean_std(mean_std):
-        """mean_std is either a filename string,
-        or a json blob.
-        if a string, load it, otherwise just return"""
-        import json
-        if isinstance(mean_std, basestring):
-            return json.load(open(mean_std, 'r'))
-        else:
-            return mean_std
-
-    def __init__(self, mean_std):
-        """mean_std = the json file with mean/std of the features
-        mean_std = {'mean':[list of means],
-                    'std':[list of std] """
-        Kohlschuetter.__init__(self)
-        self._mean_std = KohlschuetterNormalized.load_mean_std(mean_std)
-
-    def make_features(self, s, parse_callback=None):
-        """Make text, anchor features and some normalization
-        parse_callback, if not None, will be called on the parse result."""
-        features, blocks = Kohlschuetter.make_features(s, parse_callback)
-        normalize_features(features, self._mean_std)
-        return features, blocks
-
-
-# interface for expanded models.
-# each set of features has the interface:
-#  feature.nfeatures = the number of features
-#  feature(blocks) returns a (len(blocks), nfeatures) array with features
 
 
 re_capital = re.compile('[A-Z]')
 re_digit = re.compile('\d')
 def capital_digit_features(blocks):
     """percent of block that is capitalized and numeric"""
-    capital_digit_features.nfeatures = 2
     features = np.zeros((len(blocks), 2))
     features[:, 0] = [len(re_capital.findall(ele.text)) / float(len(ele.text)) for ele in blocks]
     features[:, 1] = [len(re_digit.findall(ele.text)) / float(len(ele.text)) for ele in blocks]
     return features
+capital_digit_features.nfeatures = 2
 
 
 def token_feature(blocks):
     """A global token count feature"""
-    token_features.nfeatures = 1
     from collections import defaultdict
     word_dict = defaultdict(lambda: 0)
     block_tokens = []
@@ -550,7 +556,7 @@ def token_feature(blocks):
             feature[k] = -10.0   # just in case
 
     return feature
-
+token_feature.nfeatures = 1
 
 class CSSFeatures(object):
     """Class of features from id/class attributes.
@@ -674,84 +680,67 @@ cutoff)
 
 
 
+class KohlschuetterBlockModel(object):
+    """the original decision tree published in Kohlschuetter et al"""
 
-
-
-class KohlschuetterExpanded(KohlschuetterNormalized):
-    """A model that takes the Kohlschuetter features and adds
-    some additional ones"""
-    def __init__(self, mean_std, expanded_features=[]):
-        """mean_std = the mean/std passed down to KohlschuetterNormalized
-        expanded_features = the additonal features to add
-            each implements the expanded features interface
-            (is callable, and has attribute nfeatures)
+    @staticmethod
+    def predict(features):
+        """Takes a the features
+        Returns a list True/False of ones classified as content
+        
+        Note: this is the decision tree published in the original paper
+        We benchmarked it against our data set and it performed poorly,
+        and we attribute it to differences the blockify implementation.
         """
-        KohlschuetterNormalized.__init__(self, mean_std)
+        # curr_linkDensity <= 0.333333
+        # | prev_linkDensity <= 0.555556
+        # | | curr_textDensity <= 9
+        # | | | next_textDensity <= 10
+        # | | | | prev_textDensity <= 4: BOILERPLATE
+        # | | | | prev_textDensity > 4: CONTENT
+        # | | | next_textDensity > 10: CONTENT
+        # | | curr_textDensity > 9
+        # | | | next_textDensity = 0: BOILERPLATE
+        # | | | next_textDensity > 0: CONTENT
+        # | prev_linkDensity > 0.555556
+        # | | next_textDensity <= 11: BOILERPLATE
+        # | | next_textDensity > 11: CONTENT
+        # curr_linkDensity > 0.333333: BOILERPLATE
 
-        # check the expanded features
-        self._nfeatures_expanded = sum(ele.nfeatures for ele in expanded_features)
-        for f in expanded_features:
-            assert callable(f)
-        self._expanded_features = expanded_features
+        results = []
 
+        for i in xrange(features.shape[0]):
+            (previous_link_density, previous_text_density,
+            current_link_density, current_text_density,
+            next_link_density, next_text_density) = features[i, :]
+            if current_link_density <= 0.333333:
+                if previous_link_density <= 0.555556:
+                    if current_text_density <= 9:
+                        if next_text_density <= 10:
+                            if previous_text_density <= 4:
+                                # Boilerplate
+                                results.append(False)
+                            else: # previous.text_density > 4
+                                results.append(True)
+                        else: # next.text_density > 10
+                            results.append(True)
+                    else: # current.text_density > 9
+                        if next_text_density == 0:
+                            results.append(False)
+                        else: # next.text_density > 0
+                            results.append(True)
+                else: # previous.link_density > 0.555556
+                    if next_text_density <= 11:
+                        # Boilerplate
+                        results.append(False)
+                    else: # next.text_density > 11
+                        results.append(True)
+            else: # current.link_density > 0.333333
+                # Boilerplace
+                results.append(False)
 
-    def make_features(self, s):
-        koh_features, blocks = super(KohlschuetterNormalized, self).make_features(s)
-        if koh_features is None:
-            return None, blocks
+        return results
 
-        # else we have a long enough document
-        ret = np.zeros((features_koh.shape[0], 6 + self._nfeatures_expanded))
-        ret[:, :6] = features_koh[:, :]
-
-        # make the additional features
-        offset = 6
-        for f in self._expanded_features:
-            offset_end = offset + f.nfeatures
-            ret[:, offset:offset_end] = f(blocks)
-            offset = offset_end
-
-        return ret, blocks
-
-
-
-class DragnetModel(KohlschuetterBase):
-    """
-    Machine learning models that predict whether
-    blocks are content or not
-    """
-    def __init__(self, block_model, threshold=0.5): 
-        """block_model is a model with these methods:
-                block_model.fit(X, y) = train the model
-                block_model.predict(X) = make predictions (0-1)
-           threshold = anything with block_model.predict(X) > threshold
-                is considered content
-        """
-        KohlschuetterBase.__init__(self)
-        self.block_model = block_model
-        self._threshold = threshold
-
-    def block_analyze(self, features):
-        return self.block_model.predict(features) > self._threshold
-
-
-class DragnetModelKohlschuetterFeatures(DragnetModel, KohlschuetterNormalized):
-    """machine learning models that use the two features from
-    Kohlschuetter as the model features"""
-    # according to use Python's MRO DragnetModelBase.block_analyze
-    # is inherited 
-    def __init__(self, block_model, mean_std, threshold=0.5):
-        DragnetModel.__init__(self, block_model, threshold)
-        KohlschuetterNormalized.__init__(self, mean_std)
-
-
-class DragnetModelKohlschuetterExpanded(DragnetModel, KohlschuetterExpanded):
-    """machine learning models that use an expanded set of features"""
-    # according to use Python's MRO DragnetModelBase.block_analyze
-    # is inherited 
-    def __init__(self, block_model, mean_std, expanded_features=[], threshold=0.5):
-        DragnetModel.__init__(self, block_model, threshold)
-        KohlschuetterExpanded.__init__(self, mean_std)
-
+kohlschuetter = ContentExtractionModel(Blockifier, [kohlschuetter_features], KohlschuetterBlockModel)
 
 

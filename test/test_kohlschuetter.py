@@ -1,6 +1,6 @@
 
 import unittest
-from dragnet import KohlschuetterBase, PartialBlock, BlockifyError, Kohlschuetter, DragnetModelKohlschuetterFeatures
+from dragnet import Blockifier, PartialBlock, BlockifyError, kohlschuetter, ContentExtractionModel, NormalizedFeature, kohlschuetter_features
 from lxml import etree
 import re
 import numpy as np
@@ -77,21 +77,18 @@ class KohlschuetterUnitBase(unittest.TestCase):
 
 
 
-class TestKohlschuetterBase(KohlschuetterUnitBase):
-    # Result from the callback test
-    div_count = -1
-
+class TestBlockifier(KohlschuetterUnitBase):
     def test_lxml_error(self):
         """tests the case where lxml raises an error during parsing
 
         also handles case where lxml returns None for the tree"""
         # this raises an error in parsing
         self.assertRaises(etree.XMLSyntaxError, etree.fromstring, '', etree.HTMLParser(recover=True))
-        self.assertRaises(BlockifyError, KohlschuetterBase.blockify, '')
+        self.assertRaises(BlockifyError, Blockifier.blockify, '')
 
         # this returns None in lxml
         self.assertTrue(None == etree.fromstring('<!--', etree.HTMLParser(recover=True)) )
-        self.assertRaises(BlockifyError, KohlschuetterBase.blockify, '<!--')
+        self.assertRaises(BlockifyError, Blockifier.blockify, '<!--')
 
     def test_very_simple(self):
         """test_very_simple"""
@@ -99,7 +96,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                     <script> skip this </script>
                     more text here
                </div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks, [['some', 'text', 'more', 'text', 'here']])
 
     def test_very_simple2(self):
@@ -107,7 +104,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                     <pre> <div>skip this</div> </pre>
                     <b>bold stuff</b> after the script
                </div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks, [['some', 'text', 'in', 'italic', 'and', 'something', 'else', 'bold', 'stuff', 'after', 'the', 'script']])
 
     @staticmethod
@@ -128,7 +125,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
         s = """<h1>A title <i>with italics</i> and other words</h1>
                some text outside the h1
                <div>a div <span class="test"> with a span </span> more </div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
                [['A', 'title', 'with', 'italics', 'and', 'other', 'words', 'some', 'text', 'outside', 'the', 'h1'],
                 ['a', 'div', 'with', 'a', 'span', 'more']])
@@ -140,7 +137,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                <TABLE><tr><td>table data</td></tr><tr><td>second row</td></tr></TABLE>
                final
                """
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
                 [['h1', 'tag', 'word', 'orphaned', 'text'],
                  ['table', 'data', 'second', 'row', 'final']])
@@ -151,7 +148,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                <h1> in an h1 </h1>
                <p> ! _ </p>
             """
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
                     [['.!', 'some', 'text'], ['in', 'an', 'h1']])
 
@@ -163,7 +160,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
             </div>
             final
             <div> <i> italic </i> before <h1>tag</h1></div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
                 [['initial', 'text'],
                 ['div'],
@@ -179,7 +176,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                <div>text <a href=".">123</a><div>MORE!</div></div>
                an img link<a href="."><img src="."></a>there
                <table><tr><td><a href=".">WILL <img src="."> THIS PASS <b>THE TEST</b> ??</a></tr></td></table>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
 
         self.block_output_tokens(blocks,
               [['anchor', 'text', 'more'],
@@ -196,7 +193,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
 
     def test_unicode(self):
         s = u"""<div><div><a href="."> the registered trademark \xae</a></div></div"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
             [['the', 'registered', 'trademark', u'\xae']])
         self.link_output_tokens(blocks,
@@ -208,7 +205,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                 <h1 id="HEADER">header</h1>
                 <div class="nested">dragnet</div>
                 </div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
 
         self.block_output_tokens(blocks,
             [['text', 'in', 'div'],
@@ -231,7 +228,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
     def test_text_from_subtree(self):
         s = """<a href=".">WILL <img src="."> THIS PASS <b>THE TEST</b> ??</a>"""
         tree = etree.fromstring(s, etree.HTMLParser(recover=True))
-        text_list = PartialBlock._text_from_subtree(tree, tags_exclude=KohlschuetterBase.blacklist)
+        text_list = PartialBlock._text_from_subtree(tree, tags_exclude=Blockifier.blacklist)
         text_str = ' '.join([ele.strip() for ele in text_list if ele.strip() != ''])
         self.assertEqual(text_str,
             'WILL THIS PASS THE TEST ??')
@@ -240,7 +237,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
 
     def test_big_html(self):
         s = big_html_doc
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
 
         self.block_output_tokens(blocks,
         [['Inside', 'the', 'h1', 'tag'],
@@ -299,22 +296,19 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
 
 class TestKohlschuetter(KohlschuetterUnitBase):
     def test_small_doc(self):
-        # need an instance to call analyze
-        koh = Kohlschuetter()
-
-        self.assertEqual((None, []), Kohlschuetter.make_features('<html></html>'))
-        self.assertEqual('', koh.analyze('<html></html>'))
+        self.assertEqual((None, []), kohlschuetter.make_features('<html></html>'))
+        self.assertEqual('', kohlschuetter.analyze('<html></html>'))
 
         s = '<html> <p>a</p> <div>b</div> </html>'
-        features, blocks = Kohlschuetter.make_features(s)
+        features, blocks = kohlschuetter.make_features(s)
         self.assertTrue(features is None)
         self.block_output_tokens(blocks, [['a'], ['b']])
-        self.assertEqual('a b', koh.analyze(s))
+        self.assertEqual('a b', kohlschuetter.analyze(s))
 
 
     def test_make_features(self):
         s = '<html> <p>first </p> <div> <p>second block with <a href=''>anchor</a> </p> <p>the third block</p> </div> </html>'
-        features, blocks = Kohlschuetter.make_features(s)
+        features, blocks = kohlschuetter.make_features(s)
         self.block_output_tokens(blocks, [['first'], ['second', 'block', 'with', 'anchor'], ['the', 'third', 'block']])
         self.link_output_tokens(blocks, [[], ['anchor'], []])
 
@@ -332,13 +326,14 @@ class TestDragnetModelKohlschuetterFeatures(unittest.TestCase):
         params = {'b':0.2, 'w':[0.4, -0.2, 0.9, 0.8, -0.3, -0.5]}
         block_model = LogisticRegression.load_model(params)
         mean_std = {'mean':[0.0, 0.1, 0.2, 0.5, 0.0, 0.3], 'std':[1.0, 2.0, 0.5, 1.2, 0.75, 1.3]}
+        koh_features = NormalizedFeature(kohlschuetter_features, mean_std)
     
-        dm = DragnetModelKohlschuetterFeatures(block_model, mean_std, threshold=0.5)
+        dm = ContentExtractionModel(Blockifier, [koh_features], block_model, threshold=0.5)
         content = dm.analyze(big_html_doc)
     
         # make prediction from individual components
-        # this assumes:  Kohlschuetter.make_features and uses LogisticRegression
-        features, blocks = Kohlschuetter.make_features(big_html_doc)
+        # this assumes:  kohlschuetter.make_features and uses LogisticRegression
+        features, blocks = kohlschuetter.make_features(big_html_doc)
         nblocks = len(blocks)
         features_normalized = np.zeros(features.shape)
         for k in xrange(6):
