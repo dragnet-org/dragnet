@@ -2,6 +2,8 @@
 
 from .arias import Arias
 from .kohlschuetter import Blockifier, PartialBlock, BlockifyError
-from .kohlschuetter import NormalizedFeature, ContentExtractionModel, kohlschuetter_features, CSSFeatures, AriasFeatures, capital_digit_features, token_feature, kohlschuetter
+from .kohlschuetter import NormalizedFeature, kohlschuetter_features, kohlschuetter, all_features
+from .kohlschuetter import ContentExtractionModel
+
 from .util import evaluation_metrics
 
