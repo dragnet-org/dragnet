@@ -20,8 +20,13 @@ from copy import deepcopy
 #
 #  features = callable that takes list of blocks
 #             and returns a numpy array of features (len(blocks), nfeatures)
+#             It accepts an optional keyword "train" that is only called in an initial
+#             pre-processing state for training
 #           feature.nfeatures = attribute that gives number of features
 #           optionally feature.init_params(features) that sets some global state
+#              if features.init_params is implemented, then must also implement
+#               features.set_params(ret) where ret is the returned value from
+#               features.init_params
 #
 #  machine learning model = implements sklearn interface
 
@@ -364,7 +369,7 @@ class NormalizedFeature(object):
     """Normalize a feature with mean/std
 
     This is an abstraction of a normalized feature
-    It that acts sort of like a decorator on anything 
+    It acts sort of like a decorator on anything 
     that implements the feature interface.
 
     Instances of this object also implement the feature interface"""
@@ -377,19 +382,26 @@ class NormalizedFeature(object):
         self._mean_std = NormalizedFeature.load_mean_std(mean_std)
         self.nfeatures = feature_to_normalize.nfeatures
 
-    def __call__(self, blocks):
+    def __call__(self, blocks, train=False):
         # compute features and normalize
-        if self._mean_std is None:
+        if not train and self._mean_std is None:
             raise ValueError("You must provide mean_std or call init_params")
 
         features = self._feature(blocks)
-        normalize_features(features, self._mean_std)
+        if not train:
+            normalize_features(features, self._mean_std)
+
         return features
 
     def init_params(self, features):
         self._mean_std = {'mean':features.mean(axis=0),
                           'std':features.std(axis=0) }
+        return self._mean_std
 
+    def set_params(self, mean_std):
+        assert len(mean_std['mean']) == self.nfeatures
+        assert len(mean_std['std']) == self.nfeatures
+        self._mean_std = mean_std
 
     @staticmethod
     def load_mean_std(mean_std):
@@ -442,12 +454,14 @@ class ContentExtractionModel(object):
         return ' '.join(blk.text for blk in results)
 
 
-    def make_features(self, s):
+    def make_features(self, s, train=False):
         """s = HTML string
            return features, blocks
 
            raises BlockifyError if there is an error parsing the doc
-           and None if doc is too short (< 3 blocks)"""
+           and None if doc is too short (< 3 blocks)
+           
+           train = if true, then passes it into feature maker"""
 
         blocks = self._blockifier.blockify(s)
 
@@ -460,7 +474,7 @@ class ContentExtractionModel(object):
         offset = 0
         for f in self._features:
             offset_end = offset + f.nfeatures
-            features[:, offset:offset_end] = f(blocks)
+            features[:, offset:offset_end] = f(blocks, train)
             offset = offset_end
 
         return features, blocks
@@ -486,7 +500,7 @@ class ContentExtractionModel(object):
 
 
 # now we need some features for our models!
-def kohlschuetter_features(blocks):
+def kohlschuetter_features(blocks, train=False):
     """The text density/link density features
     from Kohlschuetter.  Implements the features interface"""
     # need at least 3 blocks to make features
@@ -518,7 +532,7 @@ kohlschuetter_features.nfeatures = 6
 
 re_capital = re.compile('[A-Z]')
 re_digit = re.compile('\d')
-def capital_digit_features(blocks):
+def capital_digit_features(blocks, train=False):
     """percent of block that is capitalized and numeric"""
     features = np.zeros((len(blocks), 2))
     features[:, 0] = [len(re_capital.findall(ele.text)) / float(len(ele.text)) for ele in blocks]
@@ -527,7 +541,7 @@ def capital_digit_features(blocks):
 capital_digit_features.nfeatures = 2
 
 
-def token_feature(blocks):
+def token_feature(blocks, train=False):
     """A global token count feature"""
     from collections import defaultdict
     word_dict = defaultdict(lambda: 0)
@@ -607,7 +621,7 @@ class CSSFeatures(object):
 
     nfeatures = sum(len(ele) for ele in attribute_tokens.itervalues())
 
-    def __call__(self, blocks):
+    def __call__(self, blocks, train=False):
         ret = np.zeros((len(blocks), CSSFeatures.nfeatures))
         feature = 0
         for attrib in CSSFeatures._attribute_order:
@@ -622,7 +636,7 @@ class AriasFeatures(object):
       inspired by Arias"""
     nfeatures = 4
 
-    def __call__(self, blocks):
+    def __call__(self, blocks, train=False):
         from scipy import percentile
         features = np.zeros((len(blocks), AriasFeatures.nfeatures))
 
@@ -743,8 +757,21 @@ class KohlschuetterBlockModel(object):
 kohlschuetter = ContentExtractionModel(Blockifier, [kohlschuetter_features], KohlschuetterBlockModel)
 
 # make a map of possible features we know
-all_features = {'kohlschuetter':NormalizedFeature(kohlschuetter_features),
-                'css':CSSFeatures(),
-                'arias':AriasFeatures()}
+class AllFeatures(object):
+    def __getitem__(self, key):
+        if key == 'kohlschuetter':
+            return NormalizedFeature(kohlschuetter_features)
+        elif key == 'css':
+            return CSSFeatures()
+        elif key == 'arias':
+            return AriasFeatures()
+        else:
+            raise KeyError
+
+    def keys(self):
+        return ['kohlschuetter', 'css', 'arias']
+
+all_features = AllFeatures()
+
 
 
