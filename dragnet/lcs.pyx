@@ -28,10 +28,6 @@ def longest_common_subsequence(X, Y):
     # lcs is bounded above by the minimum length of x, y
     # determine whether we can use 16 or 32 bit ints
     cdef np.ndarray[np.int32_t, ndim=2] C = np.zeros([m+1, n+1], dtype=np.int32)
-    #if min(m+1, n+1) < 32767:
-    #    cdef np.ndarray[np.int16_t, ndim=2] C = np.zeros([m+1, n+1], dtype=np.int16)
-    #else:
-    #    cdef np.ndarray[np.int32_t, ndim=2] C = np.zeros([m+1, n+1], dtype=np.int32)
 
     # convert X, Y to C++ standard containers
     cdef vector[string] xx = X
