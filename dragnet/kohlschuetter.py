@@ -291,19 +291,16 @@ class Blockifier(object):
     # All of these tags will be /completely/ ignored
     blacklist = set([
         etree.Comment, 'applet', 'area', 'base', 'basefont', 'bdo', 'button', 
-        'caption', 'dfn', 'dir', 'fieldset', 'form', 'fram', 'frameset', 
-        'iframe', 'img', 'input', 'legend', 'link', 'map', 'menu', 'meta', 
+        'caption', 'fieldset', 'fram', 'frameset', 
+        'iframe', 'img', 'input', 'legend', 'link', 'menu', 'meta', 
         'noframes', 'noscript', 'object', 'optgroup', 'option', 'param', 
         'script', 'select', 'style', 'textarea', 'var', 'xmp',
-
-        'like', 'like-box', 'plusone', 'address',
-
-        'code', 'pre'
+        'like', 'like-box', 'plusone'
     ])
     
     # Only these should be considered as housing blocks of text
     blocks = set([
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'table'
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'table', 'map'
     ])
 
     re_non_alpha = re.compile('[\W_]', re.UNICODE)
@@ -419,7 +416,9 @@ class ContentExtractionModel(object):
     """Content extraction model
 
     Encapsulates a blockifier, some feature generators and a
-    machine learing block model"""
+    machine learing block model
+    
+    Implements analyze, make_features"""
 
     def __init__(self, blockifier, features, block_model, threshold=0.5):
         """blockifier = implements blockify
@@ -655,6 +654,19 @@ cutoff)
 
     @staticmethod
     def strip(block_lengths, index, window, cutoff):
+        """Strip a list of blocks down to the content.
+
+        Starting at some block index, expand outward to left and right until we
+        encounter `window` consecutive blocks with length less then `cutoff`.
+
+        block_lengths = 1D numpy array of length of text in blocks
+            in document
+        index = the starting index for the determination
+        window = we need this many consecutive blocks <= cutoff to terminate
+        cutoff = min block length to be considered content
+
+        returns start/end block indices of the content
+        """
         ret = np.zeros(2, np.int)
         nblock = len(block_lengths)
         c_code = """
