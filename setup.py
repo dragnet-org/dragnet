@@ -21,10 +21,21 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+#try:
+#    from setuptools import setup
+#except ImportError:
+
+from distutils.core import setup
+from numpy import get_include
+from distutils.extension import Extension
+from Cython.Distutils import build_ext
+
+ext_modules = [Extension('dragnet.lcs',
+    sources=["dragnet/lcs.pyx"],
+    include_dirs = [get_include()],
+    language="c++",
+)]
+
 
 setup(
     name             = 'dragnet',
@@ -36,7 +47,6 @@ setup(
     packages         = ['dragnet'],
     license          = 'MIT',
     platforms        = 'Posix; MacOS X',
-    test_suite       = 'tests.testReppy',
     classifiers      = [
         'License :: OSI Approved :: MIT License',
         'Development Status :: 3 - Alpha',
@@ -47,4 +57,6 @@ setup(
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Intended Audience :: Science/Research'
         ],
+    cmdclass         = {'build_ext': build_ext},
+    ext_modules      = ext_modules,
 )
