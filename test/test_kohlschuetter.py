@@ -101,7 +101,7 @@ class TestBlockifier(KohlschuetterUnitBase):
 
     def test_very_simple2(self):
         s = """<div>some text <i>in italic</i> and something else
-                    <pre> <div>skip this</div> </pre>
+                    <script> <div>skip this</div> </script>
                     <b>bold stuff</b> after the script
                </div>"""
         blocks = Blockifier.blockify(s)
