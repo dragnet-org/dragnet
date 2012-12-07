@@ -307,7 +307,7 @@ class TestKohlschuetter(KohlschuetterUnitBase):
 
 
 
-class TestDragnetModelKohlschuetterFeatures(unittest.TestCase):
+class TestContentExtractionModel(unittest.TestCase):
     def test_dragnet_model(self):
         params = {'b':0.2, 'w':[0.4, -0.2, 0.9, 0.8, -0.3, -0.5]}
         block_model = LogisticRegression.load_model(params)
@@ -316,7 +316,7 @@ class TestDragnetModelKohlschuetterFeatures(unittest.TestCase):
     
         dm = ContentExtractionModel(Blockifier, [koh_features], block_model, threshold=0.5)
         content = dm.analyze(big_html_doc)
-    
+
         # make prediction from individual components
         # this assumes:  kohlschuetter.make_features and uses LogisticRegression
         features, blocks = kohlschuetter.make_features(big_html_doc)
@@ -331,6 +331,15 @@ class TestDragnetModelKohlschuetterFeatures(unittest.TestCase):
         # check that the tokens are the same!
         self.assertEqual(re.split('\s+', actual_content.strip()),
                         re.split('\s+', content.strip()))
+
+
+        # check that maintain backward compatability
+        from dragnet import DragnetModelKohlschuetterFeatures
+        dmkf = DragnetModelKohlschuetterFeatures(block_model, mean_std)
+        content_dragnetmodelkohschuetterfeatures = dmkf.analyze(big_html_doc)
+        self.assertEqual(re.split('\s+', actual_content.strip()),
+            re.split('\s+', content_dragnetmodelkohschuetterfeatures.strip()))
+
 
 
 
