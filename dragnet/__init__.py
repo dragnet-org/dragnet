@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 
 from .arias import Arias
-from .kohlschuetter import Blockifier, PartialBlock, BlockifyError
-from .kohlschuetter import NormalizedFeature, kohlschuetter_features, kohlschuetter, all_features
-from .kohlschuetter import ContentExtractionModel
+from .blocks import Blockifier, PartialBlock, BlockifyError
+from .features import NormalizedFeature, all_features
+from .content_extraction_model import ContentExtractionModel
+from .kohlschuetter import kohlschuetter_features, kohlschuetter
 from .util import evaluation_metrics
 
 
