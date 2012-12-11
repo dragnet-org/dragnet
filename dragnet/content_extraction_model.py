@@ -27,6 +27,11 @@ class ContentExtractionModel(object):
         for f in self._features:
             assert callable(f)
 
+    def set_threshold(self, thres):
+        """Set the threshold
+        
+        0<= thres <= 1.0"""
+        self._threshold = thres
 
     def analyze(self, s, blocks=False):
         """s = HTML string
