@@ -6,12 +6,10 @@ import pylab as plt
 import glob
 import codecs
 
-from mozsci.evaluation import classification_error, auc_wmw_fast, precision_recall_f1
 from mozsci.cross_validate import cv_kfold
 
 from .blocks import Blockifier
 from . import evaluation_metrics
-from .features import all_features
 from .content_extraction_model import ContentExtractionModel
 from .data_processing import simple_tokenizer, DragnetModelData
 
@@ -265,6 +263,7 @@ def plot_errors(errors, reg_parm_str):
 
 def accuracy_auc(y, ypred, weights=None):
     """Compute both the accuracy and AUC"""
+    from mozsci.evaluation import classification_error, auc_wmw_fast, precision_recall_f1
     prf1 = precision_recall_f1(y, ypred, weights=weights)
     return { 'accuracy':1.0 - classification_error(y, ypred, weights=weights),
              'auc':auc_wmw_fast(y, ypred, weights=weights),
