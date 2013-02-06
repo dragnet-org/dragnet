@@ -1,24 +1,40 @@
 #! /usr/bin/env python
 
-from .arias import Arias
+from .arias import AriasFeatures, Arias
 from .blocks import Blockifier, PartialBlock, BlockifyError
-from .features import NormalizedFeature, all_features
+from .features import NormalizedFeature, CSSFeatures
 from .content_extraction_model import ContentExtractionModel
 from .kohlschuetter import kohlschuetter_features, kohlschuetter
 from .util import evaluation_metrics
 
 
+class AllFeatures(object):
+    """Easy access to feature instances.
+    
+    We need a way to get instances of the feature classes.
+    Since these classes are potentially mutated by clients,
+    we create a new instance on each access"""
+
+    @staticmethod
+    def get(key, *args, **kwargs):
+        if key == 'kohlschuetter':
+            return NormalizedFeature(kohlschuetter_features)
+        elif key == 'css':
+            return CSSFeatures()
+        elif key == 'arias':
+            return AriasFeatures(*args, **kwargs)
+        else:
+            raise KeyError
+
+
 # we want to maintain backward compatibility with 
-# code that the old interface to LogisticRegression
-# and DragnetModeluses the old LogisticRegression and
-# the existing model classses until existing
+# code that uses the old interface to LogisticRegression
+# and DragnetModel until existing
 # code can be updated to use the new interface
-#
 from mozsci.models import LogisticRegression as lr
 class LogisticRegression(lr):
     def pred(self, *args, **kwargs):
         return self.predict(*args, **kwargs)
-
 
 
 class DragnetModelKohlschuetterFeatures(ContentExtractionModel):
