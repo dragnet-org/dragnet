@@ -44,8 +44,14 @@ class KohlschuetterBlockModel(object):
         Returns a list True/False of ones classified as content
         
         Note: this is the decision tree published in the original paper
-        We benchmarked it against our data set and it performed poorly,
-        and we attribute it to differences the blockify implementation.
+        We benchmarked it against our data set and it performed poorly.
+        We attribute this to differences the blockify implementation
+        and the specific parameters in the decision tree (that will be
+        highly sensitive to the details of the implementation).
+
+        However, the Kohlschuetter features trained with a logistic
+        model on the data performs quite well, so while don't use
+        these parameters directly, we do adopt the overall approach.
         """
         # curr_linkDensity <= 0.333333
         # | prev_linkDensity <= 0.555556
