@@ -46,8 +46,8 @@ def get_list_all_corrected_files(datadir):
 
 
 # a simple non-alphanumeric tokenizer
-re_tokenizer = re.compile('\W+')
-simple_tokenizer = lambda x: re_tokenizer.split(x)
+re_tokenizer = re.compile('\W+', re.UNICODE)
+simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x) if len(ele) > 0]
 
 
 def extract_gold_standard(datadir, fileroot,
@@ -91,7 +91,7 @@ def extract_gold_standard(datadir, fileroot,
 
     # get the raw content, split it into blocks, tokenize
     raw_content = open(datadir + '/HTML/%s.html' % fileroot, 'r').read()
-    blocks = [b.text.encode('ascii', 'ignore') for b in Blockifier.blockify(raw_content)]
+    blocks = [b.text.encode('utf-8', 'ignore') for b in Blockifier.blockify(raw_content)]
 
     # blocks_tokens = a list of tokens in each block
     # contains '' if the block contains no tokens
@@ -103,7 +103,6 @@ def extract_gold_standard(datadir, fileroot,
             blocks_tokens.append('')
         else:
             blocks_tokens.append(tokenizer(block))
-            #print i
 
     # solve the longest common subsequence problem to determine which blocks were kept
     # need a list of all the tokens in the blocks, plus a correspondence of which
