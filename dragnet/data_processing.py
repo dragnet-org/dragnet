@@ -19,10 +19,6 @@ def read_gold_standard(datadir, fileroot):
             gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='utf-16').read().encode('utf-8', 'ignore')
         except UnicodeError:
             gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='iso-8859-1').read().encode('utf-8', 'ignore')
-#            try:
-#                gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='iso-8859-1').read().encode('utf-8', 'ignore')
-            #except:
-            #    gold_standard = open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r').decode('ascii', 'ignore')
 
     # split gold_standard into content and comments
     # use an array so we can iterate over it
@@ -185,15 +181,17 @@ def extract_gold_standard(datadir, fileroot,
             f.write(block[3] + '\t' + block[4] + '\n')
 
 
-def extract_gold_standard_all_training_data(datadir, use_pool=True, **kwargs):
+def extract_gold_standard_all_training_data(datadir, nprocesses=40, **kwargs):
     """
         Extract the gold standard block level content and comment
         percentages from a directory of labeled data
+        if nprocesses > 1, then use a process pool
         **kwargs passed into extract_gold_standard
     """
+    use_pool = nprocesses > 1
     if use_pool:
         from multiprocessing import Pool
-        p = Pool(processes=40)
+        p = Pool(processes=nprocesses)
 
     # get a list of files that have already been block corrected
     # don't block correct them again
