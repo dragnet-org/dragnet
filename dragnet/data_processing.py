@@ -13,15 +13,16 @@ def read_gold_standard(datadir, fileroot):
     Returns [content, comments] where content/comments are strings"""
     # a hack to handle the encoding
     try:
-        gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='utf-8').read().encode('ascii', 'ignore')
+        gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='utf-8').read().encode('utf-8', 'ignore')
     except UnicodeDecodeError:
         try:
-            gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='utf-16').read().encode('ascii', 'ignore')
+            gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='utf-16').read().encode('utf-8', 'ignore')
         except UnicodeError:
-            try:
-                gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='iso-8859-1').read().encode('ascii', 'ignore')
-            except:
-                gold_standard = open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r').decode('ascii', 'ignore')
+            gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='iso-8859-1').read().encode('utf-8', 'ignore')
+#            try:
+#                gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='iso-8859-1').read().encode('utf-8', 'ignore')
+            #except:
+            #    gold_standard = open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r').decode('ascii', 'ignore')
 
     # split gold_standard into content and comments
     # use an array so we can iterate over it
