@@ -26,8 +26,10 @@ def longest_common_subsequence(X, Y):
 
     # use numpy array for memory efficiency with long sequences
     # lcs is bounded above by the minimum length of x, y
-    # determine whether we can use 16 or 32 bit ints
-    cdef np.ndarray[np.int32_t, ndim=2] C = np.zeros([m+1, n+1], dtype=np.int32)
+    assert min(m+1, n+1) < 65535
+
+    #cdef np.ndarray[np.int32_t, ndim=2] C = np.zeros([m+1, n+1], dtype=np.int32)
+    cdef np.ndarray[np.uint16_t, ndim=2] C = np.zeros([m+1, n+1], dtype=np.uint16)
 
     # convert X, Y to C++ standard containers
     cdef vector[string] xx = X
