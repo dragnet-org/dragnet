@@ -46,8 +46,11 @@ def get_list_all_corrected_files(datadir):
 
 
 # a simple non-alphanumeric tokenizer
-re_tokenizer = re.compile('\W+', re.UNICODE)
+#re_tokenizer = re.compile('\W+', re.UNICODE)
+#re_tokenizer = re.compile('\s+', re.UNICODE)
+re_tokenizer = re.compile('[\W_]+', re.UNICODE)
 simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x) if len(ele) > 0]
+#simple_utf8_tokenizer = lambda x: [ele.encode('utf-8', 'strict') for ele in re_tokenizer.split(x.decode('utf-8', 'strict')) if len(ele) > 0]
 
 
 def extract_gold_standard(datadir, fileroot,
@@ -176,8 +179,9 @@ def extract_gold_standard(datadir, fileroot,
             if block[2] == '':
                 f.write(' \t')
             else:
-                f.write(' '.join([ele for ele in block[2]]) + '\t')
-            f.write(block[3] + '\t' + block[4] + '\n')
+                f.write(' '.join([ele.decode('utf-8', 'ignore') for ele in block[2]]) + '\t')
+            f.write(block[3].decode('utf-8', 'ignore') + '\t' + block[4].decode('utf-8', 'ignore') + '\n')
+            k += 1
 
 
 def extract_gold_standard_all_training_data(datadir, nprocesses=40, **kwargs):

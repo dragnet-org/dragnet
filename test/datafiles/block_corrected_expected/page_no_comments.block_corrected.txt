@@ -1,4 +1,0 @@
-0.0	0.0	home	 	 
-0.0	0.0	about us	 	 
-1.0	0.0	some content here	 some content here 	 
-0.0	0.0	COMMENT BELOW	 	 
