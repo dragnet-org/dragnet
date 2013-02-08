@@ -6,19 +6,24 @@ import pylab as plt
 import glob
 import codecs
 
-from .blocks import Blockifier
+from .blocks import Blockifier, simple_tokenizer
 
 def read_gold_standard(datadir, fileroot):
     """Reads the gold standard from the disk.
     Returns [content, comments] where content/comments are strings"""
-    # a hack to handle the encoding
+    from chardet.universaldetector import UniversalDetector
+
+    corrected_file = datadir + '/Corrected/%s.html.corrected.txt' % fileroot
+    def read_file(encoding):
+        return codecs.open(corrected_file, 'r', encoding=encoding).read()
+
     try:
-        gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='utf-8').read().encode('utf-8', 'ignore')
+        gold_standard = read_file('utf-8')
     except UnicodeDecodeError:
         try:
-            gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='utf-16').read().encode('utf-8', 'ignore')
+            gold_standard = read_file('utf-16')
         except UnicodeError:
-            gold_standard = codecs.open(datadir + '/Corrected/%s.html.corrected.txt' % fileroot, 'r', encoding='iso-8859-1').read().encode('utf-8', 'ignore')
+            gold_standard = read_file('iso-8859-1')
 
     # split gold_standard into content and comments
     # use an array so we can iterate over it
@@ -43,14 +48,6 @@ def get_list_all_corrected_files(datadir):
         fileroot = mo.group(1)
         ret.append((file, fileroot))
     return ret
-
-
-# a simple non-alphanumeric tokenizer
-#re_tokenizer = re.compile('\W+', re.UNICODE)
-#re_tokenizer = re.compile('\s+', re.UNICODE)
-re_tokenizer = re.compile('[\W_]+', re.UNICODE)
-simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x) if len(ele) > 0]
-#simple_utf8_tokenizer = lambda x: [ele.encode('utf-8', 'strict') for ele in re_tokenizer.split(x.decode('utf-8', 'strict')) if len(ele) > 0]
 
 
 def extract_gold_standard(datadir, fileroot,

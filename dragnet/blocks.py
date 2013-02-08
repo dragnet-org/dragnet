@@ -15,6 +15,10 @@ from itertools import chain
 import scipy.weave
 
 
+re_tokenizer = re.compile('[\W_]+', re.UNICODE)
+simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x) if len(ele) > 0]
+
+
 class Block(object):
     def __init__(self, text, link_density, text_density, anchors, link_tokens, css):
         self.text = text
@@ -40,8 +44,6 @@ class PartialBlock(object):
     to modify it."""
 
     css_attrib = ['id', 'class']
-
-    re_non_alpha = re.compile(r'[\W_]+', re.UNICODE)
 
     def __init__(self):
         self.reinit()
@@ -183,8 +185,8 @@ class PartialBlock(object):
         # has 1 token by it's length instead of 0
         # however, fixing this bug decreases model performance by about 1%,
         # so we keep it
-        anchor_tokens = PartialBlock.re_non_alpha.split(link_text)
-        block_tokens = PartialBlock.re_non_alpha.split(block_text)
+        anchor_tokens = re_tokenizer.split(link_text)
+        block_tokens = re_tokenizer.split(block_text)
         return float(len(anchor_tokens)) / len(block_tokens)
 
 
@@ -198,11 +200,11 @@ class PartialBlock(object):
         lines  = math.ceil(len(block_text) / 80.0)
 
         if int(lines) == 1:
-            tokens = PartialBlock.re_non_alpha.split(block_text)
+            tokens = re_tokenizer.split(block_text)
             return float(len(tokens))
         else:
             # need the number of tokens excluding the last partial line
-            tokens = PartialBlock.re_non_alpha.split(block_text[:(int(lines - 1) * 80)])
+            tokens = re_tokenizer.split(block_text[:(int(lines - 1) * 80)])
             return len(tokens) / (lines - 1.0)
 
 
@@ -293,8 +295,6 @@ class Blockifier(object):
     ])
     
 
-    re_non_alpha = re.compile('[\W_]+', re.UNICODE)
-
     @staticmethod
     def blocks_from_tree(tree):
         results = []
@@ -323,5 +323,5 @@ class Blockifier(object):
 
         blocks = Blockifier.blocks_from_tree(html)
         # only return blocks with some text content
-        return [ele for ele in blocks if Blockifier.re_non_alpha.sub('', ele.text) != '']
+        return [ele for ele in blocks if re_tokenizer.sub('', ele.text) != '']
 

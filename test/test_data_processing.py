@@ -3,35 +3,51 @@ import unittest
 from dragnet import data_processing
 import codecs
 
+import tempfile
+import os
+
+from shutil import rmtree
+
 class Testget_list_all_corrected_files(unittest.TestCase):
     def test_list_all_files(self):
-        all_files = data_processing.get_list_all_corrected_files("datafiles")
+        prefixes = ['bbc.co.story', 'f1', 'sad8-2sdkfj']
+        datadir = tempfile.mkdtemp()
+        os.mkdir(datadir + '/Corrected')
+        for froot in prefixes:
+            with open(datadir + '/Corrected/%s.html.corrected.txt' % froot, 'w') as f:
+                f.write('.')
+
+        all_files = data_processing.get_list_all_corrected_files(datadir)
         all_files.sort()
         self.assertEqual(all_files,
-        [('datafiles/Corrected/ascii.html.corrected.txt', 'ascii'),
-         ('datafiles/Corrected/iso-8859-1.html.corrected.txt', 'iso-8859-1'),
-         ('datafiles/Corrected/page_comments.html.corrected.txt', 'page_comments'),
-         ('datafiles/Corrected/page_no_comments.html.corrected.txt',
-          'page_no_comments'),
-         ('datafiles/Corrected/utf-16.html.corrected.txt', 'utf-16'),
-         ('datafiles/Corrected/utf-8.html.corrected.txt', 'utf-8')])
+            [('%s/Corrected/%s.html.corrected.txt' %
+                (datadir, froot), froot)
+              for froot in prefixes])
 
+        rmtree(datadir)
 
 
 class Testread_gold_standard(unittest.TestCase):
+
+    actual_chinese_content = u'\n\n            <h>\u9ad8\u8003\u8bed\u6587\u5168\u7a0b\u68c0\u6d4b\u4e09\uff1a\u6b63\u786e\u4f7f\u7528\u8bcd\u8bed\uff08\u719f\u8bed\u4e00\uff09\n\n\n            <h>LEARNING.SOHU.COM    2004\u5e745\u670822\u65e515:36   \n\n\n   '
+
     def test_read_gold_standard(self):
         all_files = data_processing.get_list_all_corrected_files("datafiles")
         all_files.sort()
 
-        chars = {'ascii':u'ascii yo!', 'iso-8859-1':u'\x0401', 'utf-8':u'\xae', 'utf-16':u'\xae'}
+        chars = {'ascii':u'ascii yo!', 'iso-8859-1':u'\xd3', 'utf-8':u'\xae', 'utf-16':u'\xae'}
 
-        for fname, e in all_files:
-            if e in chars:
-                content_comments = data_processing.read_gold_standard("datafiles", e)
-                actual_content = (u"Content here\nmore content\n" +
-                    chars[e] + u"\n").encode('utf-8')
-                self.assertEqual(content_comments[0], actual_content)
-                self.assertEqual(content_comments[1], '\nsome comments\n')
+        for e in chars:
+            content_comments = data_processing.read_gold_standard("datafiles", e)
+            actual_content = (u"Content here\nmore content\n" + chars[e] + u"\n")
+            self.assertEqual(content_comments[0], actual_content)
+            self.assertEqual(content_comments[1], '\nsome comments\n')
+
+    def test_utf8(self):
+        gs = ' '.join(data_processing.read_gold_standard("datafiles", 'utf-8_chinese'))
+        self.assertEqual(gs, Testread_gold_standard.actual_chinese_content)
+
+
 
 
 class Testextract_gold_standard(unittest.TestCase):
