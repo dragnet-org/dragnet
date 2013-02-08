@@ -35,37 +35,45 @@ class Testread_gold_standard(unittest.TestCase):
 
 
 class Testextract_gold_standard(unittest.TestCase):
-    def test_extract_gold_standard(self):
+
+    datadir = "datafiles"
+
+    @staticmethod
+    def _remove_output(names, catch_errors, name_maker=None):
         import os
+        for fn in names:
+            if name_maker:
+                fn_to_remove = name_maker(fn)
+            else:
+                fn_to_remove = fn
 
-        datadir = "datafiles"
-
-        def _remove_output(catch_errors):
-            for fn in ['page_comments', 'page_no_comments']:
-                fn_to_remove = "%s/block_corrected/%s.block_corrected.txt" % (datadir, fn)
-                if catch_errors:
-                    try:
-                        os.remove(fn_to_remove)
-                    except:
-                        pass
-                else:
+            if catch_errors:
+                try:
                     os.remove(fn_to_remove)
+                except:
+                    pass
+            else:
+                os.remove(fn_to_remove)
 
-        _remove_output(True)
 
-        for f in ['page_comments', 'page_no_comments']:
-            data_processing.extract_gold_standard(datadir, f)
+    def test_extract_gold_standard(self):
+        test_files = ['page_comments', 'page_no_comments']
+        name_maker = lambda x : "%s/block_corrected/%s.block_corrected.txt" % (Testextract_gold_standard.datadir, x)
 
+        Testextract_gold_standard._remove_output(test_files, True, name_maker)
+
+        for f in test_files:
+            data_processing.extract_gold_standard(Testextract_gold_standard.datadir, f)
             # check output file
-            with codecs.open("%s/block_corrected/%s.block_corrected.txt" % (datadir, f), 'r', encoding='utf-8') as fout:
+            with codecs.open(name_maker(f), 'r', encoding='utf-8') as fout:
                 corrected_blocks = fout.read()
 
-            with codecs.open("%s/block_corrected_expected/%s.block_corrected.txt" % (datadir, f), 'r', encoding='utf-8') as fexpected:
+            with codecs.open(name_maker(f + '_expected'), 'r', encoding='utf-8') as fexpected:
                 expected_blocks = fexpected.read()
 
             self.assertEqual(expected_blocks, corrected_blocks)
 
-        _remove_output(False)
+        Testextract_gold_standard._remove_output(test_files, False, name_maker)
 
 
 if __name__ == "__main__":
