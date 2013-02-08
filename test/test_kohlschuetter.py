@@ -157,6 +157,18 @@ class TestBlockifier(KohlschuetterUnitBase):
         self.link_output_tokens(blocks,
             [['the', 'registered', 'trademark', u'\xae']])
 
+    def test_all_non_english(self):
+        s = u"""<div> <div> \u03b4\u03bf\u03b3 </div> <div> <a href="summer">\xe9t\xe9</a> </div>
+         <div> \u62a5\u9053\u4e00\u51fa </div> </div>"""
+        blocks = Blockifier.blockify(s)
+        self.block_output_tokens(blocks,
+            [[u'\u03b4\u03bf\u03b3'],
+            [u'\xe9t\xe9'],
+            [u'\u62a5\u9053\u4e00\u51fa']])
+        self.link_output_tokens(blocks,
+            [[],
+             [u'\xe9t\xe9'],
+             []])
 
     def test_class_id(self):
         s = """<div CLASS='d1'>text in div

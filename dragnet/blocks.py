@@ -41,6 +41,8 @@ class PartialBlock(object):
 
     css_attrib = ['id', 'class']
 
+    re_non_alpha = re.compile(r'[\W_]+', re.UNICODE)
+
     def __init__(self):
         self.reinit()
         self.reinit_css(init_tree=True)
@@ -96,6 +98,7 @@ class PartialBlock(object):
             for k in PartialBlock.css_attrib:
                 css[k] = ' '.join(PartialBlock.tokens_from_text(self.css[k])).lower()
 
+            print block_text
             results.append(Block(block_text, link_d, text_d, self.anchors, self.link_tokens, css))
         self.reinit()
         self.reinit_css()
@@ -164,6 +167,11 @@ class PartialBlock(object):
         chain is the fastest way to combine the list of lists"""
         return list(chain.from_iterable([re.split('\s+', ele.strip()) for ele in text if ele.strip() != '']))
 
+    # note: here link density, text density are defined in terms of token
+    # densities.  this might change from language to language.  suggest
+    # adding features for ratio of text to code (maybe ratio of text
+    # tokens to CSS tokens?
+
     @staticmethod
     def link_density(block_text, link_text):
         '''
@@ -175,8 +183,8 @@ class PartialBlock(object):
         # has 1 token by it's length instead of 0
         # however, fixing this bug decreases model performance by about 1%,
         # so we keep it
-        anchor_tokens = re.split(r'\W+', link_text)
-        block_tokens  = re.split(r'\W+', block_text)
+        anchor_tokens = PartialBlock.re_non_alpha.split(link_text)
+        block_tokens = PartialBlock.re_non_alpha.split(block_text)
         return float(len(anchor_tokens)) / len(block_tokens)
 
 
@@ -190,11 +198,11 @@ class PartialBlock(object):
         lines  = math.ceil(len(block_text) / 80.0)
 
         if int(lines) == 1:
-            tokens = re.split(r'\W+', block_text)
+            tokens = PartialBlock.re_non_alpha.split(block_text)
             return float(len(tokens))
         else:
             # need the number of tokens excluding the last partial line
-            tokens = re.split(r'\W+', block_text[:(int(lines - 1) * 80)])
+            tokens = PartialBlock.re_non_alpha.split(block_text[:(int(lines - 1) * 80)])
             return len(tokens) / (lines - 1.0)
 
 
@@ -285,6 +293,8 @@ class Blockifier(object):
     ])
     
 
+    re_non_alpha = re.compile('[\W_]+', re.UNICODE)
+
     @staticmethod
     def blocks_from_tree(tree):
         results = []
@@ -313,5 +323,5 @@ class Blockifier(object):
 
         blocks = Blockifier.blocks_from_tree(html)
         # only return blocks with some text content
-        return [ele for ele in blocks if re.sub('[\W_]', '', ele.text).strip() != '']
+        return [ele for ele in blocks if Blockifier.re_non_alpha.sub('', ele.text) != '']
 
