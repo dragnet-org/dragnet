@@ -91,7 +91,7 @@ def extract_gold_standard(datadir, fileroot,
 
     # get the raw content, split it into blocks, tokenize
     raw_content = open(datadir + '/HTML/%s.html' % fileroot, 'r').read()
-    blocks = [b.text.encode('utf-8', 'ignore') for b in Blockifier.blockify(raw_content)]
+    blocks = [b.text for b in Blockifier.blockify(raw_content)]
 
     # blocks_tokens = a list of tokens in each block
     # contains '' if the block contains no tokens
@@ -143,7 +143,10 @@ def extract_gold_standard(datadir, fileroot,
         gold_standard_tokens = tokenizer(txt)
     
         print "Got all tokens for %s.  %s in all blocks, %s in gold standard %s" % (fileroot, len(all_blocks_tokens), len(gold_standard_tokens), content_comments[k])
-        tokens_in_gold_standard = check_inclusion(all_blocks_tokens, gold_standard_tokens)
+        #tokens_in_gold_standard = check_inclusion(all_blocks_tokens, gold_standard_tokens)
+        tokens_in_gold_standard = check_inclusion(
+                [t.encode('utf-8') for t in all_blocks_tokens], 
+                [t.encode('utf-8') for t in gold_standard_tokens])
     
         # now make a percentage of tokens in the gold standard for each block
         blocks_token_count = [0] * len(blocks)
@@ -162,13 +165,6 @@ def extract_gold_standard(datadir, fileroot,
         content_comments_percent.append(token_percent)
 
 
-    if len(gold_standard_content_comments) == 1:
-        # no comments
-        # add a bunch of zeros
-        print "No comments for %s" % fileroot
-        content_comments_tokens.append([' '] * len(token_percent))
-        content_comments_percent.append([-1 if ele == -1 else 0.0 for ele in token_percent])
-
     # write the final output file
     with codecs.open(datadir + '/block_corrected/%s.block_corrected.txt' % fileroot, 'w', encoding='utf-8') as f:
         for block in zip(content_comments_percent[0], content_comments_percent[1], blocks_tokens, content_comments_tokens[0], content_comments_tokens[1]):
@@ -176,8 +172,8 @@ def extract_gold_standard(datadir, fileroot,
             if block[2] == '':
                 f.write(' \t')
             else:
-                f.write(' '.join([ele.decode('utf-8', 'ignore') for ele in block[2]]) + '\t')
-            f.write(block[3].decode('utf-8', 'ignore') + '\t' + block[4].decode('utf-8', 'ignore') + '\n')
+                f.write(' '.join(block[2]) + '\t')
+            f.write(block[3] + '\t' + block[4] + '\n')
             k += 1
 
 
