@@ -100,7 +100,7 @@ class PartialBlock(object):
             for k in PartialBlock.css_attrib:
                 css[k] = ' '.join(PartialBlock.tokens_from_text(self.css[k])).lower()
 
-            print block_text
+            #print block_text
             results.append(Block(block_text, link_d, text_d, self.anchors, self.link_tokens, css))
         self.reinit()
         self.reinit_css()
@@ -270,6 +270,32 @@ class PartialBlock(object):
             self.css_tree[k].pop()
 
 
+html_re = re.compile('meta\s[^>]*charset\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
+xml_re = re.compile('<\?\s*xml[^>]*encoding\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
+def guess_encoding(s, default='utf-8'):
+    """Try to guess the encoding of s -- check the XML declaration
+    and the HTML meta tag
+    
+    if default=CHARDET then use chardet to guess the default"""
+    mo = xml_re.search(s)
+    if mo:
+        encoding = mo.group(1)
+    else:
+        moh = html_re.search(s)
+        if moh:
+            encoding = moh.group(1)
+        else:
+            if default == 'CHARDET':
+                from chardet.universaldetector import UniversalDetector
+                u = UniversalDetector()
+                u.feed(s)
+                u.close()
+                encoding = u.result['encoding']
+                print "Guessing encoding with chardet of %s" % encoding
+            else:
+                encoding = default
+    return encoding
+
 
 class Blockifier(object):
     """A blockifier for web-page de-chroming that loosely follows the approach in
@@ -308,13 +334,16 @@ class Blockifier(object):
     
 
     @staticmethod
-    def blockify(s):
+    def blockify(s, encoding=None):
         '''
         Take a string of HTML and return a series of blocks
+
+        if encoding is None, then try to extract it from the HTML
         '''
         # First, we need to parse the thing
+        encoding = encoding or guess_encoding(s, default='CHARDET')
         try:
-            html = etree.fromstring(s, etree.HTMLParser(recover=True))
+            html = etree.fromstring(s, etree.HTMLParser(recover=True, encoding=encoding))
         except:
             raise BlockifyError
         if html is None:
