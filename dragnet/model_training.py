@@ -11,7 +11,7 @@ from mozsci.cross_validate import cv_kfold
 from .blocks import Blockifier
 from . import evaluation_metrics
 from .content_extraction_model import ContentExtractionModel
-from .data_processing import simple_tokenizer, DragnetModelData
+from .data_processing import simple_tokenizer, DragnetModelData, read_gold_standard, get_list_all_corrected_files
 
 
 def add_plot_title(ti_str):
@@ -35,19 +35,6 @@ def run_score_content_detection(html, gold_standard, content_detector, tokenizer
 
 
 
-def _compute_score(data_to_score, html, model, tokenizer, model_list, k):
-    """Private helper for Pool, needed to compute the the score
-    for a training instance in parallel"""
-    print k
-    if model_list:
-        ret = np.zeros((3, len(model)))
-        for i in xrange(len(model)):
-            ret[:, i] = run_score_content_detection(html, data_to_score[2], model[i].analyze, tokenizer)
-    else:
-        ret = run_score_content_detection(html, data_to_score[2], model.analyze, tokenizer)
-    return k, ret
-
-
 class DragnetModelTrainer(object):
     def __init__(self, tokenizer=simple_tokenizer, content_or_comments='both', kfolds=5, weighted=False):
         """
@@ -62,7 +49,6 @@ class DragnetModelTrainer(object):
         self.kfolds = kfolds
         self.weighted = weighted
 
-
     def _get_labels(self, content, comments):
         # content, comments = the list tuple elements in data.training_data
         if self.content_or_comments == 'content':
@@ -75,67 +61,6 @@ class DragnetModelTrainer(object):
             return (np.logical_or(content[0], comments[0]),
                     content[1],
                     content[2] + comments[2])
-
-    def evaluate_model(self, data, model, use_pool=True):
-        """data = a list of documents + evaluation as stored in DragnetModelData
-            as in data.training_data or data.test_data
-        model = uses the .analyze function
-            can be either something with .analyze implemented,
-            or a list of objects where each element if the list implements
-            .analyze
-
-        Returns:  if model is not a list, scores an nobs X 3 array with
-            scores[k, :] = [precision, recall, f1] for data point k
-            If model is a list returns a nobs X 3 X nmodels array with
-            scores[k, :, i] the scores for data point k with model i
-        """
-        # make a list of all the errors
-        # scores[k, :] = [precision, recall, f1, edit distance]
-        if isinstance(model, list):
-            model_list = True
-            scores = np.zeros((len(data), 3, len(model)))
-        else:
-            model_list = False
-            scores = np.zeros((len(data), 3))
-
-        def store_scores(k, r):
-            if model_list:  
-                scores[k, :, :] = r
-            else:
-                scores[k, :] = r
-
-        if use_pool:
-            from multiprocessing import Pool
-            p = Pool(processes=16)
-    
-            # use the pool to compute the scores
-            k = 0
-            results = []
-    
-            for html, content, comments in data:
-                data_to_score = self._get_labels(content, comments)
-                results.append(p.apply_async(_compute_score, (data_to_score, html, model, self.tokenizer, model_list, k)))
-                k += 1
-    
-            p.close()
-            p.join()
-    
-            # collect the results
-            for result in results:
-                k, r = result.get()
-                store_scores(k, r)
-
-        else:
-            k = 0
-            results = []
-            for html, content, comments in data:
-                data_to_score = self._get_labels(content, comments)
-                tk, r = _compute_score(data_to_score, html, model, self.tokenizer, model_list, k)
-                store_scores(k, r)
-                k += 1
-
-        return scores
-
 
     def make_features_from_data(self, data, model, training_or_test='training', return_blocks=False, train=False):
         """Given the data and a model, make the features
@@ -262,7 +187,7 @@ def plot_errors(errors, reg_parm_str):
 
 
 def accuracy_auc(y, ypred, weights=None):
-    """Compute both the accuracy and AUC"""
+    """Compute the accuracy, AUC, precision, recall and f1"""
     from mozsci.evaluation import classification_error, auc_wmw_fast, precision_recall_f1
     prf1 = precision_recall_f1(y, ypred, weights=weights)
     return { 'accuracy':1.0 - classification_error(y, ypred, weights=weights),
@@ -278,44 +203,52 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
     Evaluate a trained model on the token level.
 
     datadir = all the data lives here
-    dragnet_model = passed into .evaluate_model in DragnetModelTrainer
+    dragnet_model = either a single model, or a list of them
     if figname_root is not None, then output plots to figname_root + training/test.png
 
     Outputs:
         saves png files
-    returns (training_errors, test_errors)
+    returns scores
     """
+    all_files = get_list_all_corrected_files(datadir)
 
-    # do an overall precision/recall test on TOKENS
-    data = DragnetModelData(datadir)
+    gold_standard_tokens = {}
+    for fname, froot in all_files:
+        gold_standard_tokens[froot] = tokenizer(' '.join(read_gold_standard(datadir, froot)))
 
-    # test the data!
-    trainer = DragnetModelTrainer(tokenizer)
-    training_errors = trainer.evaluate_model(data.training_data, dragnet_model, use_pool=False)
-    test_errors = trainer.evaluate_model(data.test_data, dragnet_model, use_pool=False)
+    use_list = type(dragnet_model) == list
+    if use_list:
+        errors = np.zeros((len(gold_standard_tokens), 3, len(dragnet_model)))
+    else:
+        errors = np.zeros((len(gold_standard_tokens), 3))
+
+    k = 0
+    for froot, gstok in gold_standard_tokens.iteritems():
+        html = open("%s/HTML/%s.html" % (datadir, froot), 'r').read()
+        if use_list:
+            for i in xrange(len(dragnet_model)):
+                errors[k, :, i] = run_score_content_detection(html, gstok, dragnet_model[i].analyze, tokenizer=tokenizer)
+        else:
+            errors[k, :] = run_score_content_detection(html, gstok, dragnet_model.analyze, tokenizer=tokenizer)
+        k += 1
+
 
     # make some plots
     # if just a single model, plot histograms of precision, recall, f1
-    ti_scores = ['Training', 'Test']
     ti = ['Precision', 'Recall', 'F1', 'edit distance']
-    if len(training_errors.shape) == 2:
-        i = 1
-        for scores in [training_errors, test_errors]:
-            fig = plt.figure(i)
-            fig.clf()
+    if not use_list:
+        fig = plt.figure(1)
+        fig.clf()
 
-            for k in xrange(3):
-                plt.subplot(2, 2, k + 1)
-                plt.hist(scores[:, k], 20)
-                plt.title("%s %s" % (ti[k], np.mean(scores[:, k])))
+        for k in xrange(3):
+            plt.subplot(2, 2, k + 1)
+            plt.hist(errors[:, k], 20)
+            plt.title("%s %s" % (ti[k], np.mean(errors[:, k])))
 
-            add_plot_title(ti_scores[i - 1])
-            fig.show()
+        fig.show()
 
-            if figname_root is not None:
-                fig.savefig(figname_root + '_' + ti_scores[i - 1] + '.png')
-
-            i += 1
+        if figname_root is not None:
+            fig.savefig(figname_root + '.png')
 
     else:
         # multiple models
@@ -325,39 +258,38 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
         if figname_root is not None:
             ftable = open(figname_root + '_scores_errors.txt', 'w')
 
-        for scores in [training_errors, test_errors]:
-            fig = plt.figure(i)
-            fig.clf()
+        fig = plt.figure(1)
+        fig.clf()
 
-            avg_scores = scores.mean(axis=0)
-            std_scores = scores.std(axis=0)
+        scores = errors
 
-            for k in xrange(3):
-                ax = plt.subplot(2, 2, k + 1)
-                plt.plot(thresholds, avg_scores[k, :], 'b')
-                plt.plot(thresholds, avg_scores[k, :] + std_scores[k, :], 'k--')
-                plt.plot(thresholds, avg_scores[k, :] - std_scores[k, :], 'k--')
-                plt.title(ti[k])
-                ax.grid(True)
+        avg_scores = scores.mean(axis=0)
+        std_scores = scores.std(axis=0)
 
-            add_plot_title(ti_scores[i - 1])
-            fig.show()
+        for k in xrange(3):
+            ax = plt.subplot(2, 2, k + 1)
+            plt.plot(thresholds, avg_scores[k, :], 'b')
+            plt.plot(thresholds, avg_scores[k, :] + std_scores[k, :], 'k--')
+            plt.plot(thresholds, avg_scores[k, :] - std_scores[k, :], 'k--')
+            plt.title(ti[k])
+            ax.grid(True)
 
-            if figname_root is not None:
-                fig.savefig(figname_root + '_' + ti_scores[i - 1] + '.png')
+        fig.show()
 
-            # write a table
-            if figname_root is not None:
-                ftable.write(ti_scores[i - 1] + '\n')
-                ftable.write("Threshold | Precision | Recall | F1\n")
-                for k in xrange(len(thresholds)):
-                    ftable.write("%s            %5.3f    %5.3f   %5.3f\n" % (thresholds[k], avg_scores[0, k], avg_scores[1, k], avg_scores[2, k]))
- 
+        if figname_root is not None:
+            fig.savefig(figname_root + '.png')
+
+        # write a table
+        if figname_root is not None:
+            ftable.write("Threshold | Precision | Recall | F1\n")
+            for k in xrange(len(thresholds)):
+                ftable.write("%s            %5.3f    %5.3f   %5.3f\n" % (thresholds[k], avg_scores[0, k], avg_scores[1, k], avg_scores[2, k]))
+
             i += 1
 
         if figname_root is not None:
             ftable.close()
 
-    return training_errors, test_errors
+    return errors
 
 
