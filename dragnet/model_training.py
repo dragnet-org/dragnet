@@ -245,6 +245,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
             plt.hist(errors[:, k], 20)
             plt.title("%s %s" % (ti[k], np.mean(errors[:, k])))
 
+        add_plot_title("Token level evaluation")
         fig.show()
 
         if figname_root is not None:
