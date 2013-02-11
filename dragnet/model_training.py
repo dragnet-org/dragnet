@@ -31,7 +31,7 @@ def run_score_content_detection(html, gold_standard, content_detector, tokenizer
     """
     content = content_detector(html)
     content_tokens = tokenizer(content)
-    return evaluation_metrics(content_tokens, gold_standard)
+    return evaluation_metrics(content_tokens, gold_standard, bow=False)
 
 
 
