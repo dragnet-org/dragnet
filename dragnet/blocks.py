@@ -317,7 +317,7 @@ class Blockifier(object):
     
     # Only these should be considered as housing blocks of text
     blocks = set([
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'table', 'map'
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'table', 'map',
     ])
     
 
@@ -343,7 +343,7 @@ class Blockifier(object):
         # First, we need to parse the thing
         encoding = encoding or guess_encoding(s, default='CHARDET')
         try:
-            html = etree.fromstring(s, etree.HTMLParser(recover=True, encoding=encoding))
+            html = etree.fromstring(s, etree.HTMLParser(recover=True, encoding=encoding, remove_comments=True, remove_pis=True))
         except:
             raise BlockifyError
         if html is None:
