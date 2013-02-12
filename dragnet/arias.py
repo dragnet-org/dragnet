@@ -4,7 +4,7 @@
 #    https://lirias.kuleuven.be/bitstream/123456789/215528/1/AriasEtAl2009.pdf
 
 from .blocks import Blockifier
-from .content_extraction_model import ContentExtractionModel
+from .content_extraction_model import ContentExtractionModel, IdentityPredictor
 
 import numpy as np
 import scipy.weave
@@ -87,18 +87,6 @@ class AriasFeatures(object):
                 ['ret', 'nblock', 'index', 'window', 'cutoff', 'block_lengths'],
                 type_converters=scipy.weave.converters.blitz)
         return ret
-
-
-class IdentityPredictor(object):
-    """Mock out the machine learning model with an identity model."""
-    @staticmethod
-    def predict(x):
-        return x
-
-    @staticmethod
-    def fit(*args, **kargs):
-        pass
-
 
 
 class Arias(ContentExtractionModel):

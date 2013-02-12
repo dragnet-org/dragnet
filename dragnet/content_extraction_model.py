@@ -4,6 +4,16 @@
 import re
 import numpy as np
 
+class IdentityPredictor(object):
+    """Mock out the machine learning model with an identity model."""
+    @staticmethod
+    def predict(x):
+        return x
+
+    @staticmethod
+    def fit(*args, **kargs):
+        pass
+
 class ContentExtractionModel(object):
     """Content extraction model
 
