@@ -214,7 +214,9 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
 
     gold_standard_tokens = {}
     for fname, froot in all_files:
-        gold_standard_tokens[froot] = tokenizer(' '.join(read_gold_standard(datadir, froot)))
+        tokens = tokenizer(' '.join(read_gold_standard(datadir, froot)))
+        if len(tokens) > 0:
+            gold_standard_tokens[froot] = tokens
 
     use_list = type(dragnet_model) == list
     if use_list:
