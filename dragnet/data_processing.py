@@ -6,12 +6,13 @@ import pylab as plt
 import glob
 import codecs
 
-from .blocks import Blockifier, simple_tokenizer
+from .blocks import Blockifier, simple_tokenizer, text_from_subtree
+from lxml import etree
 
-def read_gold_standard(datadir, fileroot):
+def read_gold_standard(datadir, fileroot, cetr=False):
     """Reads the gold standard from the disk.
-    Returns [content, comments] where content/comments are strings"""
-    from chardet.universaldetector import UniversalDetector
+    Returns [content, comments] where content/comments are strings
+    If cetr=True, then (1) assume no comments and (2) parse the gold standard to remove tags"""
 
     corrected_file = datadir + '/Corrected/%s.html.corrected.txt' % fileroot
     def read_file(encoding):
@@ -27,12 +28,24 @@ def read_gold_standard(datadir, fileroot):
 
     # split gold_standard into content and comments
     # use an array so we can iterate over it
-    content_comments = re.split(r'!@#\$%\^&\*\(\)\s+COMMENTS', gold_standard)
-    if len(content_comments) == 1:
-        # no comments
-        return [content_comments[0], '']
+    if not cetr:
+        # split gold_standard into content and comments
+        # use an array so we can iterate over it
+        content_comments = re.split(r'!@#\$%\^&\*\(\)\s+COMMENTS', gold_standard)
+        if len(content_comments) == 1:
+            # no comments
+            ret = [content_comments[0], '']
+        else:
+            ret = content_comments
     else:
-        return content_comments
+        # need to parse the gold standard to remove tags
+        if len(gold_standard.strip()) > 0:
+            tree = etree.fromstring(gold_standard, parser=etree.HTMLParser())
+            ret = [' '.join(text_from_subtree(tree)), '']
+        else:
+            ret = ['', '']
+
+    return ret
 
 
 def get_list_all_corrected_files(datadir):
@@ -51,12 +64,12 @@ def get_list_all_corrected_files(datadir):
 
 
 def extract_gold_standard(datadir, fileroot,
-                          tokenizer=simple_tokenizer, cleaneval=False):
+                          tokenizer=simple_tokenizer, cetr=False):
     """datadir = the root datadir.
             Contains sub-directories: HTML, Corrected, block_corrected
        tokenizer = callable object that takes a string and returns the tokens
             as a list of strings
-       cleaneval = if true, then parse the gold standard in clean eval format
+       cetr = if true, then parse the gold standard in clean eval format
 
        Input data files:
             HTML/fileroot.html
@@ -86,8 +99,6 @@ def extract_gold_standard(datadir, fileroot,
     # alone to avoid unnecessary code modifications
 
     from .lcs import check_inclusion
-    from .blocks import PartialBlock
-    from lxml import etree
 
     # get the raw content, split it into blocks, tokenize
     raw_content = open(datadir + '/HTML/%s.html' % fileroot, 'r').read()
@@ -119,30 +130,22 @@ def extract_gold_standard(datadir, fileroot,
         i += 1
 
 
-    gold_standard_content_comments = read_gold_standard(datadir, fileroot)
+    gold_standard_content_comments = read_gold_standard(datadir, fileroot, cetr)
     content_comments = ['content', 'comments']
 
     content_comments_tokens = []
     content_comments_percent = []
+
+    NN = 0
+
     for k in xrange(len(gold_standard_content_comments)):
-
-        # if it is a cleaneval dataset, need to parse and extact text
-        if cleaneval:
-            if k == 0:
-                if len(gold_standard_content_comments[0].strip()) > 0:
-                    tree = etree.fromstring(gold_standard_content_comments[0], parser=etree.HTMLParser())
-                    txt = ' '.join(PartialBlock._text_from_subtree(tree))
-                else:
-                    txt = ''
-            else:
-                # no comments for cleaneval
-                txt = ''
-        else:
-            txt = gold_standard_content_comments[k]
-
+        txt = gold_standard_content_comments[k]
         gold_standard_tokens = tokenizer(txt)
     
         print "Got all tokens for %s.  %s in all blocks, %s in gold standard %s" % (fileroot, len(all_blocks_tokens), len(gold_standard_tokens), content_comments[k])
+        ABT = len(all_blocks_tokens)
+        NN += len(gold_standard_tokens)
+
         #tokens_in_gold_standard = check_inclusion(all_blocks_tokens, gold_standard_tokens)
         tokens_in_gold_standard = check_inclusion(
                 [t.encode('utf-8') for t in all_blocks_tokens], 
@@ -164,6 +167,10 @@ def extract_gold_standard(datadir, fileroot,
         content_comments_tokens.append(blocks_tokens_in_gold_standard_tokens)
         content_comments_percent.append(token_percent)
 
+    if NN > ABT:
+        with open('bad_data.txt', 'a') as fbad:
+            fbad.write('\t'.join((fileroot, str(NN), str(ABT), datadir)) + '\n')
+        
 
     # write the final output file
     with codecs.open(datadir + '/block_corrected/%s.block_corrected.txt' % fileroot, 'w', encoding='utf-8') as f:
@@ -241,6 +248,15 @@ class DragnetModelData(object):
         # now read in all the data
         self._read_all_data(datadir, block_percent_threshold, source)
 
+    def take_small_sample(self, nkeep):
+        """Return nkeep sample HTML docs from the training data
+        Returns [(fileroot1, data), (..), ..]"""
+
+        ordering = zip(np.random.rand(len(self.training_files)),
+                    np.arange(len(self.training_files)))
+        ordering.sort()
+        indices_to_keep = [ind for seed, ind in ordering[:nkeep]]
+        return [(self.training_files[ind], self.training_data[ind]) for ind in indices_to_keep]
 
     def _read_all_data(self, datadir, block_percent_threshold, source):
         """
