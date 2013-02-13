@@ -11,7 +11,6 @@ then
 fi
 
 ROOTDIR=$1
-DATADIR=$1/cleaneval/en/
 
 for D in en zh bbc freep myriad nypost nytimes reuters suntimes techweb tribune
 do
