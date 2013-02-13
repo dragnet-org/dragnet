@@ -32,9 +32,6 @@ class KohlschuetterUnitBase(unittest.TestCase):
             self.assertEqual(css_tokens, true_tokens[k])
 
 
-
-
-
 class TestBlockifier(KohlschuetterUnitBase):
     def test_lxml_error(self):
         """tests the case where lxml raises an error during parsing
@@ -177,17 +174,6 @@ class TestBlockifier(KohlschuetterUnitBase):
             [['d1'],
              [''],
              ['nested']])
-
-
-
-
-    def test_text_from_subtree(self):
-        s = """<a href=".">WILL <img src="."> THIS PASS <b>THE TEST</b> ??</a>"""
-        tree = etree.fromstring(s, etree.HTMLParser(recover=True))
-        text_list = PartialBlock._text_from_subtree(tree, tags_exclude=Blockifier.blacklist)
-        text_str = ' '.join([ele.strip() for ele in text_list if ele.strip() != ''])
-        self.assertEqual(text_str,
-            'WILL THIS PASS THE TEST ??')
 
 
 
