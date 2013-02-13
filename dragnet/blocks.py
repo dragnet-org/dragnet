@@ -20,13 +20,16 @@ simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x) if len(ele) >
 
 
 class Block(object):
-    def __init__(self, text, link_density, text_density, anchors, link_tokens, css):
+    def __init__(self, text, link_density, text_density, anchors,
+            link_tokens, css, **kwargs):
         self.text = text
         self.link_density = link_density
         self.text_density = text_density
         self.anchors = anchors
         self.link_tokens = link_tokens  # a hook for testing
         self.css = css
+        self.features = kwargs
+
 
 class BlockifyError(Exception):
     """Raised when there is a fatal problem in blockify
@@ -35,24 +38,82 @@ class BlockifyError(Exception):
     pass
 
 
+def text_from_subtree(tree, tags_exclude=set(), tail=True, callback=None):
+    """Get all the text
+    from the subtree, excluding tags_exclude
+    If tail=False, then don't append the tail for this top level element
+    callbacks = called with callback(child) when iterating through the tree"""
+    try:
+        text = [tree.text or '']
+    except UnicodeDecodeError:
+        text = []
+    for child in tree.iterchildren():
+
+        # call the feature extractor child hooks
+        if callback:
+            callback(child)
+
+        if child.tag not in tags_exclude:
+            text.extend(text_from_subtree(child, tags_exclude=tags_exclude, callback=callback))
+        else:
+            # get the tail
+            try:
+                text.append(child.tail or '')
+            except UnicodeDecodeError:
+                pass
+    if tail:
+        try:
+            text.append(tree.tail or '')
+        except UnicodeDecodeError:
+            pass
+    return text
+
+
+
 class PartialBlock(object):
     """As we create blocks by recursing through subtrees
     in Blockifier, we need to maintain some state
     of the incomplete blocks.
 
     This class maintains that state, as well as provides methods
-    to modify it."""
+    to modify it.
+
+    To generalize, subclasses do the following:
+        define a set of "feature extractors".  These are given
+        a string name and specified by the following methods:
+
+        reinit_name() = r
+        name(self) = compute the features as a dict
+                    that is passed into the Block constructor, called
+                    just before the block is added to the results
+        tag_name(self, child) = called with each tag as we iterate through
+            the tree
+
+    Can specify a set of call backs that are called with
+    the partial block instance just before the block is added
+    to the results.  These compute the features as a dict
+    that is passed into the Block constructor.  These are implemented
+    by subclasses.
+    """
 
     css_attrib = ['id', 'class']
 
     def __init__(self):
+        self._fe = []
         self.reinit()
         self.reinit_css(init_tree=True)
+
+    def _fe_reinit(self):
+        # each subclass implements reinit_fename()
+        # call self.reinit_name() for each name
+        for fe in self._fe:
+            getattr(self, 'reinit_%s' % fe)()
 
     def reinit(self):
         self.text = []
         self.link_tokens = []
         self.anchors = []
+        self._fe_reinit()
 
     def reinit_css(self, init_tree=False):
         # we want to keep track of the id and class CSS attributes.
@@ -79,11 +140,19 @@ class PartialBlock(object):
             for k in PartialBlock.css_attrib:
                 self.css[k] = []
 
-
+    def _extract_features(self, append):
+        # call self.fe_name(append=True/False) where
+        # append is True if this PartialBlock is appended
+        # or False if it is not.
+        ret = {}
+        for fe in self._fe:
+            ret.update(getattr(self, fe)(append))
+        return ret
 
     def add_block_to_results(self, results):
         """Create a block from the current partial block
         and append it to results.  Reset the partial block"""
+
         # compute block and link tokens!
         block_tokens = PartialBlock.tokens_from_text(self.text)
         if len(block_tokens) > 0:
@@ -101,7 +170,12 @@ class PartialBlock(object):
                 css[k] = ' '.join(PartialBlock.tokens_from_text(self.css[k])).lower()
 
             #print block_text
-            results.append(Block(block_text, link_d, text_d, self.anchors, self.link_tokens, css))
+            results.append(Block(block_text, link_d,
+                        text_d, self.anchors, self.link_tokens, css,
+                        **self._extract_features(True)))
+        else:
+            self._extract_features(False)
+
         self.reinit()
         self.reinit_css()
 
@@ -124,7 +198,7 @@ class PartialBlock(object):
         tree = the etree a element"""
         self.anchors.append(tree)
         # need all the text from the subtree
-        anchor_text_list = PartialBlock._text_from_subtree(tree, tags_exclude=Blockifier.blacklist, tail=False)
+        anchor_text_list = text_from_subtree(tree, tags_exclude=Blockifier.blacklist, tail=False, callback=self._tag_fe)
         self.text.extend(anchor_text_list)
         try:
             self.text.append(tree.tail or '')
@@ -133,30 +207,10 @@ class PartialBlock(object):
         self.link_tokens.extend(PartialBlock.tokens_from_text(anchor_text_list))
 
 
-    @staticmethod
-    def _text_from_subtree(tree, tags_exclude=set(), tail=True):
-        """Get all the text
-        from the subtree, excluding tags_exclude
-        If tail=False, then don't append the tail for this top level element"""
-        try:
-            text = [tree.text or '']
-        except UnicodeDecodeError:
-            text = []
-        for child in tree.iterchildren():
-            if child.tag not in tags_exclude:
-                text.extend(PartialBlock._text_from_subtree(child, tags_exclude=tags_exclude))
-            else:
-                # get the tail
-                try:
-                    text.append(child.tail or '')
-                except UnicodeDecodeError:
-                    pass
-        if tail:
-            try:
-                text.append(tree.tail or '')
-            except UnicodeDecodeError:
-                pass
-        return text
+    def _tag_fe(self, child):
+        # call the tag_featurename functions
+        for fe in self._fe:
+            getattr(self, 'tag_%s' % fe)(child)
 
 
     @staticmethod
@@ -211,6 +265,9 @@ class PartialBlock(object):
     @staticmethod
     def recurse(subtree, partial_block, results):
         # both partial_block and results are modified
+        # this really shouldn't be a staticmethod.  it started
+        # out that way and was never changed.  argh.
+
 #        print("%s %s" % ( subtree.tag, partial_block.css_tree))
 
         # for CSS, we want to output all CSS tags for all levels in subtree
@@ -218,6 +275,9 @@ class PartialBlock(object):
         partial_block.update_css(subtree, True)
 
         for child in subtree.iterchildren():
+
+            if len(partial_block._fe) > 0:
+                partial_block._tag_fe(child)
 
             if child.tag in Blockifier.blacklist:
                 # in this case, skip the entire tag,
@@ -268,6 +328,61 @@ class PartialBlock(object):
         """pop the last entry off the css lists"""
         for k in PartialBlock.css_attrib:
             self.css_tree[k].pop()
+
+# Associate with each block a tag count = the count of tags
+#   in the block.
+# Since we don't output empty blocks, we also keep track of the
+# tag count since the last block we output as an additional feature
+#
+
+# _tc = tag count in the current block, since the last <div>, <p>, etc.
+# _tc_lb = tag count since last block.  This is the tag count in prior
+# empty blocks, accumulated since the last block was output, excluding
+# the current block
+
+# so tc gets updated with each tag
+# tc is reset on block formation, even for empty blocks
+#
+# tc_lb is reset to 0 on block output
+# tc_lb accumulates tc on empty block formation
+#
+
+class TagCountPB(PartialBlock):
+    """Counts tags to compute content-tag ratios"""
+    def __init__(self, *args, **kwargs):
+        PartialBlock.__init__(self, *args, **kwargs)
+
+        self._fe.append('tagcount')
+
+        # will keep track of tag count and tag count since last block
+        self._tc = 1  # for the top level HTML tag
+        self._tc_lb = 0
+
+    def reinit_tagcount(self):
+        pass
+
+    def tagcount(self, append):
+        # here we assume that tc is updated
+        # before features are extracted
+        # that is, _tc includes the current tag
+        # so we adjust by -1 on output
+        #
+        # since tc has already been updated
+        if append:
+            ret = {'tagcount_since_last_block':self._tc_lb,
+                   'tagcount':self._tc - 1}
+            self._tc_lb = 0
+            self._tc = 1
+        else:
+            ret = {}
+            self._tc_lb += (self._tc - 1)
+            self._tc = 1
+        return ret
+
+    def tag_tagcount(self, tag):
+        self._tc += 1
+#        print tag.tag, self._tc, self._tc_lb
+
 
 
 html_re = re.compile('meta\s[^>]*charset\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
@@ -322,11 +437,12 @@ class Blockifier(object):
     
 
     @staticmethod
-    def blocks_from_tree(tree):
+    def blocks_from_tree(tree, pb=PartialBlock):
         results = []
-        partial_block = PartialBlock()
+        partial_block = pb()
 
-        PartialBlock.recurse(tree, partial_block, results)
+        #PartialBlock.recurse(tree, partial_block, results)
+        pb.recurse(tree, partial_block, results)
 
         # make the final block
         partial_block.add_block_to_results(results)
@@ -334,7 +450,7 @@ class Blockifier(object):
     
 
     @staticmethod
-    def blockify(s, encoding=None):
+    def blockify(s, encoding=None, pb=PartialBlock):
         '''
         Take a string of HTML and return a series of blocks
 
@@ -350,7 +466,11 @@ class Blockifier(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError
 
-        blocks = Blockifier.blocks_from_tree(html)
+        blocks = Blockifier.blocks_from_tree(html, pb)
         # only return blocks with some text content
         return [ele for ele in blocks if re_tokenizer.sub('', ele.text) != '']
+
+
+def tag_count_blockify(s, encoding=None):
+    return Blockifier.blockify(s, encoding, pb=TagCountPB)
 
