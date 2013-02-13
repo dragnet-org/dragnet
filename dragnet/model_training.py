@@ -198,7 +198,7 @@ def accuracy_auc(y, ypred, weights=None):
 
 
 def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
-    tokenizer=simple_tokenizer):
+    tokenizer=simple_tokenizer, cetr=False):
     """
     Evaluate a trained model on the token level.
 
@@ -214,7 +214,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
 
     gold_standard_tokens = {}
     for fname, froot in all_files:
-        tokens = tokenizer(' '.join(read_gold_standard(datadir, froot)))
+        tokens = tokenizer(' '.join(read_gold_standard(datadir, froot, cetr)))
         if len(tokens) > 0:
             gold_standard_tokens[froot] = tokens
 
