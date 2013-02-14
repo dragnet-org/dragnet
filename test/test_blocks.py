@@ -51,12 +51,12 @@ class Test_TagCountPB(unittest.TestCase):
                     <script> <div>skip this</div> </script>
                     <b>bold stuff</b> after the script
                </div></body></html>"""
-        blks = blocks.tag_count_blockify(s)
+        blks = blocks.TagCountBlockifier.blockify(s)
         self.check_tagcount((3, 2), blks[0].features)
         self.assertTrue(len(blks) == 1)
         
     def test_big_html(self):
-        blks = blocks.tag_count_blockify(big_html_doc)
+        blks = blocks.TagCountBlockifier.blockify(big_html_doc)
 
         actual_features = [
             (1, 2),

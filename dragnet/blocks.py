@@ -471,6 +471,8 @@ class Blockifier(object):
         return [ele for ele in blocks if re_tokenizer.sub('', ele.text) != '']
 
 
-def tag_count_blockify(s, encoding=None):
-    return Blockifier.blockify(s, encoding, pb=TagCountPB)
+class TagCountBlockifier(Blockifier):
+    @staticmethod
+    def blockify(s, encoding=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB)
 
