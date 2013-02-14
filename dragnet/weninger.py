@@ -7,7 +7,7 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from .content_extraction_model import ContentExtractionModel, IdentityPredictor
-from .blocks import Blockifier
+from .blocks import TagCountBlockifier
 from .kmeans import KMeansFixedOrigin
 
 def weninger_sx_sdx(x):
@@ -30,7 +30,7 @@ def weninger_sx_sdx(x):
     sdx = gaussian_filter(dx, sigma=sigma)
 
     return np.hstack((sx.reshape(-1, 1), sdx.reshape(-1, 1)))
-weninger_sx_sdx.nfeatures = 2
+#weninger_sx_sdx.nfeatures = 2
 
 
 class WeningerFeatures(object):
@@ -40,7 +40,11 @@ class WeningerFeatures(object):
         self._clusters = clusters
 
     def __call__(self, blocks, train=False):
-        sx_sdx = weninger_sx_sdx([len(block.text) for block in blocks])
+        # make the content to tag ratio
+        block_lengths = np.array([len(block.text) for block in blocks])
+        tagcounts = np.array([block.features['tagcount'] for block in blocks])
+        ctr = block_lengths / tagcounts
+        sx_sdx = weninger_sx_sdx(ctr)
 
         km = KMeansFixedOrigin(self._clusters)
         km.fit(sx_sdx)
@@ -49,7 +53,7 @@ class WeningerFeatures(object):
 
 
 class Weninger(ContentExtractionModel):
-    def __init__(self, clusters=3, blockifier=Blockifier, **kwargs):
+    def __init__(self, clusters=3, blockifier=TagCountBlockifier, **kwargs):
         features = [WeningerFeatures(clusters)]
         ContentExtractionModel.__init__(self, blockifier, features, IdentityPredictor, **kwargs)
 
