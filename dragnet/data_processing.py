@@ -258,6 +258,7 @@ class DragnetModelData(object):
         indices_to_keep = [ind for seed, ind in ordering[:nkeep]]
         return [(self.training_files[ind], self.training_data[ind]) for ind in indices_to_keep]
 
+
     def _read_all_data(self, datadir, block_percent_threshold, source):
         """
         block_percent_threshold = the cut-off percent of all tokens in a block
