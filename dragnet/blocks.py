@@ -223,11 +223,6 @@ class PartialBlock(object):
         chain is the fastest way to combine the list of lists"""
         return list(chain.from_iterable([re.split('\s+', ele.strip()) for ele in text if ele.strip() != '']))
 
-    # note: here link density, text density are defined in terms of token
-    # densities.  this might change from language to language.  suggest
-    # adding features for ratio of text to code (maybe ratio of text
-    # tokens to CSS tokens?
-
     @staticmethod
     def link_density(block_text, link_text):
         '''
