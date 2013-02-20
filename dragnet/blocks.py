@@ -316,6 +316,7 @@ class PartialBlock(object):
             try:
                 css_to_update[k].append(child.attrib[k])
             except KeyError:
+                # we don't have the css_attribute on this tag
                 css_to_update[k].append('')
 
 
@@ -324,26 +325,28 @@ class PartialBlock(object):
         for k in PartialBlock.css_attrib:
             self.css_tree[k].pop()
 
-# Associate with each block a tag count = the count of tags
-#   in the block.
-# Since we don't output empty blocks, we also keep track of the
-# tag count since the last block we output as an additional feature
-#
-
-# _tc = tag count in the current block, since the last <div>, <p>, etc.
-# _tc_lb = tag count since last block.  This is the tag count in prior
-# empty blocks, accumulated since the last block was output, excluding
-# the current block
-
-# so tc gets updated with each tag
-# tc is reset on block formation, even for empty blocks
-#
-# tc_lb is reset to 0 on block output
-# tc_lb accumulates tc on empty block formation
-#
 
 class TagCountPB(PartialBlock):
     """Counts tags to compute content-tag ratios"""
+
+    # Associate with each block a tag count = the count of tags
+    #   in the block.
+    # Since we don't output empty blocks, we also keep track of the
+    # tag count since the last block we output as an additional feature
+    #
+    
+    # _tc = tag count in the current block, since the last <div>, <p>, etc.
+    # _tc_lb = tag count since last block.  This is the tag count in prior
+    # empty blocks, accumulated since the last block was output, excluding
+    # the current block
+    
+    # so tc gets updated with each tag
+    # tc is reset on block formation, even for empty blocks
+    #
+    # tc_lb is reset to 0 on block output
+    # tc_lb accumulates tc on empty block formation
+    #
+
     def __init__(self, *args, **kwargs):
         PartialBlock.__init__(self, *args, **kwargs)
 
