@@ -45,6 +45,10 @@ class Test_TagCountPB(unittest.TestCase):
                         expected[0])
         self.assertEqual(predicted['tagcount_since_last_block'],
                 expected[1])
+        self.assertEqual(predicted['anchor_count'],
+                expected[2])
+        self.assertEqual(predicted['min_depth_since_last_block'],
+                expected[3])
 
     def test_simple(self):
         s = """<html><body><div>some text <i>in italic</i> and something else
@@ -52,24 +56,24 @@ class Test_TagCountPB(unittest.TestCase):
                     <b>bold stuff</b> after the script
                </div></body></html>"""
         blks = blocks.TagCountBlockifier.blockify(s)
-        self.check_tagcount((3, 2), blks[0].features)
+        self.check_tagcount((3, 2, 0, 0), blks[0].features)
         self.assertTrue(len(blks) == 1)
         
     def test_big_html(self):
         blks = blocks.TagCountBlockifier.blockify(big_html_doc)
 
         actual_features = [
-            (1, 2),
-            (2, 0),
-            (2, 0),
-            (2, 0),  # blockquote
-            (1, 2),
-            (1, 0),
-            (1, 0),
-            (1, 2), # first comment
-            (2, 0),
-            (1, 1),
-            (3, 0)  # NOTE: this is a bug here.  It's due
+            (1, 2, 0, 0),
+            (2, 0, 0, 2),
+            (2, 0, 1, 3),
+            (2, 0, 0, 3),  # blockquote
+            (1, 2, 0, 3),
+            (1, 0, 0, 3),
+            (1, 0, 0, 3),
+            (1, 2, 0, 2), # first comment
+            (2, 0, 1, 4),
+            (1, 1, 0, 3),
+#            (3, 0, 1, 0)  # NOTE: this is a bug here.  It's due
                     # to the _tc-1 assumption in the feature extractor
                     # that fails for the last block. (we don't call
                     # tag_tagcount again before appending the block)
@@ -77,6 +81,7 @@ class Test_TagCountPB(unittest.TestCase):
 
         for a, b in zip(actual_features, blks):
             self.check_tagcount(a, b.features)
+
 
 
 if __name__ == "__main__":

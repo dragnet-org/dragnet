@@ -3,6 +3,7 @@
 
 import re
 import numpy as np
+from .blocks import Blockifier
 
 class IdentityPredictor(object):
     """Mock out the machine learning model with an identity model."""
@@ -13,6 +14,20 @@ class IdentityPredictor(object):
     @staticmethod
     def fit(*args, **kargs):
         pass
+
+class BaselinePredictor(object):
+    """Always predict content"""
+    @staticmethod
+    def predict(x):
+        return np.ones(x.shape)
+
+    @staticmethod
+    def fit(*args, **kwargs):
+        pass
+
+def nofeatures(blocks, *args, **kwargs):
+    return np.zeros((len(blocks), 1))
+nofeatures.nfeatures = 1
 
 class ContentExtractionModel(object):
     """Content extraction model
@@ -103,4 +118,6 @@ class ContentExtractionModel(object):
         ret = plt.bar(np.arange(len(blocks)), block_lengths_content, 0.5)
 
         fig.show()
+
+baseline_model = ContentExtractionModel(Blockifier, [nofeatures], BaselinePredictor)
 

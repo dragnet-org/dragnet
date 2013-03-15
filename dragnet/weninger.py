@@ -40,8 +40,8 @@ def weninger_features(blocks, train=False):
     tagcounts = np.maximum(np.array([block.features['tagcount'] for block in blocks]), 1.0)
     ctr = block_lengths / tagcounts
     sx_sdx = weninger_sx_sdx(ctr)
-    sx_sdx = np.minimum(sx_sdx, 300)
-    sx_sdx = np.log(sx_sdx + 1.0)  ###
+    #sx_sdx = np.minimum(sx_sdx, 300)  ###
+    #sx_sdx = np.log(sx_sdx + 1.0)  ###
     return sx_sdx
 weninger_features.nfeatures = 2
 
@@ -57,9 +57,15 @@ class WeningerKMeanModel(object):
         content = km.closest_centers(features) > 0
         return content.astype(np.int).reshape(-1, 1)
 
+def weninger_features_kmeans(blocks, train=False):
+    """The entire k-means prediction from Weninger as a feature"""
+    w = WeningerKMeanModel(3)
+    sx_sdx = weninger_features(blocks, train)
+    return w.predict(sx_sdx)
+weninger_features_kmeans.nfeatures = 1
 
 class Weninger(ContentExtractionModel):
     def __init__(self, clusters=3, blockifier=TagCountBlockifier, **kwargs):
         features = [weninger_features]
-        ContentExtractionModel.__init__(self, blockifier, features, WeningerKMeanModel(3), **kwargs)
+        ContentExtractionModel.__init__(self, blockifier, features, WeningerKMeanModel(clusters), **kwargs)
 
