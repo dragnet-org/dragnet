@@ -88,6 +88,8 @@ class PartialBlock(object):
                     just before the block is added to the results
         tag_name(self, child) = called with each tag as we iterate through
             the tree
+        subtree_name(1) called once before iterating over each subtree
+        subtree_name(-1) called once after iterating over the subtree
 
     Can specify a set of call backs that are called with
     the partial block instance just before the block is added
@@ -198,6 +200,12 @@ class PartialBlock(object):
         tree = the etree a element"""
         self.anchors.append(tree)
         # need all the text from the subtree
+
+        # NOTE: here we don't worry about calling _subtree_fe inside
+        # text_from_subtree, even though it is recursive.
+        # this is because we will never output a block in the middle of
+        # these subtrees so we don't need to keep track of going in and
+        # then out
         anchor_text_list = text_from_subtree(tree, tags_exclude=Blockifier.blacklist, tail=False, callback=self._tag_fe)
         self.text.extend(anchor_text_list)
         try:
@@ -212,6 +220,10 @@ class PartialBlock(object):
         for fe in self._fe:
             getattr(self, 'tag_%s' % fe)(child)
 
+    def _subtree_fe(self, start_or_end):
+        # call the subtree_featurename functions
+        for fe in self._fe:
+            getattr(self, 'subtree_%s' % fe)(start_or_end)
 
     @staticmethod
     def tokens_from_text(text):
@@ -269,6 +281,8 @@ class PartialBlock(object):
         # we will add them on entry, and pop them on exit
         partial_block.update_css(subtree, True)
 
+        partial_block._subtree_fe(1)
+
         for child in subtree.iterchildren():
 
             if len(partial_block._fe) > 0:
@@ -304,6 +318,7 @@ class PartialBlock(object):
                 partial_block.add_text(child, 'tail')
 
         partial_block.pop_css_tree()
+        partial_block._subtree_fe(-1)
 
     def update_css(self, child, tree):
         """Add the child's tag to the id, class lists"""
@@ -354,10 +369,18 @@ class TagCountPB(PartialBlock):
 
         # will keep track of tag count and tag count since last block
         self._tc = 1  # for the top level HTML tag
+        self._ac = 0  # anchor count
         self._tc_lb = 0
+        self._current_depth = 0
+        self._min_depth_last_block = 0
+        self._min_depth_last_block_pending = 0
 
     def reinit_tagcount(self):
         pass
+
+    def subtree_tagcount(self, start_or_end):
+        self._current_depth += start_or_end
+        self._min_depth_last_block_pending = min(self._min_depth_last_block_pending, self._current_depth)
 
     def tagcount(self, append):
         # here we assume that tc is updated
@@ -368,17 +391,29 @@ class TagCountPB(PartialBlock):
         # since tc has already been updated
         if append:
             ret = {'tagcount_since_last_block':self._tc_lb,
-                   'tagcount':self._tc - 1}
+                   'tagcount':self._tc - 1,
+                   'anchor_count':self._ac,
+                   'min_depth_since_last_block':self._min_depth_last_block}
             self._tc_lb = 0
             self._tc = 1
+            self._ac = 0
+            self._min_depth_last_block_pending = self._current_depth
+            self._min_depth_last_block = self._current_depth
         else:
             ret = {}
             self._tc_lb += (self._tc - 1)
             self._tc = 1
+            self._ac = 0
         return ret
 
     def tag_tagcount(self, tag):
         self._tc += 1
+        if tag.tag == 'a':
+            self._ac += 1
+
+        if tag.tag not in Blockifier.blocks:
+            self._min_depth_last_block = self._min_depth_last_block_pending
+            
 #        print tag.tag, self._tc, self._tc_lb
 
 

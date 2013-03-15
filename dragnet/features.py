@@ -159,7 +159,8 @@ class CSSFeatures(object):
                               'title',
                               'comment',
                               'tools',
-                              'rating'],
+                              'rating',
+                              'ss'],
                      'class':['menu',
                               'widget',
                               'nav',
@@ -185,7 +186,8 @@ class CSSFeatures(object):
                               'tools',
                               'reply'
                               'url',
-                              'avatar']}
+                              'avatar',
+                              'ss']}
 
     _attribute_order = ['id', 'class']
 

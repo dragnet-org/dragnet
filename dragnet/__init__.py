@@ -6,7 +6,7 @@ from .features import NormalizedFeature, CSSFeatures
 from .content_extraction_model import ContentExtractionModel
 from .kohlschuetter import kohlschuetter_features, kohlschuetter
 from .util import evaluation_metrics
-from .weninger import weninger_features
+from .weninger import weninger_features_kmeans
 
 
 class AllFeatures(object):
@@ -25,7 +25,7 @@ class AllFeatures(object):
         elif key == 'arias':
             return AriasFeatures(*args, **kwargs)
         elif key == 'weninger':
-            return NormalizedFeature(weninger_features)
+            return weninger_features_kmeans
         else:
             raise KeyError
 
