@@ -218,7 +218,8 @@ class KohlschuetterBase(object):
     blocks = set([
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'table'
     ])
-    
+
+    re_non_alpha = re.compile('[\W_]', re.UNICODE)
 
     @staticmethod
     def blocks_from_tree(tree):
@@ -248,7 +249,7 @@ class KohlschuetterBase(object):
 
         blocks = KohlschuetterBase.blocks_from_tree(html)
         # only return blocks with some text content
-        return [ele for ele in blocks if re.sub('[\W_]', '', ele.text).strip() != '']
+        return [ele for ele in blocks if KohlschuetterBase.re_non_alpha.sub('', ele.text) != '']
 
 
     def analyze(self, s, blocks=False):
