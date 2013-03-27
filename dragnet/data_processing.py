@@ -216,7 +216,7 @@ def extract_gold_standard(datadir, fileroot,
             k += 1
 
 
-def extract_gold_standard_all_training_data(datadir, nprocesses=40, **kwargs):
+def extract_gold_standard_all_training_data(datadir, nprocesses=1, **kwargs):
     """
         Extract the gold standard block level content and comment
         percentages from a directory of labeled data
