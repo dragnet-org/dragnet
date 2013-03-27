@@ -204,8 +204,12 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
     Evaluate a trained model on the token level.
 
     datadir = all the data lives here
-    dragnet_model = either a single model, or a list of them
-    if figname_root is not None, then output plots to figname_root + training/test.png
+    dragnet_model = Implements the ContentExtractionModel interface,
+        specifically the analyze method
+    if figname_root is not None, then output plots/tables to
+        figname_root + extension
+    tokenizer = implements tokenizer interface
+    cetr = if True, then handle the gold standard in CETR format (parse it)
 
     Outputs:
         saves png files
