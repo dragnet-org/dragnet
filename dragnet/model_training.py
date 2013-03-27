@@ -231,7 +231,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
 
     k = 0
     for froot, gstok in gold_standard_tokens.iteritems():
-        html, encoding = read_HTML_file(datadir, fileroot)
+        html, encoding = read_HTML_file(datadir, froot)
         if use_list:
             for i in xrange(len(dragnet_model)):
                 # make an analyze function to handle the encoding

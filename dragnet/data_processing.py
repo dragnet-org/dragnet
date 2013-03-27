@@ -10,7 +10,7 @@ from .blocks import Blockifier, simple_tokenizer, text_from_subtree
 from lxml import etree
 
 re_has_text = re.compile("^\s*<text")
-re_open_tag = re.compile('^\s*<text.+encoding\s*=\s*"([a-zA-Z0-9-_]+)"\s*>')
+re_open_tag = re.compile('^\s*<text.+encoding\s*=\s*"([a-zA-Z0-9-_\s]+)"\s*>')
 re_end_tag = re.compile('</\s*text\s*>\s*$')
 def read_HTML_file(datadir, fileroot):
     """Reads the HTML file from the datadir with fileroot.
@@ -27,7 +27,7 @@ def read_HTML_file(datadir, fileroot):
         # we have a text tag.  need to strip it off, capture encoding
         mo = re_open_tag.search(raw_content)
         encoding = mo.group(1)
-        if encoding.lower() == "unset":
+        if encoding.lower() == "unset" or encoding.lower().startswith('unknown'):
             encoding = None
         raw_content = re_open_tag.sub('', raw_content)
 
