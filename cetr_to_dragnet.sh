@@ -88,6 +88,7 @@ do
     if [[ $CLEANEVAL == 1 ]]
     then
         # need to remove the first line of Corrected file
+        # this contains the URL, and we don't need it
         echo "Cleaning corrected files"
         ls Corrected/* | perl -pe '
         $orig_file = $_;
@@ -99,21 +100,6 @@ do
                 print FOUT $_;
             }
             $k++;
-        }
-        close(FOUT);
-        close(F);
-        system "mv t $orig_file";
-        '
-
-        # need to remove <text> tags from HTML
-        ls HTML/*.html | perl -pe '
-        $orig_file = $_;
-        open (F, $orig_file);
-        open (FOUT, ">t");
-        while (<F>) {
-            if (! m/<text[^>]*>/ && ! m/<\/text[^>]*>/) {
-                print FOUT $_;
-            }
         }
         close(FOUT);
         close(F);

@@ -9,10 +9,42 @@ import codecs
 from .blocks import Blockifier, simple_tokenizer, text_from_subtree
 from lxml import etree
 
+re_has_text = re.compile("^\s*<text")
+re_open_tag = re.compile('^\s*<text.+encoding\s*=\s*"([a-zA-Z0-9-_]+)"\s*>')
+re_end_tag = re.compile('</\s*text\s*>\s*$')
+def read_HTML_file(datadir, fileroot):
+    """Reads the HTML file from the datadir with fileroot.
+    This checks for an optional <text> tag specifying the encoding,
+    and captures the encoding/removes the tag if found (in the case
+    of cleaneval).
+
+    Returns HTML string, encoding
+    where encoding is None if no <text> tag
+    """
+    raw_content = open('%s/HTML/%s.html' % (datadir, fileroot), 'r').read()
+    has_text = re_has_text.search(raw_content)
+    if has_text:
+        # we have a text tag.  need to strip it off, capture encoding
+        mo = re_open_tag.search(raw_content)
+        encoding = mo.group(1)
+        if encoding.lower() == "unset":
+            encoding = None
+        raw_content = re_open_tag.sub('', raw_content)
+
+        # don't forget about the end tag
+        raw_content = re_end_tag.sub('', raw_content).strip()
+
+    else:
+        encoding = None
+
+    return raw_content, encoding
+
+
 def read_gold_standard(datadir, fileroot, cetr=False):
     """Reads the gold standard from the disk.
     Returns [content, comments] where content/comments are strings
-    If cetr=True, then (1) assume no comments and (2) parse the gold standard to remove tags"""
+    If cetr=True, then
+        (1) assume no comments and (2) parse the gold standard to remove tags"""
 
     corrected_file = datadir + '/Corrected/%s.html.corrected.txt' % fileroot
     def read_file(encoding):
@@ -101,8 +133,8 @@ def extract_gold_standard(datadir, fileroot,
     from .lcs import check_inclusion
 
     # get the raw content, split it into blocks, tokenize
-    raw_content = open(datadir + '/HTML/%s.html' % fileroot, 'r').read()
-    blocks = [b.text for b in Blockifier.blockify(raw_content)]
+    raw_content, encoding = read_HTML_file(datadir, fileroot)
+    blocks = [b.text for b in Blockifier.blockify(raw_content, encoding)]
 
     # blocks_tokens = a list of tokens in each block
     # contains '' if the block contains no tokens
@@ -222,10 +254,11 @@ class DragnetModelData(object):
     includes the html, the gold standard tokens
 
     a datadir with the training data directory structure
-    each training data document has a number of files with a common "fileroot" and
-    a set of additional files in subdirectories
+    each training data document has a number of files with a common
+    "fileroot" and a set of additional files in subdirectories
         HTML / fileroot.html
-        Corrected / fileroot.html.corrected.txt = cut and paste content from the HTML
+        Corrected / fileroot.html.corrected.txt = cut and paste content
+            from the HTML
         block_corrected / fileroot.block_corrected.txt
     source = one of 'all', 'domain_list', 'technoratti', 'reader'
     """
@@ -262,10 +295,16 @@ class DragnetModelData(object):
     def _read_all_data(self, datadir, block_percent_threshold, source):
         """
         block_percent_threshold = the cut-off percent of all tokens in a block
-            that are in the gold standard, above which the block is classified as content
-        stores attributes .training_data, .test_data where each is a list of tuples:
-            (raw_html_string, content_gold_standard, comments_gold_standard)
-            where content/comments gold_standard = (list of block 0/1 flag, list of # tokens, all tokens as a list)
+            that are in the gold standard, above which the block is
+            classified as content
+        stores attributes .training_data, .test_data where each is a list
+            of tuples:
+            (raw_html_string,
+                content_gold_standard, comments_gold_standard, encoding)
+            where content/comments gold_standard =
+                (list of block 0/1 flag, list of # tokens, all tokens as a list)
+            encoding is the encoding from <text> tag for cleaneval,
+                otherwise it is None
         stores attributes .training_files, .test_files where each is a list
             of the file names
         """
@@ -278,8 +317,8 @@ class DragnetModelData(object):
         print("Reading the training and test data...")
         for file, fileroot in get_list_all_corrected_files(datadir):
             if self._re_source.match(fileroot):
-                html = open(datadir + '/HTML/%s.html' % fileroot, 'r').read()
-                block_corrected_file = codecs.open(datadir + '/block_corrected/%s.block_corrected.txt' % fileroot, 'r', encoding='utf-8')
+                html, encoding = read_HTML_file(datadir, fileroot)
+                block_corrected_file = codecs.open('%s/block_corrected/%s.block_corrected.txt' % (datadir, fileroot), 'r', encoding='utf-8')
                 blocks = block_corrected_file.read()[:-1].split('\n')
     
                 content = []
@@ -301,10 +340,10 @@ class DragnetModelData(object):
                     ret.append((extracted_flag, counts, tokens))
     
                 if fileroot in training_fileroot:
-                    self.training_data.append((html, ret[0], ret[1]))
+                    self.training_data.append((html, ret[0], ret[1], encoding))
                     self.training_files.append(fileroot)
                 else:
-                    self.test_data.append((html, ret[0], ret[1]))
+                    self.test_data.append((html, ret[0], ret[1], encoding))
                     self.test_files.append(fileroot)
 
         print("..done!")
@@ -320,7 +359,7 @@ class DragnetModelData(object):
         content_css = []
         no_content_css = []
         for datum in data.training_data:
-            blocks = Blockifier.blockify(datum[0])
+            blocks = Blockifier.blockify(datum[0], encoding=datum[3])
             extracted = np.logical_or(datum[1][0], datum[2][0])
             assert len(blocks) == len(extracted)
             content_css.extend([blocks[k].css for k in xrange(len(blocks)) if extracted[k]])

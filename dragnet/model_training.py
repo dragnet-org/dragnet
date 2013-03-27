@@ -11,7 +11,7 @@ from mozsci.cross_validate import cv_kfold
 from .blocks import Blockifier
 from . import evaluation_metrics
 from .content_extraction_model import ContentExtractionModel
-from .data_processing import simple_tokenizer, DragnetModelData, read_gold_standard, get_list_all_corrected_files
+from .data_processing import simple_tokenizer, DragnetModelData, read_gold_standard, get_list_all_corrected_files, read_HTML_file
 
 
 def add_plot_title(ti_str):
@@ -78,15 +78,16 @@ class DragnetModelTrainer(object):
         else:
             raise InputError
 
-        first_data_features, blocks = model.make_features(data_for_features[0][0], train)
+        first_data_features, blocks = model.make_features(
+                data_for_features[0][0], train, encoding=data_for_features[0][3])
         features = np.zeros((0, first_data_features.shape[1]))
         labels = np.zeros((0,))
         weights = np.zeros((0,))   # the token counts in the blocks
 
         all_blocks = []
 
-        for html, content, comments in data_for_features:
-            training_features, blocks = model.make_features(html, train)
+        for html, content, comments, encoding in data_for_features:
+            training_features, blocks = model.make_features(html, train, encoding=encoding)
             if training_features is None:
                 # document is too short -- has < blocks.
                 # skip it
@@ -226,12 +227,17 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
 
     k = 0
     for froot, gstok in gold_standard_tokens.iteritems():
-        html = open("%s/HTML/%s.html" % (datadir, froot), 'r').read()
+        html, encoding = read_HTML_file(datadir, fileroot)
         if use_list:
             for i in xrange(len(dragnet_model)):
-                errors[k, :, i] = run_score_content_detection(html, gstok, dragnet_model[i].analyze, tokenizer=tokenizer)
+                # make an analyze function to handle the encoding
+                dm = lambda x: dragnet_model[i].analyze(x, encoding=encoding)
+                errors[k, :, i] = run_score_content_detection(
+                    html, gstok, dm, tokenizer=tokenizer)
         else:
-            errors[k, :] = run_score_content_detection(html, gstok, dragnet_model.analyze, tokenizer=tokenizer)
+            dm = lambda x: dragnet_model.analyze(x, encoding=encoding)
+            errors[k, :] = run_score_content_detection(
+                    html, gstok, dragnet_model.analyze, tokenizer=tokenizer)
         k += 1
 
 
