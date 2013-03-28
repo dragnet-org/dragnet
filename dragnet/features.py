@@ -20,8 +20,12 @@ from .kohlschuetter import kohlschuetter_features
 #       feature.init_parms(computed_features) AND
 #       features.set_params(ret)
 #   where computed_features is a call with train=True,
-#   and ret is the returned value from features.init_params 
-#   
+#   and ret is the returned value from features.init_params.
+#
+#  If the feature implements init_params, then it must also implement
+#    serialize_feature(self) which returns a string 
+#  and load_feature(string) as a classmethod that returns and instance
+#  of the feature from the string serialization.
 
 
 def normalize_features(features, mean_std):

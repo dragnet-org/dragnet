@@ -1,5 +1,5 @@
 
-Dragnet, a content extraction library
+Dragnet
 =====================================
 
 # Overview
@@ -21,7 +21,23 @@ to be published at WWW 2013: TODO ADD LINK
 
 ## Dependencies
 
+Dragnet is written in Python (developed with 2.7, not tested on 3)
+and built on the numpy/scipy/Cython numerical computing environment.
+In addition we use matplotlib for visualizing the data and
+<a href="http://lxml.de/">lxml</a> (libxml2)
+for HTML parsing.  Finally, we use some of the utilities and models in
+<a href="http://github.com/seomoz/mozsci">mozsci</a>.  You can install
+the necessary packages with something like:
 
+    apt-get install cython libxslt-dev libxml2-dev \
+        python-numpy python-scipy python-matplotlib 
+    pip install lxml
+
+    # install mozsci
+    git clone "git@github.com:seomoz/mozsci.git" 
+    cd mozsci
+    python setup.py install
+    cd ..
 
 
 # More details about the code structure
@@ -106,7 +122,9 @@ First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, the
         rootdir = '/my/data/directory/'
         extract_gold_standard_all_training_data(rootdir)
 
-    This solves the longest common sub-sequence problem to partition the data into blocks.  TODO (occasionally this will fail...)
+    This solves the longest common sub-sequence problem to partition the data
+    into blocks.  Occasionally this will fail if lxml (libxml2) cannot parse
+    the HTML document.
 2.  Run `split_data` to generate the `training.txt` and `test.txt` files split.
 
 
