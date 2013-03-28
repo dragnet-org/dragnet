@@ -10,6 +10,9 @@ Each of the algorithms is implemented as a class of static methods that can be
 imported from the top level of dragnet, and implement a method `analyze`, which 
 accepts a string of HTML and returns a string representative of the content.
 
+The latest dev branch including all code for the WWW 2013 paper submission
+is `update_201211`.  It is currently under active and frequent development.
+
 Running
 -------
 Fill a directory `documents` with per-site folders of the HTML sources of 
