@@ -1,46 +1,126 @@
-dragnet
-=======
+
+Dragnet, a content extraction library
+=====================================
+
+# Overview
+
 Dragnet isn't interested in the shiny chrome or boilerplate dressing of a 
 webpage. It's interested in... 'just the facts.'
 
-It is meant to become a collection of reference implementations of various 
+It is meant to become a collection of reference implementations of various
 dechroming / content extraction algorithms.
 
-Each of the algorithms is implemented as a class of static methods that can be
-imported from the top level of dragnet, and implement a method `analyze`, which 
-accepts a string of HTML and returns a string representative of the content.
+This document contains details of the code and training data.
+We also wrote a short paper describing the machine learning approach in Dragnet,
+to be published at WWW 2013: TODO ADD LINK
 
-Running
--------
-Fill a directory `documents` with per-site folders of the HTML sources of 
-documents from that site, and then `run.py` will iterate through each of the 
-input files and produce a corresponding file in `output` with just the content.
-For example,
 
-    documents/
-        wired.com/
-            latest-higgs-rumors
-        seomoz.org/
-            8-attributes-of-content-that-inspire-action
+# GETTING STARTED
 
-Arias et al.
-------------
-Based on [Language Independent Content Extraction from Web Pages](
-    https://lirias.kuleuven.be/bitstream/123456789/215528/1/AriasEtAl2009.pdf)
+## How to run a model
 
-    from dragnet import Arias
-    import requests
-    r = requests.get(
-        'http://www.wired.com/wiredscience/2012/06/latest-higgs-rumors/')
-    print Arias.analyze(r.content)
+## Dependencies
 
-Kohlschütter et al.
--------------------
-Based on [Boilerplate Detection using Shallow Text Features](
-    http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf)
-    
-    from dragnet import Kohlschuetter
-    import requests
-    r = requests.get(
-        'http://www.wired.com/wiredscience/2012/06/latest-higgs-rumors/')
-    print Kohlschuetter.analyze(r.content)
+
+
+
+# More details about the code structure
+
+We provide a few high level classes for manipulating the data and doing the training.
+
+`DragnetModelData` encapsulates the data set and includes methods for reading it from disk,
+making some diagnostic plots and exposing the data to the
+`DragnetModelTrainer` class.
+
+The `DragnetModelTrainer` does ...
+
+
+abstract base classes for blockifier, features and machine learning model
+and a model class that chains them together and encapsuates all three
+
+
+tokenizer = callable(string) and returns list of tokens
+
+
+  blockifier = implements blockify that takes string and returns
+           an list of Block instances
+
+  features = callable that takes list of blocks
+             and returns a numpy array of features (len(blocks), nfeatures)
+             It accepts an optional keyword "train" that is only called in an initial
+             pre-processing state for training
+           feature.nfeatures = attribute that gives number of features
+           optionally feature.init_params(features) that sets some global state
+              if features.init_params is implemented, then must also implement
+               features.set_params(ret) where ret is the returned value from
+               features.init_params
+
+  machine learning model = implements sklearn interface
+
+
+
+
+# Details about the training data
+
+A training data set consists of a collection of web pages and the extracted
+'gold standard' content.  For our purposes we standardize  
+a data set as a set of files on disk with a specific directory and naming
+convention.  Each training example in the data set
+is identified by a common file root.  
+All the data for a given training example `X` lives under a common `ROOTDIR`
+in a set of sub-directories as follows:
+
+* `$ROOTDIR/HTML/` contains the raw HTML named `X.html`
+* `$ROOTDIR/Corrected/` contains the extracted content named `X.html.corrected.txt`
+
+We provide our training data described in the paper at TODO: add link
+
+We have also tested our model on the data used in Weninger et al at TODO: add link.
+and include a bash script `cetr_to_dragnet.sh` to convert the data
+from CETR to Dragnet format.
+
+## Creating your own training data
+
+You can easily create your own training data:
+
+1.  Create a directory hierarchy as detailed above (`HTML` and `Corrected` sub-directories)
+2.  Add `HTML` and `Corrected` files.
+    a.  Save HTML files to the directory to be used as training examples.  This is the raw HTML from crawling the page or "Save as.." in a browser.
+    b.  Extract the content from the `html` files into the `Corrected` files.
+        i.  Open each HTML file in a web browser with the network connection turned off
+            and Javascript disabled.  This simulates the information available to a simple
+            web crawler that does not execute Javascript or fetch additional
+            resources other then the HTML.
+        ii.  Cut and paste any content into the `Corrected` text
+            file.  If there are any comments, then separate the comments from the main
+            article content in the text file with the string `!@#$%^&*()  COMMENTS`
+            on its own line.
+3.  Give your data back to the research community so everyone can benefit :-)
+
+## Training content extraction models
+
+1.  Create the block corrected files needed to do supervised learning on the block level.
+First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, then run
+
+    from dragnet.data_processing import extract_gold_standard_all_training_data
+    rootdir = '/my/data/directory/'
+    extract_gold_standard_all_training_data(rootdir)
+
+This solves the longest common sub-sequence problem to partition the data into blocks.
+TODO (occasionally this will fail...)
+
+2.  Run `split_data` to generate the `training.txt` and `test.txt` files split.
+
+
+## Evaluating content extraction models
+
+Use `evaluate_models_tokens` in `model_training` to evaluate models.  For example,
+to evaluate the baseline model (keep everything) run:
+
+    from dragnet.model_training import evaluate_models_tokens
+    from dragnet.content_extraction_model import baseline_model
+
+    rootdir = '/my/data/directory/'
+    scores = evaluate_models_tokens(rootdir, baseline_model)
+
+
