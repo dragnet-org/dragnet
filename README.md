@@ -85,13 +85,13 @@ You can easily create your own training data:
 
 1.  Create a directory hierarchy as detailed above (`HTML` and `Corrected` sub-directories)
 2.  Add `HTML` and `Corrected` files.
-    a.  Save HTML files to the directory to be used as training examples.  This is the raw HTML from crawling the page or "Save as.." in a browser.
-    b.  Extract the content from the `html` files into the `Corrected` files.
-        i.  Open each HTML file in a web browser with the network connection turned off
+    1.  Save HTML files to the directory to be used as training examples.  This is the raw HTML from crawling the page or "Save as.." in a browser.
+    2.  Extract the content from the `html` files into the `Corrected` files.
+        1.  Open each HTML file in a web browser with the network connection turned off
             and Javascript disabled.  This simulates the information available to a simple
             web crawler that does not execute Javascript or fetch additional
             resources other then the HTML.
-        ii.  Cut and paste any content into the `Corrected` text
+        2.  Cut and paste any content into the `Corrected` text
             file.  If there are any comments, then separate the comments from the main
             article content in the text file with the string `!@#$%^&*()  COMMENTS`
             on its own line.
@@ -100,15 +100,13 @@ You can easily create your own training data:
 ## Training content extraction models
 
 1.  Create the block corrected files needed to do supervised learning on the block level.
-First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, then run
+First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, then run:
 
-    from dragnet.data_processing import extract_gold_standard_all_training_data
-    rootdir = '/my/data/directory/'
-    extract_gold_standard_all_training_data(rootdir)
+        from dragnet.data_processing import extract_gold_standard_all_training_data
+        rootdir = '/my/data/directory/'
+        extract_gold_standard_all_training_data(rootdir)
 
-This solves the longest common sub-sequence problem to partition the data into blocks.
-TODO (occasionally this will fail...)
-
+    This solves the longest common sub-sequence problem to partition the data into blocks.  TODO (occasionally this will fail...)
 2.  Run `split_data` to generate the `training.txt` and `test.txt` files split.
 
 
