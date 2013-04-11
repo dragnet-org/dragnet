@@ -7,12 +7,16 @@ Dragnet
 Dragnet isn't interested in the shiny chrome or boilerplate dressing of a 
 webpage. It's interested in... 'just the facts.'
 
-It is meant to become a collection of reference implementations of various
+Our implementation is an ensemble of a few various
 dechroming / content extraction algorithms.
 
 This document contains details of the code and training data.
 We also wrote a short paper describing the machine learning approach in Dragnet,
-to be published at WWW 2013: TODO ADD LINK
+to be published at WWW 2013.  You can find the paper
+[here.](http://github.com/seomoz/dragnet/blob/master/dragnet_www2013.pdf?raw=true)
+
+_Note: the code on this branch and this documentation is currently undergoing active
+development.  This notice will be removed when it is stable._
 
 
 # GETTING STARTED
