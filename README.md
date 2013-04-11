@@ -2,8 +2,6 @@
 Dragnet
 =====================================
 
-# Overview
-
 Dragnet isn't interested in the shiny chrome or boilerplate dressing of a 
 webpage. It's interested in... 'just the facts.'
 
@@ -21,7 +19,11 @@ development.  This notice will be removed when it is stable._
 
 # GETTING STARTED
 
+Coming soon..
+
 ## How to run a model
+
+Coming soon..
 
 ## Dependencies
 
@@ -45,6 +47,8 @@ the necessary packages with something like:
 
 
 # More details about the code structure
+
+Coming soon.. a set of jumbled non-sense here now.
 
 We provide a few high level classes for manipulating the data and doing the training.
 
@@ -87,17 +91,27 @@ A training data set consists of a collection of web pages and the extracted
 a data set as a set of files on disk with a specific directory and naming
 convention.  Each training example in the data set
 is identified by a common file root.  
+
 All the data for a given training example `X` lives under a common `ROOTDIR`
 in a set of sub-directories as follows:
 
 * `$ROOTDIR/HTML/` contains the raw HTML named `X.html`
 * `$ROOTDIR/Corrected/` contains the extracted content named `X.html.corrected.txt`
 
-We provide our training data described in the paper at TODO: add link
+We will eventually provide a link to the training data.  Until then, if you would like
+it send an e-mail to Matt Peters (address listed in our paper).
 
-We have also tested our model on the data used in Weninger et al at TODO: add link.
-and include a bash script `cetr_to_dragnet.sh` to convert the data
-from CETR to Dragnet format.
+We have also tested our model on the data used in Weninger et al.
+["CETR -- Content Extraction with Tag Ratios" (WWW 2010)](http://web.engr.illinois.edu/~weninge1/cetr/)
+(scroll to the bottom for a link to their data).  We used the bash script
+`cetr_to_dragnet.sh` to convert the data from CETR to Dragnet format.  In using there data,
+we had to remove a small number of documents (less then 15) since they were so mal-formed
+libxml2 could not parse them.  We also found some systematic problems with the data in the
+`cleaneval-zh` and `myriad` data sets so decided not to use them.  For example,
+many of the HTML files in `cleaneval-zh` contain several `</html>` tags, followed immediately
+with `<DOCTYPE ..>` tags that libxml2 bonks out on.  Many of the gold standard files
+in the `myriad` data contain significant portions of duplicated content that is not
+present in the HTML document that we cannot use without a lot of manual cleanup.
 
 ## Creating your own training data
 
@@ -128,7 +142,7 @@ First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, the
 
     This solves the longest common sub-sequence problem to partition the data
     into blocks.  Occasionally this will fail if lxml (libxml2) cannot parse
-    the HTML document.
+    a HTML document.  In this case, remove the offending document and restart the process.
 2.  Run `split_data` to generate the `training.txt` and `test.txt` files split.
 
 
