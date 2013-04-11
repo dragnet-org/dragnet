@@ -76,7 +76,7 @@ class DragnetModelTrainer(object):
         elif training_or_test == 'test':
             data_for_features = data.test_data
         else:
-            raise InputError
+            raise ValueError
 
         first_data_features, blocks = model.make_features(
                 data_for_features[0][0], train, encoding=data_for_features[0][3])
@@ -304,5 +304,87 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
             ftable.close()
 
     return errors
+
+
+def train_models(datadir, output_prefix, features_to_use, lam=10):
+    """Train a content extraction model.
+
+    Does feature centering, trains the logistic regression model,
+    pickles the final model and writes the train/test block level errors
+    to a file
+
+    datadir = root directory for all the data
+    output_prefix = write the trained model files, errors, etc
+        to files starting with this.
+    features_to_use = a list of the features to use.  Must be one of the features
+        known by AllFeatures
+    lambda = lambda regularization parameter for LogisticRegression
+    """
+    import pprint
+    import pickle
+    from . import AllFeatures
+    from .blocks import TagCountBlockifier as Blkr
+
+    from mozsci.models import LogisticRegression
+    from mozsci.numpy_util import NumpyEncoder
+
+    # assemble the features
+    feature_instances = []
+    for f in features_to_use:
+        feature_instances.append(AllFeatures.get(f))
+
+    # compute the mean/std and save them
+    data = DragnetModelData(datadir)
+    trainer = DragnetModelTrainer()
+
+    print "Initializing features"
+    k = 0
+    for f in feature_instances:
+        # check to see if this feature needs to be init
+        # if so, then init it, take the return object and serialize to json
+        if hasattr(f, 'init_params'):
+            # initialize it
+            model_init = ContentExtractionModel(Blkr, [f], None)
+            features, labels, weights = trainer.make_features_from_data(data, model_init, train=True)
+            mean_std = f.init_params(features)
+            f.set_params(mean_std)
+            with open("%s_mean_std_%s.json" % (output_prefix, features_to_use[k]), 'w') as fout:
+                fout.write("%s" % json.dumps(mean_std, cls=NumpyEncoder))
+        k += 1
+
+    model_to_train = ContentExtractionModel(Blkr, feature_instances, None)
+
+    # train the model
+    print "Training the model"
+    model = LogisticRegression(lam=lam)
+    features, labels, weights = trainer.make_features_from_data(data,
+                         model_to_train, training_or_test='training')
+    model.fit(features, labels, weights=np.minimum(weights, 200))
+
+    print "Checking errors"
+    train_errors = accuracy_auc(labels, model.predict(features), weights=weights)
+
+    # check errors on test set
+    test_features, test_labels, test_weights = trainer.make_features_from_data(data,
+                     model_to_train, training_or_test='test')
+    test_weights = np.minimum(test_weights, 200.0)
+    test_errors = accuracy_auc(test_labels, model.predict(test_features), weights=test_weights)
+
+    # write errors to a file
+    with open(output_prefix + '_block_errors.txt', 'w') as f:
+        f.write("Training errors for final model (block level):\n")
+        pprint.pprint(train_errors, f)
+        f.write("Test errors (block level):\n")
+        pprint.pprint(test_errors, f)
+
+    # pickle the final model!
+    # use the one with threshold = 0.5
+    pickle.dump(ContentExtractionModel(Blkr,
+                        feature_instances,
+                        model,
+                        threshold=0.5), open(output_prefix + '_content_model.pickle', 'w'))
+
+    print "done!"
+
 
 
