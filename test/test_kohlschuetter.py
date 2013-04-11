@@ -1,6 +1,6 @@
 
 import unittest
-from dragnet import Blockifier, PartialBlock, BlockifyError, kohlschuetter, ContentExtractionModel, NormalizedFeature, kohlschuetter_features
+from dragnet import Blockifier, PartialBlock, BlockifyError, kohlschuetter
 from lxml import etree
 import re
 import numpy as np
