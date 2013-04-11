@@ -3,18 +3,19 @@ dragnet
 Dragnet isn't interested in the shiny chrome or boilerplate dressing of a 
 webpage. It's interested in... 'just the facts.'
 
-It is meant to become a collection of reference implementations of various 
-dechroming / content extraction algorithms.
+Dragnet will be published and presented at the 22nd International World Wide Web Conference
+(WWW 2013).  See the paper
+<a href="https://github.com/seomoz/dragnet/blob/master/dragnet_www2013.pdf">here.</a>
+The `update_201211` branch contains the code from the paper and additional documentation
+on the data set.
 
+Running
+-------
 Each of the algorithms is implemented as a class of static methods that can be
 imported from the top level of dragnet, and implement a method `analyze`, which 
 accepts a string of HTML and returns a string representative of the content.
 
-The latest dev branch including all code for the WWW 2013 paper submission
-is `update_201211`.  It is currently under active and frequent development.
 
-Running
--------
 Fill a directory `documents` with per-site folders of the HTML sources of 
 documents from that site, and then `run.py` will iterate through each of the 
 input files and produce a corresponding file in `output` with just the content.
