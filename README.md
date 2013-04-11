@@ -3,10 +3,10 @@ Dragnet
 =====================================
 
 Dragnet isn't interested in the shiny chrome or boilerplate dressing of a 
-webpage. It's interested in... 'just the facts.'
+web page. It's interested in... 'just the facts.'
 
 Our implementation is an ensemble of a few various
-dechroming / content extraction algorithms.
+de-chroming / content extraction algorithms.
 
 This document contains details of the code and training data.
 We also wrote a short paper describing the machine learning approach in Dragnet,
@@ -60,7 +60,7 @@ The `DragnetModelTrainer` does ...
 
 
 abstract base classes for blockifier, features and machine learning model
-and a model class that chains them together and encapsuates all three
+and a model class that chains them together and encapsulates all three
 
 
 tokenizer = callable(string) and returns list of tokens
@@ -101,11 +101,11 @@ in a set of sub-directories as follows:
 We will eventually provide a link to the training data.  Until then, if you would like
 it send an e-mail to Matt Peters (address listed in our paper).
 
-We have also tested our model on the data used in Weninger et al.
-["CETR -- Content Extraction with Tag Ratios" (WWW 2010)](http://web.engr.illinois.edu/~weninge1/cetr/)
+We have also tested our model on the data used in Weaning et al.
+["CE TR -- Content Extraction with Tag Ratios" (WWW 2010)](http://web.engr.illinois.edu/~weninge1/cetr/)
 (scroll to the bottom for a link to their data).  We used the bash script
-`cetr_to_dragnet.sh` to convert the data from CETR to Dragnet format.  In using there data,
-we had to remove a small number of documents (less then 15) since they were so mal-formed
+`cetr_to_dragnet.sh` to convert the data from CETR to Dragnet format.  In using their data,
+we had to remove a small number of documents (less then 15) since they were so malformed
 libxml2 could not parse them.  We also found some systematic problems with the data in the
 `cleaneval-zh` and `myriad` data sets so decided not to use them.  For example,
 many of the HTML files in `cleaneval-zh` contain several `</html>` tags, followed immediately
