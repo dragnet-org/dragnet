@@ -4,6 +4,7 @@ import re
 import numpy as np
 import scipy.weave
 from .kohlschuetter import kohlschuetter_features
+import json
 
 # implementations of the features interface.
 #
@@ -22,11 +23,6 @@ from .kohlschuetter import kohlschuetter_features
 #   where computed_features is a call with train=True,
 #   and ret is the returned value from features.init_params.
 #
-#  If the feature implements init_params, then it must also implement
-#    serialize_feature(self) which returns a string 
-#  and load_feature(string) as a classmethod that returns and instance
-#  of the feature from the string serialization.
-
 
 def normalize_features(features, mean_std):
     """Normalize the features IN PLACE.
@@ -35,22 +31,12 @@ def normalize_features(features, mean_std):
 
        mean_std = {'mean':[list of means],
                    'std':[list of std] }
-        mean_std HAS AN OPTIONAL 'log' key.
-            If present, it includes a flag whether to take a log first.
-            If not None, then it gives a value to do a transform:
-                log(x + exp(-value)) + value
        the lists are the same length as features.shape[1]
        
        if features is None, then do nothing"""
     if features is not None:
-        if 'log' in mean_std:
-            for k in xrange(features.shape[1]):
-                if mean_std['log'][k] is not None:
-                    features[:, k] = np.log(features[:, k] + np.exp(-mean_std['log'][k])) + mean_std['log'][k]
-
         for k in xrange(features.shape[1]):
             features[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
-
 
 
 class NormalizedFeature(object):
@@ -101,7 +87,6 @@ class NormalizedFeature(object):
             return json.load(open(mean_std, 'r'))
         else:
             return mean_std
-
 
 
 re_capital = re.compile('[A-Z]')
