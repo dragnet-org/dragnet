@@ -17,10 +17,6 @@ This project was heavily insprired by
 Kohlschütter et al, [Boilerplate Detection using Shallow Text Features](http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf) and 
 Weninger et al [CETR -- Content Extraction with Tag Ratios](http://web.engr.illinois.edu/~weninge1/cetr/).
 
-_Note: the code on this branch and this documentation is currently undergoing active
-development.  This notice will be removed when it is stable._
-
-
 # GETTING STARTED
 
 We provide a set of models in `dragnet.models`.  Each implements the
@@ -33,16 +29,16 @@ link/text density trained on our data,
 
 In addition we provide:
 
-    * `weninger_model`: the CETR k-means model from Weninger et al
-    * `kohlschuetter_css_model`: the shallow text + CSS features model from the paper
-    * `kohlschuetter_css_weninger_model`: the shallow text + CSS + CETR model from the paper
-    * `kohlschuetter_weninger_model`: includes the shallow text + CETR features
+* `weninger_model`: the CETR k-means model from Weninger et al
+* `kohlschuetter_css_model`: the shallow text + CSS features model from the paper
+* `kohlschuetter_css_weninger_model`: the shallow text + CSS + CETR model from the paper
+* `kohlschuetter_weninger_model`: includes the shallow text + CETR features
 
 ## A note about encoding
 
 If you know the encoding of the document, you can pass it down to the parser:
 
-        content = kohlschuetter_model.analyze(html_string, encoding='utf-8')
+    content = kohlschuetter_model.analyze(html_string, encoding='utf-8')
 
 Otherwise, we try to guess the encoding from a `meta` tag or specified
 `<?xml encoding=".."?>` tag.  If that fails, we assume "UTF-8".
@@ -70,40 +66,19 @@ the necessary packages with something like:
 
 # More details about the code structure
 
-Coming soon.. a set of jumbled non-sense here now.
+Each of the models in `dragnet.models` implements the
+content extraction model interface defined in `ContentExtractionModel`.
+A content extraction model encapsulates a blockifier, some feature
+extractors and a machine learning model.
 
-We provide a few high level classes for manipulating the data and doing the training.
-
-`DragnetModelData` encapsulates the data set and includes methods for reading it from disk,
-making some diagnostic plots and exposing the data to the
-`DragnetModelTrainer` class.
-
-The `DragnetModelTrainer` does ...
-
-
-abstract base classes for blockifier, features and machine learning model
-and a model class that chains them together and encapsulates all three
-
-
-tokenizer = callable(string) and returns list of tokens
-
-
-  blockifier = implements blockify that takes string and returns
-           an list of Block instances
-
-  features = callable that takes list of blocks
-             and returns a numpy array of features (len(blocks), nfeatures)
-             It accepts an optional keyword "train" that is only called in an initial
-             pre-processing state for training
-           feature.nfeatures = attribute that gives number of features
-           optionally feature.init_params(features) that sets some global state
-              if features.init_params is implemented, then must also implement
-               features.set_params(ret) where ret is the returned value from
-               features.init_params
-
-  machine learning model = implements sklearn interface
-
-
+A blockifier implements `blockify` that takes a HTML string and returns a list
+of block objects.  A feature extractor is a callable that takes a list
+of blocks and returns a numpy array of features (len(blocks), nfeatures).
+takes the list of block objects.  There is some additonal optional functionality
+to "train" the feature (e.g. estimate parameters needed for centering)
+specified in `features.py`.  The machine learning model implements
+the sklearn interface (`predict` and `fit`) and is used to compute
+the content/no-content prediction for each block.
 
 
 # Details about the training data
