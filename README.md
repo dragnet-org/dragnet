@@ -77,7 +77,7 @@ of blocks and returns a numpy array of features `(len(blocks), nfeatures)`.
 There is some additional optional functionality
 to "train" the feature (e.g. estimate parameters needed for centering)
 specified in `features.py`.  The machine learning model implements
-the [scikits-klearn](http://scikit-learn.org/stable/) interface (`predict` and `fit`) and is used to compute
+the [scikits-learn](http://scikit-learn.org/stable/) interface (`predict` and `fit`) and is used to compute
 the content/no-content prediction for each block.
 
 
@@ -138,8 +138,9 @@ First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, the
         rootdir = '/my/data/directory/'
         extract_gold_standard_all_training_data(rootdir)
 
-    This solves the longest common sub-sequence problem to partition the data
-    into blocks.  Occasionally this will fail if lxml (libxml2) cannot parse
+    This solves the longest common sub-sequence problem to determine
+    which blocks were extracted in the gold standard.
+    Occasionally this will fail if lxml (libxml2) cannot parse
     a HTML document.  In this case, remove the offending document and restart the process.
 2.  Run `split_data` to generate the `training.txt` and `test.txt` files split.
 3.  Train the model with your selected features.  For example, to 
@@ -162,7 +163,7 @@ First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, the
 ## Evaluating content extraction models
 
 Use `evaluate_models_tokens` in `model_training` to compute the token level
-precision, recall and F1.  You can   For example,
+precision, recall and F1.  For example,
 to evaluate the baseline model (keep everything) run:
 
     from dragnet.model_training import evaluate_models_tokens
