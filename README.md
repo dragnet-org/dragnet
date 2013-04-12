@@ -13,6 +13,10 @@ We also wrote a short paper describing the machine learning approach in Dragnet,
 to be published at WWW 2013.  You can find the paper
 [here.](http://github.com/seomoz/dragnet/blob/master/dragnet_www2013.pdf?raw=true)
 
+This project was heavily insprired by
+Kohlschütter et al, [Boilerplate Detection using Shallow Text Features](http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf) and 
+Weninger et al [CETR -- Content Extraction with Tag Ratios](http://web.engr.illinois.edu/~weninge1/cetr/).
+
 _Note: the code on this branch and this documentation is currently undergoing active
 development.  This notice will be removed when it is stable._
 
@@ -102,7 +106,7 @@ We will eventually provide a link to the training data.  Until then, if you woul
 it send an e-mail to Matt Peters (address listed in our paper).
 
 We have also tested our model on the data used in Weaning et al.
-["CE TR -- Content Extraction with Tag Ratios" (WWW 2010)](http://web.engr.illinois.edu/~weninge1/cetr/)
+["CETR -- Content Extraction with Tag Ratios" (WWW 2010)](http://web.engr.illinois.edu/~weninge1/cetr/)
 (scroll to the bottom for a link to their data).  We used the bash script
 `cetr_to_dragnet.sh` to convert the data from CETR to Dragnet format.  In using their data,
 we had to remove a small number of documents (less then 15) since they were so malformed
@@ -144,17 +148,32 @@ First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, the
     into blocks.  Occasionally this will fail if lxml (libxml2) cannot parse
     a HTML document.  In this case, remove the offending document and restart the process.
 2.  Run `split_data` to generate the `training.txt` and `test.txt` files split.
+3.  Train the model with your selected features.  For example, to 
+    train a model with the shallow text features from Kohlschuetter et al.
+    and the CETR features from Weninger et al. use:
+
+        from dragnet.model_training import train_models
+
+        rootdir = '/my/data/directory/'
+        output_prefix = '/path/to/output/kohlschuetter_weninger'
+        features_to_use = ['kohlschuetter', 'weninger']
+        train_models(rootdir, output_prefix, features_to_use, lam=100)
+
+    This trains the model and writes a pickled version of it along with some
+    some *block level* classification errors to a file.
+    To compute the token level performance, see the next section.
+
 
 
 ## Evaluating content extraction models
 
-Use `evaluate_models_tokens` in `model_training` to evaluate models.  For example,
+Use `evaluate_models_tokens` in `model_training` to compute the token level
+precision, recall and F1.  You can   For example,
 to evaluate the baseline model (keep everything) run:
 
     from dragnet.model_training import evaluate_models_tokens
-    from dragnet.content_extraction_model import baseline_model
+    from dragnet.models import baseline_model
 
     rootdir = '/my/data/directory/'
     scores = evaluate_models_tokens(rootdir, baseline_model)
-
 
