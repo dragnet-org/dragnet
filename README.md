@@ -13,7 +13,7 @@ We also wrote a short paper describing the machine learning approach in Dragnet,
 to be published at WWW 2013.  You can find the paper
 [here.](http://github.com/seomoz/dragnet/blob/master/dragnet_www2013.pdf?raw=true)
 
-This project was heavily insprired by
+This project was heavily inspired by
 Kohlschütter et al, [Boilerplate Detection using Shallow Text Features](http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf) and 
 Weninger et al [CETR -- Content Extraction with Tag Ratios](http://web.engr.illinois.edu/~weninge1/cetr/).
 
@@ -21,8 +21,8 @@ Weninger et al [CETR -- Content Extraction with Tag Ratios](http://web.engr.illi
 
 We provide a set of models in `dragnet.models`.  Each implements the
 `analyze` method that takes an HTML string and returns the content string.
-For example, to run our implementation of Kohlschütter et al. using
-link/text density trained on our data,
+For example, to run our implementation of Kohlschütter et al.
+trained on our data,
 
     from dragnet.models import kohlschuetter_model
     content = kohlschuetter_model.analyze(html_string)
@@ -73,24 +73,25 @@ extractors and a machine learning model.
 
 A blockifier implements `blockify` that takes a HTML string and returns a list
 of block objects.  A feature extractor is a callable that takes a list
-of blocks and returns a numpy array of features (len(blocks), nfeatures).
-takes the list of block objects.  There is some additonal optional functionality
+of blocks and returns a numpy array of features `(len(blocks), nfeatures)`.
+There is some additional optional functionality
 to "train" the feature (e.g. estimate parameters needed for centering)
 specified in `features.py`.  The machine learning model implements
-the sklearn interface (`predict` and `fit`) and is used to compute
+the [scikits-klearn](http://scikit-learn.org/stable/) interface (`predict` and `fit`) and is used to compute
 the content/no-content prediction for each block.
 
 
 # Details about the training data
 
 A training data set consists of a collection of web pages and the extracted
-'gold standard' content.  For our purposes we standardize  
+"gold standard" content.  For our purposes we standardize  
 a data set as a set of files on disk with a specific directory and naming
-convention.  Each training example in the data set
-is identified by a common file root.  
+convention.  Each training example is all the data associated
+with a single web page and all data for all examples lives under
+a common `ROOTDIR`.
 
-All the data for a given training example `X` lives under a common `ROOTDIR`
-in a set of sub-directories as follows:
+Each training example is identified by a common file root.
+The data for example `X` lives in a set of sub-directories as follows:
 
 * `$ROOTDIR/HTML/` contains the raw HTML named `X.html`
 * `$ROOTDIR/Corrected/` contains the extracted content named `X.html.corrected.txt`
