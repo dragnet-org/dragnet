@@ -44,7 +44,6 @@ setup(
     author           = 'Dan Lecocq, Matt Peters',
     author_email     = 'dan@seomoz.org, matt@seomoz.org',
     url              = 'http://github.com/seomoz/dragnet',
-    packages         = ['dragnet'],
     license          = 'MIT',
     platforms        = 'Posix; MacOS X',
     classifiers      = [
@@ -57,6 +56,10 @@ setup(
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Intended Audience :: Science/Research'
         ],
+
+    packages         = ['dragnet'],
+    package_dir      = {'dragnet':'dragnet'},
+    package_data     = {'dragnet':['pickled_models/*.pickle']},
     cmdclass         = {'build_ext': build_ext},
     ext_modules      = ext_modules,
 )
