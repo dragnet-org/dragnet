@@ -490,7 +490,8 @@ class Blockifier(object):
         if encoding is None, then try to extract it from the HTML
         '''
         # First, we need to parse the thing
-        encoding = encoding or guess_encoding(s, default='CHARDET')
+        #encoding = encoding or guess_encoding(s, default='CHARDET')
+        encoding = encoding or guess_encoding(s, default='utf-8')
         try:
             html = etree.fromstring(s, etree.HTMLParser(recover=True, encoding=encoding, remove_comments=True, remove_pis=True))
         except:
