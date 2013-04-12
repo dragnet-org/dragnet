@@ -23,11 +23,29 @@ development.  This notice will be removed when it is stable._
 
 # GETTING STARTED
 
-Coming soon..
+We provide a set of models in `dragnet.models`.  Each implements the
+`analyze` method that takes an HTML string and returns the content string.
+For example, to run our implementation of Kohlschütter et al. using
+link/text density trained on our data,
 
-## How to run a model
+    from dragnet.models import kohlschuetter_model
+    content = kohlschuetter_model.analyze(html_string)
 
-Coming soon..
+In addition we provide:
+
+    * `weninger_model`: the CETR k-means model from Weninger et al
+    * `kohlschuetter_css_model`: the shallow text + CSS features model from the paper
+    * `kohlschuetter_css_weninger_model`: the shallow text + CSS + CETR model from the paper
+    * `kohlschuetter_weninger_model`: includes the shallow text + CETR features
+
+## A note about encoding
+
+If you know the encoding of the document, you can pass it down to the parser:
+
+        content = kohlschuetter_model.analyze(html_string, encoding='utf-8')
+
+Otherwise, we try to guess the encoding from a `meta` tag or specified
+`<?xml encoding=".."?>` tag.  If that fails, we assume "UTF-8".
 
 ## Dependencies
 
