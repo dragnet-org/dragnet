@@ -45,6 +45,7 @@ Based on [Boilerplate Detection using Shallow Text Features](
     
     from dragnet import Kohlschuetter
     import requests
+    koh = Kohlschuetter()
     r = requests.get(
         'http://www.wired.com/wiredscience/2012/06/latest-higgs-rumors/')
-    print Kohlschuetter.analyze(r.content)
+    print koh.analyze(r.content)
