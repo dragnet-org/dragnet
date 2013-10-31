@@ -24,6 +24,9 @@ class KohlschuetterUnitBase(unittest.TestCase):
             self.assertEqual(link_tokens[k], true_tokens[k])
 
 class TestKohlschuetterBase(KohlschuetterUnitBase):
+    # Result from the callback test
+    div_count = -1
+
     def test_lxml_error(self):
         """tests the case where lxml raises an error during parsing
 
@@ -53,6 +56,20 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                </div>"""
         blocks = KohlschuetterBase.blockify(s)
         self.block_output_tokens(blocks, [['some', 'text', 'in', 'italic', 'and', 'something', 'else', 'bold', 'stuff', 'after', 'the', 'script']])
+
+    @staticmethod
+    def count_divs(tree):
+        div_xpath = etree.XPath("//div")
+        TestKohlschuetterBase.div_count = len(div_xpath(tree))
+
+    def test_callback(self):
+        s = """<div>some text <i>in italic</i> and something else
+                    <pre> <div>skip this</div> </pre>
+                    <b>bold stuff</b> after the script
+               </div>"""
+        blocks = KohlschuetterBase.blockify(s,
+                                            TestKohlschuetterBase.count_divs)
+        self.assertEqual(TestKohlschuetterBase.div_count, 2)
 
     def test_simple_two_blocks(self):
         s = """<h1>A title <i>with italics</i> and other words</h1>
