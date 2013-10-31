@@ -26,16 +26,21 @@ from numpy import get_include
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
-ext_modules = [Extension('dragnet.lcs',
-    sources=["dragnet/lcs.pyx"],
-    include_dirs = [get_include()],
-    language="c++",
-)]
+ext_modules = [
+    Extension('dragnet.lcs',
+        sources=["dragnet/lcs.pyx"],
+        include_dirs = [get_include()],
+        language="c++"),
+    Extension('dragnet.blocks',
+         sources=["dragnet/blocks.pyx"],
+         include_dirs = [],
+         language="c++"),
+    ]
 
 
 setup(
     name             = 'dragnet',
-    version          = '0.2.0',
+    version          = '1.0.0',
     description      = 'Just the facts, ma\'am',
     author           = 'Dan Lecocq, Matt Peters',
     author_email     = 'dan@seomoz.org, matt@seomoz.org',
