@@ -234,9 +234,10 @@ class KohlschuetterBase(object):
     
 
     @staticmethod
-    def blockify(s):
+    def blockify(s, parse_callback=None):
         '''
         Take a string of HTML and return a series of blocks
+        parse_callback, if not None, will be called on the parse result.
         '''
         # First, we need to parse the thing
         try:
@@ -248,16 +249,21 @@ class KohlschuetterBase(object):
             raise BlockifyError
 
         blocks = KohlschuetterBase.blocks_from_tree(html)
+
+        if parse_callback is not None:
+            parse_callback(html)
+
         # only return blocks with some text content
         return [ele for ele in blocks if KohlschuetterBase.re_non_alpha.sub('', ele.text) != '']
 
 
-    def analyze(self, s, blocks=False):
+    def analyze(self, s, blocks=False, parse_callback=None):
         """s = HTML string
         returns the content as a string, or if `block`, then the blocks
         themselves are returned.
+        parse_callback, if not None, will be called on the parse result.
         """
-        features, blocks_ = self.make_features(s)
+        features, blocks_ = self.make_features(s, parse_callback)
         if features is not None:
             content_mask = self.block_analyze(features)
             results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
@@ -291,10 +297,11 @@ class KohlschuetterBase(object):
 
 class Kohlschuetter(KohlschuetterBase):
     @staticmethod
-    def make_features(s):
+    def make_features(s, parse_callback=None):
         """s = the HTML string
-        return a numpy array of the features + the associated raw content"""
-        blocks = KohlschuetterBase.blockify(s)
+        return a numpy array of the features + the associated raw content
+        parse_callback, if not None, will be called on the parse result."""
+        blocks = KohlschuetterBase.blockify(s, parse_callback)
 
         # doc needs to be at least three blocks, otherwise return everything
         if len(blocks) < 3:
@@ -417,9 +424,10 @@ class KohlschuetterNormalized(Kohlschuetter):
         Kohlschuetter.__init__(self)
         self._mean_std = KohlschuetterNormalized.load_mean_std(mean_std)
 
-    def make_features(self, s):
-        "Make text, anchor features and some normalization"
-        features, blocks = Kohlschuetter.make_features(s)
+    def make_features(self, s, parse_callback=None):
+        """Make text, anchor features and some normalization
+        parse_callback, if not None, will be called on the parse result."""
+        features, blocks = Kohlschuetter.make_features(s, parse_callback)
         normalize_features(features, self._mean_std)
         return features, blocks
 
@@ -467,11 +475,12 @@ def token_feature(blocks):
 
 class KohlschuetterExpanded(KohlschuetterNormalized):
     """An model that takes the Kohlschuetter features and adds
-    some additional ones"""
-    def make_features(self, s):
+    some additional ones
+    parse_callback, if not None, will be called on the parse result."""
+    def make_features(self, s, parse_callback=None):
         from scipy import percentile
 
-        features_koh, blocks = Kohlschuetter.make_features(s)
+        features_koh, blocks = Kohlschuetter.make_features(s, parse_callback)
         if features_koh is None:
             return None, blocks
 
