@@ -652,18 +652,6 @@ class Blockifier(object):
       Implements the blockify interface
     """
 
-    # All of these tags will be /completely/ ignored
-    # TODO
-    blacklist = set([
-        etree.Comment, 'applet', 'area', 'base', 'basefont', 'bdo', 'button', 
-        'caption', 'fieldset', 'fram', 'frameset', 
-        'iframe', 'img', 'input', 'legend', 'link', 'menu', 'meta', 
-        'noframes', 'noscript', 'object', 'optgroup', 'option', 'param', 
-        'script', 'select', 'style', 'textarea', 'var', 'xmp',
-        'like', 'like-box', 'plusone'
-    ])
-    
-
     @staticmethod
     def blocks_from_tree(tree, pb=PartialBlock):
         cdef list results = []
