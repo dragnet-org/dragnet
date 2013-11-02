@@ -25,8 +25,6 @@ class Testencoding(unittest.TestCase):
         self.assertEqual(blocks.guess_encoding(s, 'asciI'), 'asciI')
 
 
-
-
 class Test_text_subtree(unittest.TestCase):
     def test_text_from_subtree(self):
         from lxml import etree
@@ -36,6 +34,15 @@ class Test_text_subtree(unittest.TestCase):
         text_str = ' '.join([ele.strip() for ele in text_list if ele.strip() != ''])
         self.assertEqual(text_str,
             'WILL THIS PASS THE TEST ??')
+
+    def test_text_from_subtree_decode_error(self):
+        from lxml import etree
+        # this is an invalid utf-8 character
+        s = '<div>\x92</div>'
+        tree = etree.fromstring(s, etree.HTMLParser(recover=True, encoding='utf-8'))
+        text_list = blocks.text_from_subtree(tree, tags_exclude=blocks.Blockifier.blacklist)
+        text_str = ' '.join([ele.strip() for ele in text_list if ele.strip() != ''])
+        self.assertEqual(text_str, '')
 
 
 class Test_TagCountPB(unittest.TestCase):
