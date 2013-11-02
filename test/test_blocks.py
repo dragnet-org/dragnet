@@ -30,7 +30,7 @@ class Test_text_subtree(unittest.TestCase):
         from lxml import etree
         s = """<a href=".">WILL <img src="."> THIS PASS <b>THE TEST</b> ??</a>"""
         tree = etree.fromstring(s, etree.HTMLParser(recover=True))
-        text_list = blocks.text_from_subtree(tree, tags_exclude=blocks.Blockifier.blacklist)
+        text_list = blocks.text_from_subtree(tree)
         text_str = ' '.join([ele.strip() for ele in text_list if ele.strip() != ''])
         self.assertEqual(text_str,
             'WILL THIS PASS THE TEST ??')
@@ -40,7 +40,7 @@ class Test_text_subtree(unittest.TestCase):
         # this is an invalid utf-8 character
         s = '<div>\x92</div>'
         tree = etree.fromstring(s, etree.HTMLParser(recover=True, encoding='utf-8'))
-        text_list = blocks.text_from_subtree(tree, tags_exclude=blocks.Blockifier.blacklist)
+        text_list = blocks.text_from_subtree(tree)
         text_str = ' '.join([ele.strip() for ele in text_list if ele.strip() != ''])
         self.assertEqual(text_str, '')
 
