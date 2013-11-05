@@ -1,4 +1,7 @@
-# cython: profile=True
+# cython: boundscheck=False
+# cython: wraparound=False
+# cython: nonecheck=False
+# cython: overflowcheck=True
 """
 Implementation of the blockifier interface and some classes
 to manipulate blocks
@@ -29,7 +32,8 @@ import math
 
 
 re_tokenizer = re.compile('[\W_]+', re.UNICODE)
-simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x) if len(ele) > 0]
+simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x)
+    if len(ele) > 0]
 
 # need a typedef for the callback function in text_from_subtree
 # and a default function that does nothing
@@ -65,6 +69,7 @@ BLOCKS = set([
 
 cdef string CTEXT = <string>'text'
 cdef string CTAIL = <string>'tail'
+cdef string A = <string>'a'
 
 cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
     <char>'\r', <char>'\f', <char>'\v'])
@@ -507,7 +512,7 @@ cdef class PartialBlock:
                 self.recurse(node, results, doc)
                 self.add_text(node, CTAIL)
 
-            elif tag == <string>'a':
+            elif tag == A:
                 # an anchor tag
                 self.add_anchor(node, doc)
                 self.update_css(node, False)
@@ -543,9 +548,7 @@ cdef class PartialBlock:
             attrib = self.css_attrib[k]
             attr = cetree.tree.xmlHasProp(child,
                 <cetree.tree.const_xmlChar*> attrib.c_str())
-            if attr is NULL:
-                deref(css_to_update)[attrib].push_back(<string>'')
-            else:
+            if attr is not NULL:
                 deref(css_to_update)[attrib].push_back(
                     <string>cetree.attributeValue(child, attr).encode('utf-8'))
 
@@ -635,7 +638,7 @@ cdef class TagCountPB(PartialBlock):
         self._tc += 1
 
         cdef string the_tag = cetree.namespacedName(tag)
-        if the_tag == <string>'a':
+        if the_tag == A:
             self._ac += 1
 
         if BLOCKS.find(the_tag) == BLOCKS.end():
