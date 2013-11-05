@@ -1,4 +1,8 @@
 #! /usr/bin/env python
+#cython: boundscheck=False
+#cython: wraparound=False
+#cython: nonecheck=False
+#cython: overflowcheck=True
 # -*- coding: utf-8 -*-
 """
 Implementation of the blockifier interface and some classes
@@ -42,10 +46,11 @@ cdef void empty_callback(PartialBlock pb, cetree.tree.xmlNode* x):
     return
 
 # typedefs for the functions that subclasses of PartialBlock implement
-ctypedef void (*reinit_t)()
-ctypedef cpp_map[string, int] (*name_t)(bool)
-ctypedef void (*subtree_t)(int)
+ctypedef void (*reinit_t)(PartialBlock)
+ctypedef cpp_map[string, int] (*name_t)(PartialBlock, bool)
+ctypedef void (*subtree_t)(PartialBlock, int)
 
+cdef inline int int_min(int a, int b): return a if a <= b else b
 
 # tags we'll ignore completely
 cdef cpp_set[string] BLACKLIST
@@ -64,6 +69,9 @@ cdef cpp_set[string] BLOCKS
 BLOCKS = set([
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'table', 'map',
 ])
+
+cdef string CTEXT = <string>'text'
+cdef string CTAIL = <string>'tail'
 
 
 class Block(object):
@@ -258,7 +266,7 @@ cdef class PartialBlock:
         # call self.reinit_name() for each name
         cdef size_t k
         for k in range(self._reinit_func.size()):
-            self._reinit_func[k]()
+            self._reinit_func[k](self)
 
     cdef reinit(self):
         self.text.clear()
@@ -302,7 +310,7 @@ cdef class PartialBlock:
         cdef size_t k
         ret.clear()
         for k in range(self._name_func.size()):
-            to_add = self._name_func[k](append)
+            to_add = self._name_func[k](self, append)
             it = to_add.begin()
             while it != to_add.end():
                 ret[deref(it).first] = deref(it).second
@@ -348,7 +356,7 @@ cdef class PartialBlock:
         text_or_tail is 'text' or 'tail'"""
         cdef object t
         try:
-            if text_or_tail == <string>'text':
+            if text_or_tail == CTEXT:
                 t = cetree.textOf(ele)
             else:
                 t = cetree.tailOf(ele)
@@ -401,7 +409,7 @@ cdef class PartialBlock:
         # call the subtree_featurename functions
         cdef size_t k
         for k in range(self._subtree_func.size()):
-            self._subtree_func[k](start_or_end)
+            self._subtree_func[k](self, start_or_end)
             
     cdef tokens_from_text(self, text):
         """given a list of text (as built in self.text for example)
@@ -474,17 +482,17 @@ cdef class PartialBlock:
                 # in the blacklist
                 # in this case, skip the entire tag,
                 # but it might have some tail text we need
-                self.add_text(node, <string>'tail')
+                self.add_text(node, CTAIL)
 
             elif BLOCKS.find(tag) != BLOCKS.end():
                 # this is the start of a new block
                 # add the existing block to the list,
                 # start the new block and recurse
                 self.add_block_to_results(results)
-                self.add_text(node, <string>'text')
+                self.add_text(node, CTEXT)
                 self.update_css(node, False)
                 self.recurse(node, results, doc)
-                self.add_text(node, <string>'tail')
+                self.add_text(node, CTAIL)
 
             elif tag == <string>'a':
                 # an anchor tag
@@ -494,10 +502,10 @@ cdef class PartialBlock:
             else:
                 # a standard tag.
                 # we need to get it's text and then recurse over the subtree
-                self.add_text(node, <string>'text')
+                self.add_text(node, CTEXT)
                 self.update_css(node, False)
                 self.recurse(node, results, doc)
-                self.add_text(node, <string>'tail')
+                self.add_text(node, CTAIL)
 
             # reset for next iteration
             next_node = cetree.nextElement(node)
@@ -537,81 +545,88 @@ cdef class PartialBlock:
                 self.css_tree[self.css_attrib[k]].pop_back()
 
 
-#class TagCountPB(PartialBlock):
-#    """Counts tags to compute content-tag ratios"""
-#
-#    # Associate with each block a tag count = the count of tags
-#    #   in the block.
-#    # Since we don't output empty blocks, we also keep track of the
-#    # tag count since the last block we output as an additional feature
-#    #
-#    
-#    # _tc = tag count in the current block, since the last <div>, <p>, etc.
-#    # _tc_lb = tag count since last block.  This is the tag count in prior
-#    # empty blocks, accumulated since the last block was output, excluding
-#    # the current block
-#    
-#    # so tc gets updated with each tag
-#    # tc is reset on block formation, even for empty blocks
-#    #
-#    # tc_lb is reset to 0 on block output
-#    # tc_lb accumulates tc on empty block formation
-#    #
-#
-#    def __init__(self, *args, **kwargs):
-#        PartialBlock.__init__(self, *args, **kwargs)
-#
-#        self._fe.append('tagcount')
-#
-#        # will keep track of tag count and tag count since last block
-#        self._tc = 1  # for the top level HTML tag
-#        self._ac = 0  # anchor count
-#        self._tc_lb = 0
-#        self._current_depth = 0
-#        self._min_depth_last_block = 0
-#        self._min_depth_last_block_pending = 0
-#
-#    def reinit_tagcount(self):
-#        pass
-#
-#    def subtree_tagcount(self, start_or_end):
-#        self._current_depth += start_or_end
-#        self._min_depth_last_block_pending = min(self._min_depth_last_block_pending, self._current_depth)
-#
-#    def tagcount(self, append):
-#        # here we assume that tc is updated
-#        # before features are extracted
-#        # that is, _tc includes the current tag
-#        # so we adjust by -1 on output
-#        #
-#        # since tc has already been updated
-#        if append:
-#            ret = {'tagcount_since_last_block':self._tc_lb,
-#                   'tagcount':self._tc - 1,
-#                   'anchor_count':self._ac,
-#                   'min_depth_since_last_block':self._min_depth_last_block}
-#            self._tc_lb = 0
-#            self._tc = 1
-#            self._ac = 0
-#            self._min_depth_last_block_pending = self._current_depth
-#            self._min_depth_last_block = self._current_depth
-#        else:
-#            ret = {}
-#            self._tc_lb += (self._tc - 1)
-#            self._tc = 1
-#            self._ac = 0
-#        return ret
-#
-#    def tag_tagcount(self, tag):
-#        self._tc += 1
-#        if tag.tag == 'a':
-#            self._ac += 1
-#
-#        if tag.tag not in Blockifier.blocks:
-#            self._min_depth_last_block = self._min_depth_last_block_pending
-#            
-##        print tag.tag, self._tc, self._tc_lb
+cdef class TagCountPB(PartialBlock):
+    """Counts tags to compute content-tag ratios"""
 
+    # Associate with each block a tag count = the count of tags
+    #   in the block.
+    # Since we don't output empty blocks, we also keep track of the
+    # tag count since the last block we output as an additional feature
+    #
+    
+    # _tc = tag count in the current block, since the last <div>, <p>, etc.
+    # _tc_lb = tag count since last block.  This is the tag count in prior
+    # empty blocks, accumulated since the last block was output, excluding
+    # the current block
+    
+    # so tc gets updated with each tag
+    # tc is reset on block formation, even for empty blocks
+    #
+    # tc_lb is reset to 0 on block output
+    # tc_lb accumulates tc on empty block formation
+    #
+
+    cdef int _tc, _ac, _tc_lb, _current_depth
+    cdef int _min_depth_last_block, _min_depth_last_block_pending
+
+    def __init__(self):
+        PartialBlock.__init__(self)
+
+        self._reinit_func.push_back(<reinit_t>TagCountPB.reinit_tagcount)
+        self._subtree_func.push_back(<subtree_t>TagCountPB.subtree_tagcount)
+        self._name_func.push_back(<name_t>TagCountPB.tagcount)
+        self._tag_func.push_back(<callback_t>TagCountPB.tag_tagcount)
+
+        # will keep track of tag count and tag count since last block
+        self._tc = 1  # for the top level HTML tag
+        self._ac = 0  # anchor count
+        self._tc_lb = 0
+        self._current_depth = 0
+        self._min_depth_last_block = 0
+        self._min_depth_last_block_pending = 0
+
+    cdef reinit_tagcount(self):
+        pass
+
+    cdef subtree_tagcount(self, int start_or_end):
+        self._current_depth += start_or_end
+        self._min_depth_last_block_pending = int_min(
+            self._min_depth_last_block_pending, self._current_depth)
+
+    cdef cpp_map[string, int] tagcount(self, bool append):
+        # here we assume that tc is updated
+        # before features are extracted
+        # that is, _tc includes the current tag
+        # so we adjust by -1 on output
+        #
+        # since tc has already been updated
+        cdef cpp_map[string, int] ret
+        ret.clear()
+        if append:
+            ret['tagcount_since_last_block'] = self._tc_lb
+            ret['tagcount'] = self._tc - 1
+            ret['anchor_count'] = self._ac
+            ret['min_depth_since_last_block'] = self._min_depth_last_block
+            self._tc_lb = 0
+            self._tc = 1
+            self._ac = 0
+            self._min_depth_last_block_pending = self._current_depth
+            self._min_depth_last_block = self._current_depth
+        else:
+            self._tc_lb += (self._tc - 1)
+            self._tc = 1
+            self._ac = 0
+        return ret
+
+    cdef tag_tagcount(self, cetree.tree.xmlNode* tag):
+        self._tc += 1
+
+        cdef string the_tag = cetree.namespacedName(tag)
+        if the_tag == <string>'a':
+            self._ac += 1
+
+        if BLOCKS.find(the_tag) == BLOCKS.end():
+            self._min_depth_last_block = self._min_depth_last_block_pending
 
 
 html_re = re.compile('meta\s[^>]*charset\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
@@ -640,9 +655,6 @@ def guess_encoding(s, default='utf-8'):
                 encoding = default
     return encoding
 
-
-class TagCountBlockifier:
-    pass
 
 class Blockifier(object):
     """A blockifier for web-page de-chroming that loosely follows the approach in
@@ -691,8 +703,8 @@ class Blockifier(object):
         return [ele for ele in blocks if re_tokenizer.sub('', ele.text) != '']
 
 
-#class TagCountBlockifier(Blockifier):
-#    @staticmethod
-#    def blockify(s, encoding=None):
-#        return Blockifier.blockify(s, encoding, pb=TagCountPB)
+class TagCountBlockifier(Blockifier):
+    @staticmethod
+    def blockify(s, encoding=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB)
 
