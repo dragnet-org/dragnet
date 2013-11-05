@@ -1,9 +1,4 @@
-#! /usr/bin/env python
-#cython: boundscheck=False
-#cython: wraparound=False
-#cython: nonecheck=False
-#cython: overflowcheck=True
-# -*- coding: utf-8 -*-
+# cython: profile=True
 """
 Implementation of the blockifier interface and some classes
 to manipulate blocks
@@ -31,8 +26,6 @@ cetree.import_lxml__etree()
 import re
 import numpy as np
 import math
-
-from itertools import chain
 
 
 re_tokenizer = re.compile('[\W_]+', re.UNICODE)
@@ -72,6 +65,35 @@ BLOCKS = set([
 
 cdef string CTEXT = <string>'text'
 cdef string CTAIL = <string>'tail'
+
+cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
+    <char>'\r', <char>'\f', <char>'\v'])
+
+cdef vector[string] _tokens_from_text(vector[string] text):
+    '''
+    Given a vector of text, return a vector of individual tokens
+    '''
+    cdef size_t i, j, start
+    cdef bool token
+    cdef vector[string] ret
+    for i in range(text.size()):
+        token = False
+        for j in range(text[i].length()):
+            if WHITESPACE.find(text[i][j]) == WHITESPACE.end():
+                # current char is not whitespace
+                if not token:
+                    token = True
+                    start = j
+            else:
+                # a white space character
+                if token:
+                    # write out token
+                    ret.push_back(text[i].substr(start, j - start))
+                    token = False
+        # check last token
+        if token:
+            ret.push_back(text[i].substr(start, text[i].length() - start))
+    return ret
 
 
 class Block(object):
@@ -323,13 +345,13 @@ cdef class PartialBlock:
         and append it to results.  Reset the partial block"""
 
         # compute block and link tokens!
-        block_tokens = self.tokens_from_text(self.text)
+        block_tokens = _tokens_from_text(self.text)
         cdef size_t k
         cdef string cssa
         if len(block_tokens) > 0:
             # only process blocks with something other then white space
             block_text = ' '.join(block_tokens)
-            link_text = ' '.join(self.tokens_from_text(self.link_tokens))
+            link_text = ' '.join(self.link_tokens)
 
             # compute link/text density
             link_d = self.link_density(block_text, link_text)
@@ -340,7 +362,7 @@ cdef class PartialBlock:
             for k in range(self.css_attrib.size()):
                 cssa = self.css_attrib[k]
                 css[cssa] = ' '.join(
-                    self.tokens_from_text(self.css[cssa])).lower()
+                    _tokens_from_text(self.css[cssa])).lower()
 
             results.append(Block(block_text, link_d,
                         text_d, self.anchors, self.link_tokens, css,
@@ -394,7 +416,7 @@ cdef class PartialBlock:
             pass
 
         cdef vector[string] anchor_tokens
-        anchor_tokens = self.tokens_from_text(anchor_text_list)
+        anchor_tokens = _tokens_from_text(anchor_text_list)
         for k in range(anchor_tokens.size()):
             self.link_tokens.push_back(anchor_tokens[k])
 
@@ -411,15 +433,6 @@ cdef class PartialBlock:
         for k in range(self._subtree_func.size()):
             self._subtree_func[k](self, start_or_end)
             
-    cdef tokens_from_text(self, text):
-        """given a list of text (as built in self.text for example)
-        return a list of tokens.
-
-        according to 
-        http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
-        chain is the fastest way to combine the list of lists"""
-        return list(chain.from_iterable([re.split('\s+', ele.strip()) for ele in text if ele.strip() != '']))
-
 
     cdef link_density(self, block_text, link_text):
         '''
