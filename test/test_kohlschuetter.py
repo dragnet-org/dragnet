@@ -190,6 +190,31 @@ class TestBlockifier(KohlschuetterUnitBase):
              ['nested']])
 
 
+    def test_class_id_unicode(self):
+        s = """<div CLASS=' class1 \xc2\xae'>text in div
+                <h1 id="HEADER">header</h1>
+                </div>"""
+        blocks = Blockifier.blockify(s, encoding='utf-8')
+
+        self.block_output_tokens(blocks,
+            [['text', 'in', 'div'],
+            ['header']])
+
+        self.css_output_tokens(blocks, 'id',
+            [[''],
+             ['header']])
+
+        self.css_output_tokens(blocks, 'class',
+            [['class1', '\xc2\xae'],
+             ['']])
+
+    def test_invalid_bytes(self):
+        # \x80 is invalid utf-8 
+        s = """<div CLASS='\x80'>text in div</div><p>invalid bytes \x80</p>"""
+        blocks = Blockifier.blockify(s, encoding='utf-8')
+        self.block_output_tokens(blocks, [['text', 'in', 'div']])
+        self.css_output_tokens(blocks, 'class', [['\xc2\x80']])
+
 
     def test_big_html(self):
         s = big_html_doc
