@@ -1,4 +1,3 @@
-# cython: profile=True
 """
 Implementation of the blockifier interface and some classes
 to manipulate blocks
@@ -36,8 +35,8 @@ simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x)
 # need a typedef for the callback function in text_from_subtree
 # and a default function that does nothing
 # http://stackoverflow.com/questions/14124049/is-there-any-type-for-function-in-cython
-ctypedef void (*callback_t)(PartialBlock, cetree.tree.xmlNode*)
-cdef void empty_callback(PartialBlock pb, cetree.tree.xmlNode* x):
+ctypedef void (*callback_t)(PartialBlock, string)
+cdef void empty_callback(PartialBlock pb, string x):
     return
 
 # typedefs for the functions that subclasses of PartialBlock implement
@@ -155,11 +154,13 @@ cdef vector[string] _text_from_subtree(cetree.tree.xmlNode *tree,
 
     while node != NULL:
 
-        # call the feature extractor child hooks
-        callback(klass, node)
-
-        # get tag, check whether in black list
+        # get the tag
         tag = cetree.namespacedName(node)
+
+        # call the feature extractor child hooks
+        callback(klass, tag)
+
+        # check whether in black list
         if BLACKLIST.find(tag) == BLACKLIST.end():
             to_add = _text_from_subtree(node, True, callback, klass)
             for k in range(to_add.size()):
@@ -431,11 +432,11 @@ cdef class PartialBlock:
             self.link_tokens.push_back(anchor_tokens[k])
 
 
-    cdef void _tag_fe(self, cetree.tree.xmlNode* child):
+    cdef void _tag_fe(self, string tag):
         # call the tag_featurename functions
         cdef size_t k
         for k in range(self._tag_func.size()):
-            self._tag_func[k](self, child)
+            self._tag_func[k](self, tag)
 
     cdef void _subtree_fe(self, int start_or_end):
         # call the subtree_featurename functions
@@ -495,11 +496,11 @@ cdef class PartialBlock:
 
         while node != NULL:
 
-            if self._tag_func.size() > 0:
-                self._tag_fe(node)
-
-            # get tag
+            # get the tag
             tag = cetree.namespacedName(node)
+
+            if self._tag_func.size() > 0:
+                self._tag_fe(tag)
 
             if BLACKLIST.find(tag) != BLACKLIST.end():
                 # in the blacklist
@@ -639,14 +640,13 @@ cdef class TagCountPB(PartialBlock):
             self._ac = 0
         return ret
 
-    cdef void tag_tagcount(self, cetree.tree.xmlNode* tag):
+    cdef void tag_tagcount(self, string tag):
         self._tc += 1
 
-        cdef string the_tag = cetree.namespacedName(tag)
-        if the_tag == A:
+        if tag == A:
             self._ac += 1
 
-        if BLOCKS.find(the_tag) == BLOCKS.end():
+        if BLOCKS.find(tag) == BLOCKS.end():
             self._min_depth_last_block = self._min_depth_last_block_pending
 
 
