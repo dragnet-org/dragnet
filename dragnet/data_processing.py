@@ -172,16 +172,17 @@ def extract_gold_standard(datadir, fileroot,
 
     for k in xrange(len(gold_standard_content_comments)):
         txt = gold_standard_content_comments[k]
-        gold_standard_tokens = tokenizer(txt)
+        if type(txt) == unicode:
+            gold_standard_tokens = tokenizer(txt.encode('utf-8'))
+        else:
+            gold_standard_tokens = tokenizer(txt)
     
         print "Got all tokens for %s.  %s in all blocks, %s in gold standard %s" % (fileroot, len(all_blocks_tokens), len(gold_standard_tokens), content_comments[k])
         ABT = len(all_blocks_tokens)
         NN += len(gold_standard_tokens)
 
-        #tokens_in_gold_standard = check_inclusion(all_blocks_tokens, gold_standard_tokens)
-        tokens_in_gold_standard = check_inclusion(
-                [t.encode('utf-8') for t in all_blocks_tokens], 
-                [t.encode('utf-8') for t in gold_standard_tokens])
+        tokens_in_gold_standard = check_inclusion(all_blocks_tokens,
+            gold_standard_tokens)
     
         # now make a percentage of tokens in the gold standard for each block
         blocks_token_count = [0] * len(blocks)
@@ -205,7 +206,8 @@ def extract_gold_standard(datadir, fileroot,
         
 
     # write the final output file
-    with codecs.open(datadir + '/block_corrected/%s.block_corrected.txt' % fileroot, 'w', encoding='utf-8') as f:
+    with open(datadir + '/block_corrected/%s.block_corrected.txt' % fileroot,
+        'w') as f:
         for block in zip(content_comments_percent[0], content_comments_percent[1], blocks_tokens, content_comments_tokens[0], content_comments_tokens[1]):
             f.write(str(block[0]) + '\t' + str(block[1]) + '\t')
             if block[2] == '':
@@ -318,7 +320,9 @@ class DragnetModelData(object):
         for file, fileroot in get_list_all_corrected_files(datadir):
             if self._re_source.match(fileroot):
                 html, encoding = read_HTML_file(datadir, fileroot)
-                block_corrected_file = codecs.open('%s/block_corrected/%s.block_corrected.txt' % (datadir, fileroot), 'r', encoding='utf-8')
+                block_corrected_file = open(
+                    '%s/block_corrected/%s.block_corrected.txt' %
+                    (datadir, fileroot), 'r')
                 blocks = block_corrected_file.read()[:-1].split('\n')
     
                 content = []

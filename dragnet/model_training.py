@@ -220,6 +220,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
     gold_standard_tokens = {}
     for fname, froot in all_files:
         tokens = tokenizer(' '.join(read_gold_standard(datadir, froot, cetr)))
+        tokens = [token.encode('utf-8') for token in tokens]
         if len(tokens) > 0:
             gold_standard_tokens[froot] = tokens
 
