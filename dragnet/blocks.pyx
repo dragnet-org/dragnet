@@ -1,7 +1,4 @@
-# cython: boundscheck=False
-# cython: wraparound=False
-# cython: nonecheck=False
-# cython: overflowcheck=True
+# cython: profile=True
 """
 Implementation of the blockifier interface and some classes
 to manipulate blocks
@@ -11,6 +8,7 @@ returns a list of Block instances
 """
 
 # cython imports
+cimport cython
 from libcpp.set cimport set as cpp_set
 from libcpp.string cimport string
 from libcpp.vector cimport vector
@@ -67,9 +65,16 @@ BLOCKS = set([
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'table', 'map',
 ])
 
+# define some commonly used strings here, otherwise Cython will always add
+# a little python overhead when using them even though they are constat
 cdef string CTEXT = <string>'text'
 cdef string CTAIL = <string>'tail'
 cdef string A = <string>'a'
+cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>'tagcount_since_last_block'
+cdef string TAGCOUNT = <string>'tagcount'
+cdef string ANCHOR_COUNT = <string>'anchor_count'
+cdef string MIN_DEPTH_SINCE_LAST_BLOCK = <string>'min_depth_since_last_block'
+
 
 cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
     <char>'\r', <char>'\f', <char>'\v'])
@@ -101,7 +106,9 @@ cdef vector[string] _tokens_from_text(vector[string] text):
     return ret
 
 
-class Block(object):
+cdef class Block(object):
+    cdef public object text, link_density, text_density, anchors
+    cdef public object link_tokens, css, features
     def __init__(self, text, link_density, text_density,
             anchors, link_tokens, css, **kwargs):
         self.text = text
@@ -288,20 +295,20 @@ cdef class PartialBlock:
         self.reinit()
         self.reinit_css(True)
 
-    cdef _fe_reinit(self):
+    cdef void _fe_reinit(self):
         # each subclass implements reinit_fename()
         # call self.reinit_name() for each name
         cdef size_t k
         for k in range(self._reinit_func.size()):
             self._reinit_func[k](self)
 
-    cdef reinit(self):
+    cdef void reinit(self):
         self.text.clear()
         self.link_tokens.clear()
         self.anchors = []
         self._fe_reinit()
 
-    cdef reinit_css(self, bool init_tree):
+    cdef void reinit_css(self, bool init_tree):
         # we want to keep track of the id and class CSS attributes.
         # we will accumulate a few sources of them
         # (1) the CSS attributes for the current tag and all tags in trees containing
@@ -345,7 +352,7 @@ cdef class PartialBlock:
         return ret
 
 
-    cdef add_block_to_results(self, list results):
+    cdef void add_block_to_results(self, list results):
         """Create a block from the current partial block
         and append it to results.  Reset the partial block"""
 
@@ -378,7 +385,7 @@ cdef class PartialBlock:
         self.reinit()
         self.reinit_css(False)
 
-    cdef add_text(self, cetree.tree.xmlNode *ele, string text_or_tail):
+    cdef void add_text(self, cetree.tree.xmlNode *ele, string text_or_tail):
         """Add the text/tail from the element
         text_or_tail is 'text' or 'tail'"""
         cdef object t
@@ -393,7 +400,7 @@ cdef class PartialBlock:
             pass
 
 
-    cdef add_anchor(self, cetree.tree.xmlNode* ele, cetree._Document doc):
+    cdef void add_anchor(self, cetree.tree.xmlNode* ele, cetree._Document doc):
         """Add the anchor tag to the block"""
         self.anchors.append(cetree.elementFactory(doc, ele))
         # need all the text from the subtree
@@ -470,7 +477,7 @@ cdef class PartialBlock:
             return len(tokens) / (lines - 1.0)
 
 
-    cdef recurse(self, cetree.tree.xmlNode* subtree, list results,
+    cdef void recurse(self, cetree.tree.xmlNode* subtree, list results,
         cetree._Document doc):
 
         cdef cetree.tree.xmlNode *node, *next_node
@@ -532,7 +539,7 @@ cdef class PartialBlock:
         self.pop_css_tree()
         self._subtree_fe(-1)
 
-    cdef update_css(self, cetree.tree.xmlNode *child, bool tree):
+    cdef void update_css(self, cetree.tree.xmlNode *child, bool tree):
         """Add the child's tag to the id, class lists"""
         cdef cpp_map[string, vector[string]] *css_to_update
         if tree:
@@ -553,7 +560,7 @@ cdef class PartialBlock:
                     <string>cetree.attributeValue(child, attr).encode('utf-8'))
 
 
-    cdef pop_css_tree(self):
+    cdef void pop_css_tree(self):
         """pop the last entry off the css lists"""
         cdef size_t k
         for k in range(self.css_attrib.size()):
@@ -601,10 +608,10 @@ cdef class TagCountPB(PartialBlock):
         self._min_depth_last_block = 0
         self._min_depth_last_block_pending = 0
 
-    cdef reinit_tagcount(self):
+    cdef void reinit_tagcount(self):
         pass
 
-    cdef subtree_tagcount(self, int start_or_end):
+    cdef void subtree_tagcount(self, int start_or_end):
         self._current_depth += start_or_end
         self._min_depth_last_block_pending = int_min(
             self._min_depth_last_block_pending, self._current_depth)
@@ -619,10 +626,10 @@ cdef class TagCountPB(PartialBlock):
         cdef cpp_map[string, int] ret
         ret.clear()
         if append:
-            ret['tagcount_since_last_block'] = self._tc_lb
-            ret['tagcount'] = self._tc - 1
-            ret['anchor_count'] = self._ac
-            ret['min_depth_since_last_block'] = self._min_depth_last_block
+            ret[TAGCOUNT_SINCE_LAST_BLOCK] = self._tc_lb
+            ret[TAGCOUNT] = self._tc - 1
+            ret[ANCHOR_COUNT] = self._ac
+            ret[MIN_DEPTH_SINCE_LAST_BLOCK] = self._min_depth_last_block
             self._tc_lb = 0
             self._tc = 1
             self._ac = 0
@@ -634,7 +641,7 @@ cdef class TagCountPB(PartialBlock):
             self._ac = 0
         return ret
 
-    cdef tag_tagcount(self, cetree.tree.xmlNode* tag):
+    cdef void tag_tagcount(self, cetree.tree.xmlNode* tag):
         self._tc += 1
 
         cdef string the_tag = cetree.namespacedName(tag)
