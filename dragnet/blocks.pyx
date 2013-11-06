@@ -1,3 +1,4 @@
+# cython: profile=True
 """
 Implementation of the blockifier interface and some classes
 to manipulate blocks
@@ -281,18 +282,21 @@ cdef class PartialBlock:
     cdef vector[name_t] _name_func
     cdef vector[subtree_t] _subtree_func
 
-    def __cinit__(self):
+    cdef bool do_css
+
+    def __cinit__(self, *args, **kwargs):
         self.css_attrib.clear()
         self.css_attrib.push_back('id')
         self.css_attrib.push_back('class')
 
-    def __init__(self):
+    def __init__(self, do_css=True):
         self._tag_func.clear()
         self._reinit_func.clear()
         self._name_func.clear()
         self._subtree_func.clear()
         self.reinit()
         self.reinit_css(True)
+        self.do_css = do_css
 
     cdef void _fe_reinit(self):
         # each subclass implements reinit_fename()
@@ -370,10 +374,11 @@ cdef class PartialBlock:
 
             # get the id, class attributes
             css = {}
-            for k in range(self.css_attrib.size()):
-                cssa = self.css_attrib[k]
-                css[cssa] = ' '.join(
-                    _tokens_from_text(self.css[cssa])).lower()
+            if self.do_css:
+                for k in range(self.css_attrib.size()):
+                    cssa = self.css_attrib[k]
+                    css[cssa] = ' '.join(
+                        _tokens_from_text(self.css[cssa])).lower()
 
             results.append(Block(block_text, link_d,
                         text_d, self.anchors, self.link_tokens, css,
@@ -382,7 +387,8 @@ cdef class PartialBlock:
             self._extract_features(False)
 
         self.reinit()
-        self.reinit_css(False)
+        if self.do_css:
+            self.reinit_css(False)
 
     cdef void add_text(self, cetree.tree.xmlNode *ele, string text_or_tail):
         """Add the text/tail from the element
@@ -484,7 +490,8 @@ cdef class PartialBlock:
 
         # for CSS, we want to output all CSS tags for all levels in subtree
         # we will add them on entry, and pop them on exit
-        self.update_css(subtree, True)
+        if self.do_css:
+            self.update_css(subtree, True)
 
         self._subtree_fe(1)
 
@@ -514,20 +521,23 @@ cdef class PartialBlock:
                 # start the new block and recurse
                 self.add_block_to_results(results)
                 self.add_text(node, CTEXT)
-                self.update_css(node, False)
+                if self.do_css:
+                    self.update_css(node, False)
                 self.recurse(node, results, doc)
                 self.add_text(node, CTAIL)
 
             elif tag == A:
                 # an anchor tag
                 self.add_anchor(node, doc)
-                self.update_css(node, False)
+                if self.do_css:
+                    self.update_css(node, False)
 
             else:
                 # a standard tag.
                 # we need to get it's text and then recurse over the subtree
                 self.add_text(node, CTEXT)
-                self.update_css(node, False)
+                if self.do_css:
+                    self.update_css(node, False)
                 self.recurse(node, results, doc)
                 self.add_text(node, CTAIL)
 
@@ -535,7 +545,8 @@ cdef class PartialBlock:
             next_node = cetree.nextElement(node)
             node = next_node
 
-        self.pop_css_tree()
+        if self.do_css:
+            self.pop_css_tree()
         self._subtree_fe(-1)
 
     cdef void update_css(self, cetree.tree.xmlNode *child, bool tree):
@@ -591,8 +602,8 @@ cdef class TagCountPB(PartialBlock):
     cdef int _tc, _ac, _tc_lb, _current_depth
     cdef int _min_depth_last_block, _min_depth_last_block_pending
 
-    def __init__(self):
-        PartialBlock.__init__(self)
+    def __init__(self, *args, **kwargs):
+        PartialBlock.__init__(self, *args, **kwargs)
 
         self._reinit_func.push_back(<reinit_t>TagCountPB.reinit_tagcount)
         self._subtree_func.push_back(<subtree_t>TagCountPB.subtree_tagcount)
@@ -686,11 +697,11 @@ class Blockifier(object):
     """
 
     @staticmethod
-    def blocks_from_tree(tree, pb=PartialBlock):
+    def blocks_from_tree(tree, pb=PartialBlock, do_css=True):
         cdef list results = []
         cdef cetree._Element ctree
 
-        cdef PartialBlock partial_block = pb()
+        cdef PartialBlock partial_block = pb(do_css)
         ctree = tree
         partial_block.recurse(ctree._c_node, results, ctree._doc)
 
@@ -701,7 +712,7 @@ class Blockifier(object):
     
 
     @staticmethod
-    def blockify(s, encoding=None, pb=PartialBlock):
+    def blockify(s, encoding=None, pb=PartialBlock, do_css=True):
         '''
         Take a string of HTML and return a series of blocks
 
@@ -719,7 +730,7 @@ class Blockifier(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError
 
-        blocks = Blockifier.blocks_from_tree(html, pb)
+        blocks = Blockifier.blocks_from_tree(html, pb, do_css)
         # only return blocks with some text content
         return [ele for ele in blocks if re_tokenizer.sub('', ele.text) != '']
 
@@ -728,4 +739,9 @@ class TagCountBlockifier(Blockifier):
     @staticmethod
     def blockify(s, encoding=None):
         return Blockifier.blockify(s, encoding, pb=TagCountPB)
+
+class TagCountNoCSSBlockifier(Blockifier):
+    @staticmethod
+    def blockify(s, encoding=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB, do_css=False)
 
