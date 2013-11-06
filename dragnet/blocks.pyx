@@ -106,9 +106,7 @@ cdef vector[string] _tokens_from_text(vector[string] text):
     return ret
 
 
-cdef class Block(object):
-    cdef public object text, link_density, text_density, anchors
-    cdef public object link_tokens, css, features
+class Block(object):
     def __init__(self, text, link_density, text_density,
             anchors, link_tokens, css, **kwargs):
         self.text = text
