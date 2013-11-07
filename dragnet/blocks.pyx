@@ -669,11 +669,13 @@ class Blockifier(object):
     
 
     @staticmethod
-    def blockify(s, encoding=None, pb=PartialBlock, do_css=True):
+    def blockify(s, encoding=None, pb=PartialBlock, do_css=True,
+        parse_callback=None):
         '''
         Take a string of HTML and return a series of blocks
 
         if encoding is None, then try to extract it from the HTML
+        parse_callback, if not None, will be called on the parse result
         '''
         # First, we need to parse the thing
         encoding = encoding or guess_encoding(s, default='utf-8')
@@ -688,17 +690,23 @@ class Blockifier(object):
             raise BlockifyError
 
         blocks = Blockifier.blocks_from_tree(html, pb, do_css)
+
+        if parse_callback is not None:
+            parse_callback(html)
+
         # only return blocks with some text content
         return [ele for ele in blocks if re_tokenizer.sub('', ele.text) != '']
 
 
 class TagCountBlockifier(Blockifier):
     @staticmethod
-    def blockify(s, encoding=None):
-        return Blockifier.blockify(s, encoding, pb=TagCountPB)
+    def blockify(s, encoding=None, parse_callback=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB,
+            parse_callback=parse_callback)
 
 class TagCountNoCSSBlockifier(Blockifier):
     @staticmethod
-    def blockify(s, encoding=None):
-        return Blockifier.blockify(s, encoding, pb=TagCountPB, do_css=False)
+    def blockify(s, encoding=None, parse_callback=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB, do_css=False,
+            parse_callback=parse_callback)
 

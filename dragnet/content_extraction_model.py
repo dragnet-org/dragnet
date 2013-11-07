@@ -58,7 +58,7 @@ class ContentExtractionModel(object):
         0<= thres <= 1.0"""
         self._threshold = thres
 
-    def analyze(self, s, blocks=False, encoding=None):
+    def analyze(self, s, blocks=False, encoding=None, parse_callback=None):
         """s = HTML string
         returns the content as a string, or if `block`, then the blocks
         themselves are returned.
@@ -66,7 +66,8 @@ class ContentExtractionModel(object):
         if encoding is not None, then this specifies the HTML string encoding.
             If None, then try to guess it.
         """
-        features, blocks_ = self.make_features(s, encoding)
+        features, blocks_ = self.make_features(s, encoding=encoding,
+            parse_callback=parse_callback)
         if features is not None:
             content_mask = self._block_model.predict(features) > self._threshold
             results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
@@ -78,7 +79,7 @@ class ContentExtractionModel(object):
         return ' '.join(blk.text for blk in results)
 
 
-    def make_features(self, s, train=False, encoding=None):
+    def make_features(self, s, train=False, encoding=None, parse_callback=None):
         """s = HTML string
            return features, blocks
 
@@ -87,7 +88,8 @@ class ContentExtractionModel(object):
            
            train = if true, then passes it into feature maker"""
 
-        blocks = self._blockifier.blockify(s, encoding=encoding)
+        blocks = self._blockifier.blockify(s, encoding=encoding,
+            parse_callback=parse_callback)
 
         # doc needs to be at least three blocks, otherwise return everything
         if len(blocks) < 3:
