@@ -9,7 +9,7 @@ FIXTURES = 'test/datafiles'
 class TestModels(unittest.TestCase):
     def test_models(self):
 
-        html_string = open(os.path.join(
+        html = open(os.path.join(
             FIXTURES, 'models_testing.html'), 'r').read()
 
         models = [kohlschuetter_model,
@@ -18,13 +18,13 @@ class TestModels(unittest.TestCase):
                   kohlschuetter_css_model,
                   kohlschuetter_css_weninger_model]
 
-        content = [m.analyze(html_string) for m in models]
+        content = [m.analyze(html) for m in models]
 
         actual_content = json.load(open(
             os.path.join(FIXTURES, 'models_content.json'), 'r'))
 
         for k in xrange(len(content)):
-            self.assertTrue(actual_content[k] == content[k])
+            self.assertTrue(actual_content[k].encode('utf-8') == content[k])
 
 if __name__ == "__main__":
     unittest.main()
