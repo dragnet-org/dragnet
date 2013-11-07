@@ -1,4 +1,3 @@
-# cython: profile=True
 """
 Implementation of the blockifier interface and some classes
 to manipulate blocks
@@ -30,6 +29,7 @@ import math
 
 
 re_tokenizer = re.compile('[\W_]+', re.UNICODE)
+re_tokenizer_nounicode = re.compile('[\W_]+')
 simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x)
     if len(ele) > 0]
 
@@ -187,28 +187,6 @@ cdef vector[string] _text_from_subtree(cetree.tree.xmlNode *tree,
             pass
 
     return text
-
-
-#def run_me():
-#    # TODO - delete this!
-#    cdef cetree._Element tt
-#
-#    s = """<a href=".">WILL <img src="."> THIS PASS <b>THE TEST</b> ??</a>"""
-#    tree = etree.fromstring(s, etree.HTMLParser(recover=True))
-#    tt = tree
-#    print _text_from_subtree(tt._c_node, True, empty_callback)
-#
-#    s = '<div>\x92</div>'
-#    tree = etree.fromstring(s, etree.HTMLParser(recover=True, encoding='utf-8'))
-#    tt = tree
-#    print _text_from_subtree(tt._c_node, True, empty_callback)
-#
-#    s = '''<div>some words <-- with a comment --></div> <!-- another comment! -->
-#    <script>SKIP THIS!</script>'''
-#    tree = etree.fromstring(s, etree.HTMLParser(recover=True, encoding='utf-8'))
-#    tt = tree
-#    print _text_from_subtree(tt._c_node, True, empty_callback)
-#
 
 
 def text_from_subtree(tree, tags_exclude=set(), tail=True, callback=None):
@@ -369,8 +347,18 @@ cdef class PartialBlock:
             link_text = ' '.join(self.link_tokens)
 
             # compute link/text density
-            link_d = self.link_density(block_text, link_text)
-            text_d = self.text_density(block_text)
+            at = re_tokenizer_nounicode.split(link_text)
+            bt = re_tokenizer_nounicode.split(block_text)
+            link_d = float(len(at)) / len(bt)
+
+            lines = int(math.ceil(len(block_text) / 80.0))
+            if lines == 1:
+                text_d = float(len(bt))
+            else:
+                # need the number of tokens excluding the last partial line
+                tokens = re_tokenizer_nounicode.split(
+                    block_text[:(int(lines - 1) * 80)])
+                text_d = len(tokens) / (lines - 1.0)
 
             # get the id, class attributes
             css = {}
@@ -450,37 +438,6 @@ cdef class PartialBlock:
         for k in range(self._subtree_func.size()):
             self._subtree_func[k](self, start_or_end)
             
-
-    cdef link_density(self, block_text, link_text):
-        '''
-        Assuming both input texts are stripped of excess whitespace, return the 
-        link density of this block
-        '''
-        # NOTE: in the case where link_text == '', this re.split
-        # returns [''], which incorrectly
-        # has 1 token by it's length instead of 0
-        # however, fixing this bug decreases model performance by about 1%,
-        # so we keep it
-        anchor_tokens = re_tokenizer.split(link_text)
-        block_tokens = re_tokenizer.split(block_text)
-        return float(len(anchor_tokens)) / len(block_tokens)
-
-
-    cdef text_density(self, block_text):
-        '''
-        Assuming the text has been stripped of excess whitespace, return text
-        density of this block
-        '''
-        lines = math.ceil(len(block_text) / 80.0)
-
-        if int(lines) == 1:
-            tokens = re_tokenizer.split(block_text)
-            return float(len(tokens))
-        else:
-            # need the number of tokens excluding the last partial line
-            tokens = re_tokenizer.split(block_text[:(int(lines - 1) * 80)])
-            return len(tokens) / (lines - 1.0)
-
 
     cdef void recurse(self, cetree.tree.xmlNode* subtree, list results,
         cetree._Document doc):
