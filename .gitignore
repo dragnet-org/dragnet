@@ -1,3 +1,14 @@
+# compiled files
 *.pyc
+*.so
+build/*
+
+# cython temporary files
+dragnet/blocks.cpp
+dragnet/blocks.html
+dragnet/lcs.cpp
+dragnet/lcs.html
+
 documents/*
 output/*
+
