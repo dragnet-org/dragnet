@@ -65,16 +65,16 @@ class TestBlockifier(KohlschuetterUnitBase):
     @staticmethod
     def count_divs(tree):
         div_xpath = etree.XPath("//div")
-        TestKohlschuetterBase.div_count = len(div_xpath(tree))
+        TestBlockifier.div_count = len(div_xpath(tree))
 
     def test_callback(self):
         s = """<div>some text <i>in italic</i> and something else
                     <pre> <div>skip this</div> </pre>
                     <b>bold stuff</b> after the script
                </div>"""
-        blocks = KohlschuetterBase.blockify(s,
-                                            TestKohlschuetterBase.count_divs)
-        self.assertEqual(TestKohlschuetterBase.div_count, 2)
+        blocks = Blockifier.blockify(s,
+            parse_callback=TestBlockifier.count_divs)
+        self.assertEqual(TestBlockifier.div_count, 2)
 
     def test_simple_two_blocks(self):
         s = """<h1>A title <i>with italics</i> and other words</h1>
