@@ -1,9 +1,11 @@
 
 import unittest
-from dragnet import KohlschuetterBase, PartialBlock, BlockifyError, Kohlschuetter
+from dragnet import Blockifier, BlockifyError, kohlschuetter
 from lxml import etree
 import re
 import numpy as np
+from mozsci.models import LogisticRegression
+from html_for_testing import big_html_doc
 
 class KohlschuetterUnitBase(unittest.TestCase):
     def block_output_tokens(self, blocks, true_tokens):
@@ -23,22 +25,25 @@ class KohlschuetterUnitBase(unittest.TestCase):
         for k in xrange(len(link_tokens)):
             self.assertEqual(link_tokens[k], true_tokens[k])
 
-class TestKohlschuetterBase(KohlschuetterUnitBase):
-    # Result from the callback test
-    div_count = -1
+    def css_output_tokens(self, blocks, attrib, true_tokens):
+        self.assertEqual(len(blocks), len(true_tokens))
+        for k in xrange(len(blocks)):
+            css_tokens = re.split('\s+', blocks[k].css[attrib].strip())
+            self.assertEqual(css_tokens, true_tokens[k])
 
+
+class TestBlockifier(KohlschuetterUnitBase):
     def test_lxml_error(self):
         """tests the case where lxml raises an error during parsing
 
         also handles case where lxml returns None for the tree"""
         # this raises an error in parsing
         self.assertRaises(etree.XMLSyntaxError, etree.fromstring, '', etree.HTMLParser(recover=True))
-        self.assertRaises(BlockifyError, KohlschuetterBase.blockify, '')
+        self.assertRaises(BlockifyError, Blockifier.blockify, '')
 
         # this returns None in lxml
         self.assertTrue(None == etree.fromstring('<!--', etree.HTMLParser(recover=True)) )
-        self.assertRaises(BlockifyError, KohlschuetterBase.blockify, '<!--')
-
+        self.assertRaises(BlockifyError, Blockifier.blockify, '<!--')
 
     def test_very_simple(self):
         """test_very_simple"""
@@ -46,36 +51,36 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                     <script> skip this </script>
                     more text here
                </div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks, [['some', 'text', 'more', 'text', 'here']])
 
     def test_very_simple2(self):
         s = """<div>some text <i>in italic</i> and something else
-                    <pre> <div>skip this</div> </pre>
+                    <script> <div>skip this</div> </script>
                     <b>bold stuff</b> after the script
                </div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks, [['some', 'text', 'in', 'italic', 'and', 'something', 'else', 'bold', 'stuff', 'after', 'the', 'script']])
 
     @staticmethod
     def count_divs(tree):
         div_xpath = etree.XPath("//div")
-        TestKohlschuetterBase.div_count = len(div_xpath(tree))
+        TestBlockifier.div_count = len(div_xpath(tree))
 
     def test_callback(self):
         s = """<div>some text <i>in italic</i> and something else
                     <pre> <div>skip this</div> </pre>
                     <b>bold stuff</b> after the script
                </div>"""
-        blocks = KohlschuetterBase.blockify(s,
-                                            TestKohlschuetterBase.count_divs)
-        self.assertEqual(TestKohlschuetterBase.div_count, 2)
+        blocks = Blockifier.blockify(s,
+            parse_callback=TestBlockifier.count_divs)
+        self.assertEqual(TestBlockifier.div_count, 2)
 
     def test_simple_two_blocks(self):
         s = """<h1>A title <i>with italics</i> and other words</h1>
                some text outside the h1
                <div>a div <span class="test"> with a span </span> more </div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
                [['A', 'title', 'with', 'italics', 'and', 'other', 'words', 'some', 'text', 'outside', 'the', 'h1'],
                 ['a', 'div', 'with', 'a', 'span', 'more']])
@@ -87,7 +92,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                <TABLE><tr><td>table data</td></tr><tr><td>second row</td></tr></TABLE>
                final
                """
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
                 [['h1', 'tag', 'word', 'orphaned', 'text'],
                  ['table', 'data', 'second', 'row', 'final']])
@@ -98,7 +103,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                <h1> in an h1 </h1>
                <p> ! _ </p>
             """
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
                     [['.!', 'some', 'text'], ['in', 'an', 'h1']])
 
@@ -110,7 +115,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
             </div>
             final
             <div> <i> italic </i> before <h1>tag</h1></div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
                 [['initial', 'text'],
                 ['div'],
@@ -126,7 +131,7 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
                <div>text <a href=".">123</a><div>MORE!</div></div>
                an img link<a href="."><img src="."></a>there
                <table><tr><td><a href=".">WILL <img src="."> THIS PASS <b>THE TEST</b> ??</a></tr></td></table>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
 
         self.block_output_tokens(blocks,
               [['anchor', 'text', 'more'],
@@ -142,76 +147,78 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
 
 
     def test_unicode(self):
-        s = u"""<div><div><a href="."> the registered trademark \xae</a></div></div"""
-        blocks = KohlschuetterBase.blockify(s)
+        s = u"""<div><div><a href="."> the registered trademark \xae</a></div></div>"""
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
-            [['the', 'registered', 'trademark', u'\xae']])
+            [['the', 'registered', 'trademark', u'\xae'.encode('utf-8')]])
         self.link_output_tokens(blocks,
-            [['the', 'registered', 'trademark', u'\xae']])
-
+            [['the', 'registered', 'trademark', u'\xae'.encode('utf-8')]])
 
     def test_all_non_english(self):
         s = u"""<div> <div> \u03b4\u03bf\u03b3 </div> <div> <a href="summer">\xe9t\xe9</a> </div>
          <div> \u62a5\u9053\u4e00\u51fa </div> </div>"""
-        blocks = KohlschuetterBase.blockify(s)
+        blocks = Blockifier.blockify(s)
         self.block_output_tokens(blocks,
-            [[u'\u03b4\u03bf\u03b3'],
-            [u'\xe9t\xe9'],
-            [u'\u62a5\u9053\u4e00\u51fa']])
+            [[u'\u03b4\u03bf\u03b3'.encode('utf-8')],
+            [u'\xe9t\xe9'.encode('utf-8')],
+            [u'\u62a5\u9053\u4e00\u51fa'.encode('utf-8')]])
         self.link_output_tokens(blocks,
             [[],
-             [u'\xe9t\xe9'],
+             [u'\xe9t\xe9'.encode('utf-8')],
              []])
 
+    def test_class_id(self):
+        s = """<div CLASS='d1'>text in div
+                <h1 id="HEADER">header</h1>
+                <div class="nested">dragnet</div>
+                </div>"""
+        blocks = Blockifier.blockify(s)
 
-    def test_text_from_subtree(self):
-        s = """<a href=".">WILL <img src="."> THIS PASS <b>THE TEST</b> ??</a>"""
-        tree = etree.fromstring(s, etree.HTMLParser(recover=True))
-        text_list = PartialBlock._text_from_subtree(tree, tags_exclude=KohlschuetterBase.blacklist)
-        text_str = ' '.join([ele.strip() for ele in text_list if ele.strip() != ''])
-        self.assertEqual(text_str,
-            'WILL THIS PASS THE TEST ??')
+        self.block_output_tokens(blocks,
+            [['text', 'in', 'div'],
+            ['header'],
+            ['dragnet']])
+
+        self.css_output_tokens(blocks, 'id',
+            [[''],
+             ['header'],
+             ['']])
+
+        self.css_output_tokens(blocks, 'class',
+            [['d1'],
+             [''],
+             ['nested']])
+
+
+    def test_class_id_unicode(self):
+        s = """<div CLASS=' class1 \xc2\xae'>text in div
+                <h1 id="HEADER">header</h1>
+                </div>"""
+        blocks = Blockifier.blockify(s, encoding='utf-8')
+
+        self.block_output_tokens(blocks,
+            [['text', 'in', 'div'],
+            ['header']])
+
+        self.css_output_tokens(blocks, 'id',
+            [[''],
+             ['header']])
+
+        self.css_output_tokens(blocks, 'class',
+            [['class1', '\xc2\xae'],
+             ['']])
+
+    def test_invalid_bytes(self):
+        # \x80 is invalid utf-8 
+        s = """<div CLASS='\x80'>text in div</div><p>invalid bytes \x80</p>"""
+        blocks = Blockifier.blockify(s, encoding='utf-8')
+        self.block_output_tokens(blocks, [['text', 'in', 'div']])
+        self.css_output_tokens(blocks, 'class', [['\xc2\x80']])
+
 
     def test_big_html(self):
-        s = """
-<html>
-
-<body>
-<h1>Inside the h1 tag </h1>
-<div id="content">
-    <b>First line of the content in bold</b>
-    <p>A paragraph with <a href="link_target.html">a link</a> and some 
-
-    additional words.
-
-    <p>Second paragraph
-
-    <blockquote>Insert a block quote here</blockquote>
-
-    <div class="image_css" id="image1"><img src="img.jpg"></div>
-    
-    <p>Some more text after the image
-    <h2>An h2 tag just for kicks</h2>
-    <p>Finally more text at the end of the content
-</div>
-
-
-<div class="begin_comments">
-    <div id="comment1">
-        <p>This is a comment</p>
-        <p>with two paragraphs <a href="spam_link.html">and some comment spam</a>
-    </div>
-    <div id="comment2">
-        <p>Second comment</p>
-    </div>
-</div>
-
-<div class="footer"><a href="footer_link.html"><img src="footer_image.jpg" alt="image as anchor text"></a>Footer text
-</div>
-
-</html>
-"""
-        blocks = KohlschuetterBase.blockify(s)
+        s = big_html_doc
+        blocks = Blockifier.blockify(s)
 
         self.block_output_tokens(blocks,
         [['Inside', 'the', 'h1', 'tag'],
@@ -239,25 +246,50 @@ class TestKohlschuetterBase(KohlschuetterUnitBase):
             [],
             []])
 
+        self.css_output_tokens(blocks, 'class',
+            [[''],
+            ['title'],
+            ['link'],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            ['footer']])
+
+
+        self.css_output_tokens(blocks, 'id',
+            [[''],
+            ['content'],
+            ['para'],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            [''],
+            ['']])
+
+
 
 class TestKohlschuetter(KohlschuetterUnitBase):
     def test_small_doc(self):
-        # need an instance to call analyze
-        koh = Kohlschuetter()
-
-        self.assertEqual((None, []), Kohlschuetter.make_features('<html></html>'))
-        self.assertEqual('', koh.analyze('<html></html>'))
+        self.assertEqual((None, []), kohlschuetter.make_features('<html></html>'))
+        self.assertEqual('', kohlschuetter.analyze('<html></html>'))
 
         s = '<html> <p>a</p> <div>b</div> </html>'
-        features, blocks = Kohlschuetter.make_features(s)
+        features, blocks = kohlschuetter.make_features(s)
         self.assertTrue(features is None)
         self.block_output_tokens(blocks, [['a'], ['b']])
-        self.assertEqual('a b', koh.analyze(s))
+        self.assertEqual('a b', kohlschuetter.analyze(s))
 
 
     def test_make_features(self):
         s = '<html> <p>first </p> <div> <p>second block with <a href=''>anchor</a> </p> <p>the third block</p> </div> </html>'
-        features, blocks = Kohlschuetter.make_features(s)
+        features, blocks = kohlschuetter.make_features(s)
         self.block_output_tokens(blocks, [['first'], ['second', 'block', 'with', 'anchor'], ['the', 'third', 'block']])
         self.link_output_tokens(blocks, [[], ['anchor'], []])
 
@@ -267,8 +299,6 @@ class TestKohlschuetter(KohlschuetterUnitBase):
         self.assertTrue(np.allclose(features[0, :], [0.0, 0.0, link_density[0], text_density[0], link_density[1], text_density[1]]))
         self.assertTrue(np.allclose(features[1, :], [link_density[0], text_density[0], link_density[1], text_density[1], link_density[2], text_density[2]]))
         self.assertTrue(np.allclose(features[2, :], [link_density[1], text_density[1], link_density[2], text_density[2], 0.0, 0.0]))
-
-
 
 
 

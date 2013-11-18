@@ -56,21 +56,39 @@ def dameraulevenshtein(seq1, seq2):
 
 
 
-def evaluation_metrics(predicted, actual):
+def evaluation_metrics(predicted, actual, bow=True):
     """
     Input:
         predicted, actual = lists of the predicted and actual tokens
+        bow: if true use bag of words assumption
     Returns:
         precision, recall, F1, Levenshtein distance
+    """
+    if bow:
+        p = set(predicted)
+        a = set(actual)
 
-    Uses a bag of words assumption"""
-    p = set(predicted)
-    a = set(actual)
+        true_positive = 0
+        for token in p:
+            if token in a:
+                true_positive += 1
+    else:
+        # shove actual into a hash, count up the unique occurances of each token
+        # iterate through predicted, check which occur in actual
+        from collections import defaultdict
+        act = defaultdict(lambda: 0)
+        for token in actual:
+            act[token] += 1
 
-    true_positive = 0
-    for token in p:
-        if token in a:
-            true_positive += 1
+        true_positive = 0
+        for token in predicted:
+            if act[token] > 0:
+                true_positive += 1
+                act[token] -= 1
+
+        # for shared logic below
+        p = predicted
+        a = actual
 
     if len(p) == 0:
         precision = 0.0

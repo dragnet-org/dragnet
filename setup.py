@@ -21,22 +21,43 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+import os.path
+import lxml
+
+from distutils.core import setup
+from numpy import get_include
+from distutils.extension import Extension
+from Cython.Distutils import build_ext
+
+def find_libxml2_include():
+    for d in ['/usr/include/libxml2', '/usr/local/include/libxml2']:
+        if os.path.exists(os.path.join(d, 'libxml/tree.h')):
+            return d
+    raise ValueError("Can't find libxml2 include headers")
+
+
+ext_modules = [
+    Extension('dragnet.lcs',
+        sources=["dragnet/lcs.pyx"],
+        include_dirs = [get_include()],
+        language="c++"),
+    Extension('dragnet.blocks',
+         sources=["dragnet/blocks.pyx"],
+         include_dirs = lxml.get_include() + [find_libxml2_include()],
+         language="c++",
+         libraries=['xml2']),
+    ]
+
 
 setup(
     name             = 'dragnet',
-    version          = '0.2.0',
+    version          = '1.0.0',
     description      = 'Just the facts, ma\'am',
     author           = 'Dan Lecocq, Matt Peters',
     author_email     = 'dan@seomoz.org, matt@seomoz.org',
     url              = 'http://github.com/seomoz/dragnet',
-    packages         = ['dragnet'],
     license          = 'MIT',
     platforms        = 'Posix; MacOS X',
-    test_suite       = 'tests.testReppy',
     classifiers      = [
         'License :: OSI Approved :: MIT License',
         'Development Status :: 3 - Alpha',
@@ -47,4 +68,10 @@ setup(
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Intended Audience :: Science/Research'
         ],
+
+    packages         = ['dragnet'],
+    package_dir      = {'dragnet':'dragnet'},
+    package_data     = {'dragnet':['pickled_models/*.pickle']},
+    cmdclass         = {'build_ext': build_ext},
+    ext_modules      = ext_modules,
 )
