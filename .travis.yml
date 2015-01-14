@@ -1,0 +1,18 @@
+language: python
+python:
+  - 2.7
+script: make test
+virtualenv:
+  system_site_packages: true
+cache:
+  - apt
+  - pip
+install:
+  - sudo apt-get -y install libxslt-dev libxml2-dev python-numpy python-scipy python-matplotlib
+  - pip install -r requirements.txt --use-mirrors
+  - git clone git@github.com:seomoz/mozsci.git
+  - pushd mozsci
+  - pip install -r requirements.txt --use-mirrors
+  - sudo python setup.py install
+  - popd
+  - python setup.py build_ext --inplace

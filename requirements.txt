@@ -1,0 +1,4 @@
+nose
+coverage
+Cython>=0.17
+lxml
