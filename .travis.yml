@@ -13,6 +13,6 @@ install:
   - git clone https://github.com/seomoz/mozsci.git
   - pushd mozsci
   - pip install -r requirements.txt
-  - sudo python setup.py install
+  - make install
   - popd
   - python setup.py build_ext --inplace
