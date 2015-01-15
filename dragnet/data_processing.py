@@ -5,9 +5,14 @@ import numpy as np
 import pylab as plt
 import glob
 import codecs
+import os
 
 from .blocks import Blockifier, simple_tokenizer, text_from_subtree
 from lxml import etree
+
+def add_plot_title(ti_str):
+    """Add a string as a title on top of a subplot"""
+    plt.figtext(0.5, 0.94, ti_str, ha='center', color='black', weight='bold', size='large')
 
 re_has_text = re.compile("^\s*<text")
 re_open_tag = re.compile('^\s*<text.+encoding\s*=\s*"([a-zA-Z0-9-_\s]+)"\s*>')
@@ -473,8 +478,10 @@ class DragnetModelData(object):
         for file, fileroot in get_list_all_corrected_files(datadir):
             if self._re_source.match(fileroot):
                 # a histogram of block frequency
-                block_corrected_file = codecs.open(datadir + '/block_corrected/%s.block_corrected.txt' % fileroot, 'r', encoding='utf-8')
-                blocks = block_corrected_file.read()[:-1].split('\n')
+                with open(os.path.join(datadir,
+                        'block_corrected/%s.block_corrected.txt' % fileroot),
+                        'r') as block_corrected_file:
+                    blocks = block_corrected_file.read()[:-1].split('\n')
 
                 for block in blocks:
                     block_split = block.split('\t')

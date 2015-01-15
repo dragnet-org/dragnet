@@ -11,12 +11,7 @@ from mozsci.cross_validate import cv_kfold
 from .blocks import Blockifier
 from . import evaluation_metrics
 from .content_extraction_model import ContentExtractionModel
-from .data_processing import simple_tokenizer, DragnetModelData, read_gold_standard, get_list_all_corrected_files, read_HTML_file
-
-
-def add_plot_title(ti_str):
-    """Add a string as a title on top of a subplot"""
-    plt.figtext(0.5, 0.94, ti_str, ha='center', color='black', weight='bold', size='large')
+from .data_processing import simple_tokenizer, DragnetModelData, read_gold_standard, get_list_all_corrected_files, read_HTML_file, add_plot_title
 
 
 def run_score_content_detection(html, gold_standard, content_detector, tokenizer=simple_tokenizer):
@@ -199,7 +194,7 @@ def accuracy_auc(y, ypred, weights=None):
 
 
 def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
-    tokenizer=simple_tokenizer, cetr=False):
+    tokenizer=simple_tokenizer, cetr=False, content_or_comments='both'):
     """
     Evaluate a trained model on the token level.
 
@@ -210,6 +205,8 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
         figname_root + extension
     tokenizer = implements tokenizer interface
     cetr = if True, then handle the gold standard in CETR format (parse it)
+    content_or_comments = 'content', 'comments' or 'both' to specify
+        what to include in the gold standard
 
     Outputs:
         saves png files
@@ -219,7 +216,16 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
 
     gold_standard_tokens = {}
     for fname, froot in all_files:
-        tokens = tokenizer(' '.join(read_gold_standard(datadir, froot, cetr)))
+        content, comments = read_gold_standard(datadir, froot, cetr)
+        if content_or_comments == 'content':
+            gold = content
+        elif content_or_comments == 'comments':
+            gold = comments
+        elif content_or_comments == 'both':
+            gold = content + ' ' + comments
+        else:
+            raise ValueError("Invalid input for content_or_comments")
+        tokens = tokenizer(gold)
         tokens = [token.encode('utf-8') for token in tokens]
         if len(tokens) > 0:
             gold_standard_tokens[froot] = tokens
@@ -307,7 +313,8 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
     return errors
 
 
-def train_models(datadir, output_prefix, features_to_use, lam=10):
+def train_models(datadir, output_prefix, features_to_use, lam=10,
+    content_or_comments='both'):
     """Train a content extraction model.
 
     Does feature centering, trains the logistic regression model,
@@ -336,7 +343,7 @@ def train_models(datadir, output_prefix, features_to_use, lam=10):
 
     # compute the mean/std and save them
     data = DragnetModelData(datadir)
-    trainer = DragnetModelTrainer()
+    trainer = DragnetModelTrainer(content_or_comments=content_or_comments)
 
     print "Initializing features"
     k = 0
