@@ -90,6 +90,30 @@ class Test_TagCountPB(unittest.TestCase):
             self.check_tagcount(a, b.features)
 
 
+class TestReadability(unittest.TestCase):
+    def test_ancestors(self):
+        s = '''
+            <html><body>
+            <div>1 <i>i</i>
+                <p>2</p>
+                <p>3</p>
+                <div>4
+                    <p>5</p>
+                    <p>6</p>
+                </div>
+            </div>
+            <h1>7</h1>
+            </body></html>
+            '''
+        blks = blocks.TagCountBlockifier.blockify(s)
+        # get the text and ancestors from the blocks
+        actual = [(blk.text, blk.features['ancestors']) for blk in blks]
+        expected = [('1 i', [0, 2]),
+            ('2', [0, 2, 4]), ('3', [0, 2, 4]), ('4', [0, 2, 4]),
+            ('5', [0, 2, 4, 9]), ('6', [0, 2, 4, 9]),
+            ('7', [0, 2])]
+        self.assertEqual(actual, expected)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,6 +15,7 @@ from libcpp.map cimport map as cpp_map
 from libcpp cimport bool
 from cython.operator cimport preincrement as inc
 from cython.operator cimport dereference as deref
+from libc.stdint cimport uint32_t
 
 # boilerplate from http://lxml.de/capi.html
 cimport etreepublic as cetree
@@ -228,6 +229,16 @@ cdef class PartialBlock:
     This class maintains that state, as well as provides methods
     to modify it.
 
+    The recurse method works as follows:
+        given a root node, iterate over the children
+        when we encounter <div>, <p>, etc, start a new block.
+            when starting a new block do the following:
+                call name(self) with the partialblock instance just
+                    before creating the block. this returns a key->int
+                    map that is added to the block
+                after creating the block and adding to output, call reinit()
+                    to reset the partialblock
+
     To generalize, subclasses do the following:
         define a set of "feature extractors".  These are given
         a string name and specified by the following methods:
@@ -262,12 +273,25 @@ cdef class PartialBlock:
 
     cdef bool do_css
 
+    cdef bool do_readability
+    # nodes are identified by a tag_id.  this tracks the id of the current
+    # node in the recursion
+    cdef uint32_t tag_id
+    # the ID for next unseen node
+    cdef uint32_t next_tag_id
+    # during node recursion, this will maintain a list of all ancestors of
+    # current node
+    cdef vector[uint32_t] ancestors
+    # this stores the ancestor list when a block is created so it can
+    # be written when the next block is stored
+    cdef vector[uint32_t] ancestors_write
+
     def __cinit__(self, *args, **kwargs):
         self.css_attrib.clear()
         self.css_attrib.push_back('id')
         self.css_attrib.push_back('class')
 
-    def __init__(self, do_css=True):
+    def __init__(self, do_css=True, do_readability=True):
         self._tag_func.clear()
         self._reinit_func.clear()
         self._name_func.clear()
@@ -275,6 +299,17 @@ cdef class PartialBlock:
         self.reinit()
         self.reinit_css(True)
         self.do_css = do_css
+
+        self.do_readability = do_readability
+        self.ancestors.clear()
+        self.ancestors_write.clear()
+        self.tag_id = 0
+        self.next_tag_id = 1
+        if do_readability:
+            self._subtree_func.push_back(
+                <subtree_t>PartialBlock.subtree_readability)
+            self._reinit_func.push_back(
+                <reinit_t>PartialBlock.reinit_readability)
 
     cdef void _fe_reinit(self):
         # each subclass implements reinit_fename()
@@ -332,6 +367,11 @@ cdef class PartialBlock:
                 inc(it)
         return ret
 
+    cdef object _add_readability(self):
+        if self.do_readability:
+            return {'ancestors': self.ancestors_write}
+        else:
+            return {}
 
     cdef void add_block_to_results(self, list results):
         """Create a block from the current partial block
@@ -368,9 +408,11 @@ cdef class PartialBlock:
                     css[cssa] = ' '.join(
                         _tokens_from_text(self.css[cssa])).lower()
 
+            kwargs = self._add_readability()
+            kwargs.update(self._extract_features(True))
             results.append(Block(block_text, link_d,
                         text_d, self.anchors, self.link_tokens, css,
-                        **self._extract_features(True)))
+                        **kwargs))
         else:
             self._extract_features(False)
 
@@ -437,7 +479,16 @@ cdef class PartialBlock:
         cdef size_t k
         for k in range(self._subtree_func.size()):
             self._subtree_func[k](self, start_or_end)
-            
+
+    cdef void subtree_readability(self, int start_or_end):
+        if start_or_end == 1:
+            self.ancestors.push_back(self.tag_id)
+        else:
+            self.tag_id = self.ancestors.back()
+            self.ancestors.pop_back()
+
+    cdef void reinit_readability(self):
+        self.ancestors_write = self.ancestors
 
     cdef void recurse(self, cetree.tree.xmlNode* subtree, list results,
         cetree._Document doc):
@@ -455,10 +506,18 @@ cdef class PartialBlock:
         # iterate through children
         if cetree.hasChild(subtree):
             node = cetree.findChild(subtree, 0)
+            self.tag_id = self.next_tag_id
+            self.next_tag_id += 1
         else:
             node = NULL
 
         while node != NULL:
+
+            # readability
+            # update the tag_id.  we do it here so it's updated for every
+            # potential parent
+            self.tag_id = self.next_tag_id
+            self.next_tag_id += 1
 
             # get the tag
             tag = cetree.namespacedName(node)
@@ -491,7 +550,7 @@ cdef class PartialBlock:
 
             else:
                 # a standard tag.
-                # we need to get it's text and then recurse over the subtree
+                # we need to get its text and then recurse over the subtree
                 self.add_text(node, CTEXT)
                 if self.do_css:
                     self.update_css(node, False)
@@ -562,7 +621,8 @@ cdef class TagCountPB(PartialBlock):
     def __init__(self, *args, **kwargs):
         PartialBlock.__init__(self, *args, **kwargs)
 
-        self._reinit_func.push_back(<reinit_t>TagCountPB.reinit_tagcount)
+        # don't need to add reinit since it's empty
+        #self._reinit_func.push_back(<reinit_t>TagCountPB.reinit_tagcount)
         self._subtree_func.push_back(<subtree_t>TagCountPB.subtree_tagcount)
         self._name_func.push_back(<name_t>TagCountPB.tagcount)
         self._tag_func.push_back(<callback_t>TagCountPB.tag_tagcount)
@@ -616,6 +676,29 @@ cdef class TagCountPB(PartialBlock):
 
         if BLOCKS.find(tag) == BLOCKS.end():
             self._min_depth_last_block = self._min_depth_last_block_pending
+
+
+# TODO
+cdef class ReadabilityPB(TagCountPB):
+    # strategy
+    # for each block, need to know all the parents of that block
+    #   each parent is a tag ID
+    # we'll maintain a global vector of all ancestors of the current
+    #   block and push/pop as we enter subtrees
+    # we'll also maintain a global vector of all the parent ID
+    #   scores
+    # then at the last block, will output the ID -> score vector
+    #   to the last block
+    # the features for each block will be the max of all parents
+    #
+    # the score is the class/id score + the content score of all children
+    #   for content score, we'll store total length of text + total length
+    #   of anchor text
+
+    def __init__(self, *args, **kwargs):
+        ReadabilityPB.__init__(self, *args, **kwargs)
+
+
 
 
 html_re = re.compile('meta\s[^>]*charset\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
