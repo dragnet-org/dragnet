@@ -3,7 +3,6 @@
 import re
 import numpy as np
 import scipy.weave
-from .kohlschuetter import kohlschuetter_features
 import json
 
 # implementations of the features interface.
