@@ -1,5 +1,5 @@
 
-import pickle
+import cPickle as pickle
 import pkgutil
 
 from .blocks import TagCountNoCSSBlockifier
