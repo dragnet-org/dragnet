@@ -391,7 +391,7 @@ def train_models(datadir, output_dir, features_to_use, model,
     print "Training the model"
     features, labels, weights = trainer.make_features_from_data(data,
         model_to_train, training_or_test='training')
-    model.fit(features, labels)
+    model.fit(features, labels, np.minimum(weights, 200.0))
     train_errors = accuracy_auc(labels, model.predict(features))
 
     features, labels, weights = trainer.make_features_from_data(data,
