@@ -12,6 +12,7 @@ from libcpp.set cimport set as cpp_set
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libcpp.map cimport map as cpp_map
+from libcpp.pair cimport pair
 from libcpp cimport bool
 from cython.operator cimport preincrement as inc
 from cython.operator cimport dereference as deref
@@ -75,6 +76,23 @@ cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>'tagcount_since_last_block'
 cdef string TAGCOUNT = <string>'tagcount'
 cdef string ANCHOR_COUNT = <string>'anchor_count'
 cdef string MIN_DEPTH_SINCE_LAST_BLOCK = <string>'min_depth_since_last_block'
+
+
+# for the class/id readability score
+re_readability_negative = re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I)
+re_readability_positive = re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I)
+
+cdef string DIV = <string>'div'
+
+cdef cpp_set[string] READABILITY_PLUS3
+READABILITY_PLUS3 = set(["pre", "td", "blockquote"])
+
+cdef cpp_set[string] READABILITY_MINUS3
+READABILITY_MINUS3 = set(
+    ["address", "ol", "ul", "dl", "dd", "dt", "li", "form"])
+
+cdef cpp_set[string] READABILITY_MINUS5
+READABILITY_MINUS5 = set(["h1", "h2", "h3", "h4", "h5", "h6", "th"])
 
 
 cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
@@ -285,6 +303,13 @@ cdef class PartialBlock:
     # this stores the ancestor list when a block is created so it can
     # be written when the next block is stored
     cdef vector[uint32_t] ancestors_write
+    # for each tag_id, stores whether this weight has been calculated
+    # and written out yet
+    cdef cpp_set[uint32_t] class_weights_written
+    # the class weight is only computed once, when we first see the node
+    # we'll keep a list here of all the values ids to write out
+    # the first time we see them
+    cdef vector[pair[uint32_t, int] ] class_weights
 
     def __cinit__(self, *args, **kwargs):
         self.css_attrib.clear()
@@ -305,6 +330,8 @@ cdef class PartialBlock:
         self.ancestors_write.clear()
         self.tag_id = 0
         self.next_tag_id = 1
+        self.class_weights_written.clear()
+        self.class_weights.clear()
         if do_readability:
             self._subtree_func.push_back(
                 <subtree_t>PartialBlock.subtree_readability)
@@ -369,7 +396,12 @@ cdef class PartialBlock:
 
     cdef object _add_readability(self):
         if self.do_readability:
-            return {'ancestors': self.ancestors_write}
+            ret = {
+                'ancestors': self.ancestors_write,
+                'readability_class_weights': self.class_weights
+            }
+            self.class_weights.clear()
+            return ret
         else:
             return {}
 
@@ -487,6 +519,49 @@ cdef class PartialBlock:
             self.tag_id = self.ancestors.back()
             self.ancestors.pop_back()
 
+    cdef void readability_score_node(self, cetree.tree.xmlNode* node):
+        cdef int weight = 0
+        cdef cetree.tree.xmlAttr* attr
+        cdef size_t k
+        cdef string id_class
+        cdef string attrib
+        cdef string tag
+
+        # check to see if we've already scored this tag_id.
+        # if so don't score again
+        if (self.class_weights_written.find(self.tag_id) !=
+                self.class_weights_written.end()):
+            return
+
+        # first the class/id weights
+        for k in range(self.css_attrib.size()):
+            attrib = self.css_attrib[k]
+            attr = cetree.tree.xmlHasProp(node,
+                <cetree.tree.const_xmlChar*> attrib.c_str())
+            if attr is not NULL:
+                id_class = <string>cetree.attributeValue(
+                    node, attr).encode('utf-8')
+                if re_readability_negative.search(id_class):
+                    weight -= 25
+                if re_readability_positive.search(id_class):
+                    weight += 25
+
+        # now the tag name specific weight
+        tag = cetree.namespacedName(node)
+        if tag == DIV:
+            weight += 5
+        elif READABILITY_PLUS3.find(tag) != READABILITY_PLUS3.end():
+            weight += 5
+        elif READABILITY_MINUS3.find(tag) != READABILITY_MINUS3.end():
+            weight -= 3
+        elif READABILITY_MINUS5.find(tag) != READABILITY_MINUS5.end():
+            weight -= 5
+
+        # finally store it
+        self.class_weights.push_back(pair[uint32_t, int](self.tag_id, weight))
+        self.class_weights_written.add(self.tag_id)
+
+    
     cdef void reinit_readability(self):
         self.ancestors_write = self.ancestors
 
@@ -502,6 +577,8 @@ cdef class PartialBlock:
             self.update_css(subtree, True)
 
         self._subtree_fe(1)
+        if self.do_readability:
+            self.readability_score_node(subtree)
 
         # iterate through children
         if cetree.hasChild(subtree):

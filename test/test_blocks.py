@@ -91,27 +91,39 @@ class Test_TagCountPB(unittest.TestCase):
 
 
 class TestReadability(unittest.TestCase):
-    def test_ancestors(self):
-        s = '''
+    def setUp(self):
+        self.html_string = '''
             <html><body>
-            <div>1 <i>i</i>
-                <p>2</p>
+            <div class='content'>1 <i>i</i>
+                <p class='meta'>2</p>
                 <p>3</p>
-                <div>4
+                <div id='contact'>4
                     <p>5</p>
                     <p>6</p>
                 </div>
+                <div></div>
             </div>
             <h1>7</h1>
             </body></html>
             '''
-        blks = blocks.TagCountBlockifier.blockify(s)
+    
+    def test_ancestors(self):
+        blks = blocks.TagCountBlockifier.blockify(self.html_string)
         # get the text and ancestors from the blocks
         actual = [(blk.text, blk.features['ancestors']) for blk in blks]
         expected = [('1 i', [0, 2]),
             ('2', [0, 2, 4]), ('3', [0, 2, 4]), ('4', [0, 2, 4]),
             ('5', [0, 2, 4, 9]), ('6', [0, 2, 4, 9]),
             ('7', [0, 2])]
+        self.assertEqual(actual, expected)
+
+    def test_class_weights(self):
+        blks = blocks.TagCountBlockifier.blockify(self.html_string)
+        actual = [blk.features['readability_class_weights'] for blk in blks]
+        expected = [
+            [(0, 0), (2, 0), (4, 30), (6, 0)], [(7, -25)], [(8, 0)],
+            [(9, -20)], [(11, 0)], [(12, 0)], [(13, 5), (14, -5)]
+        ]
         self.assertEqual(actual, expected)
 
 
