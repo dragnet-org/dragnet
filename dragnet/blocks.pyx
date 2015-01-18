@@ -559,7 +559,7 @@ cdef class PartialBlock:
 
         # finally store it
         self.class_weights.push_back(pair[uint32_t, int](self.tag_id, weight))
-        self.class_weights_written.add(self.tag_id)
+        self.class_weights_written.insert(self.tag_id)
     
     cdef void reinit_readability(self):
         self.ancestors_write = self.ancestors
@@ -854,5 +854,4 @@ class TagCountReadabilityBlockifier(Blockifier):
         return Blockifier.blockify(s, encoding, pb=TagCountPB,
             do_css=False, do_readability=True,
             parse_callback=parse_callback)
-
 
