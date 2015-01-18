@@ -90,7 +90,7 @@ class Test_TagCountPB(unittest.TestCase):
             self.check_tagcount(a, b.features)
 
 
-class TestReadability(unittest.TestCase):
+class TestReadabilityBlocks(unittest.TestCase):
     def setUp(self):
         self.html_string = '''
             <html><body>
@@ -108,7 +108,7 @@ class TestReadability(unittest.TestCase):
             '''
     
     def test_ancestors(self):
-        blks = blocks.TagCountBlockifier.blockify(self.html_string)
+        blks = blocks.TagCountReadabilityBlockifier.blockify(self.html_string)
         # get the text and ancestors from the blocks
         actual = [(blk.text, blk.features['ancestors']) for blk in blks]
         expected = [('1 i', [0, 2]),
@@ -118,7 +118,7 @@ class TestReadability(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_class_weights(self):
-        blks = blocks.TagCountBlockifier.blockify(self.html_string)
+        blks = blocks.TagCountReadabilityBlockifier.blockify(self.html_string)
         actual = [blk.features['readability_class_weights'] for blk in blks]
         expected = [
             [(0, 0), (2, 0), (4, 30), (6, 0)], [(7, -25)], [(8, 0)],

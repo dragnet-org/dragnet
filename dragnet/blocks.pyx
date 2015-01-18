@@ -316,7 +316,7 @@ cdef class PartialBlock:
         self.css_attrib.push_back('id')
         self.css_attrib.push_back('class')
 
-    def __init__(self, do_css=True, do_readability=True):
+    def __init__(self, do_css=True, do_readability=False):
         self._tag_func.clear()
         self._reinit_func.clear()
         self._name_func.clear()
@@ -560,7 +560,6 @@ cdef class PartialBlock:
         # finally store it
         self.class_weights.push_back(pair[uint32_t, int](self.tag_id, weight))
         self.class_weights_written.add(self.tag_id)
-
     
     cdef void reinit_readability(self):
         self.ancestors_write = self.ancestors
@@ -755,29 +754,6 @@ cdef class TagCountPB(PartialBlock):
             self._min_depth_last_block = self._min_depth_last_block_pending
 
 
-# TODO
-cdef class ReadabilityPB(TagCountPB):
-    # strategy
-    # for each block, need to know all the parents of that block
-    #   each parent is a tag ID
-    # we'll maintain a global vector of all ancestors of the current
-    #   block and push/pop as we enter subtrees
-    # we'll also maintain a global vector of all the parent ID
-    #   scores
-    # then at the last block, will output the ID -> score vector
-    #   to the last block
-    # the features for each block will be the max of all parents
-    #
-    # the score is the class/id score + the content score of all children
-    #   for content score, we'll store total length of text + total length
-    #   of anchor text
-
-    def __init__(self, *args, **kwargs):
-        ReadabilityPB.__init__(self, *args, **kwargs)
-
-
-
-
 html_re = re.compile('meta\s[^>]*charset\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
 xml_re = re.compile('<\?\s*xml[^>]*encoding\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
 def guess_encoding(s, default='utf-8'):
@@ -814,11 +790,12 @@ class Blockifier(object):
     """
 
     @staticmethod
-    def blocks_from_tree(tree, pb=PartialBlock, do_css=True):
+    def blocks_from_tree(tree, pb=PartialBlock,
+        do_css=True, do_readability=False):
         cdef list results = []
         cdef cetree._Element ctree
 
-        cdef PartialBlock partial_block = pb(do_css)
+        cdef PartialBlock partial_block = pb(do_css, do_readability)
         ctree = tree
         partial_block.recurse(ctree._c_node, results, ctree._doc)
 
@@ -829,7 +806,8 @@ class Blockifier(object):
     
 
     @staticmethod
-    def blockify(s, encoding=None, pb=PartialBlock, do_css=True,
+    def blockify(s, encoding=None,
+        pb=PartialBlock, do_css=True, do_readability=False,
         parse_callback=None):
         '''
         Take a string of HTML and return a series of blocks
@@ -849,7 +827,7 @@ class Blockifier(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError
 
-        blocks = Blockifier.blocks_from_tree(html, pb, do_css)
+        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability)
 
         if parse_callback is not None:
             parse_callback(html)
@@ -869,4 +847,12 @@ class TagCountNoCSSBlockifier(Blockifier):
     def blockify(s, encoding=None, parse_callback=None):
         return Blockifier.blockify(s, encoding, pb=TagCountPB, do_css=False,
             parse_callback=parse_callback)
+
+class TagCountReadabilityBlockifier(Blockifier):
+    @staticmethod
+    def blockify(s, encoding=None, parse_callback=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB,
+            do_css=False, do_readability=True,
+            parse_callback=parse_callback)
+
 
