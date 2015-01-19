@@ -2,7 +2,6 @@
 
 import re
 import numpy as np
-import scipy.weave
 import json
 
 # implementations of the features interface.
