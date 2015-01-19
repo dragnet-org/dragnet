@@ -7,6 +7,8 @@ from .content_extraction_model import ContentExtractionModel
 from .kohlschuetter import kohlschuetter_features, kohlschuetter
 from .util import evaluation_metrics
 from .weninger import weninger_features_kmeans
+from .readability import readability_features
+from .models import content_extractor, content_comments_extractor
 
 
 class AllFeatures(object):
@@ -26,6 +28,8 @@ class AllFeatures(object):
             return AriasFeatures(*args, **kwargs)
         elif key == 'weninger':
             return weninger_features_kmeans
+        elif key == 'readability':
+            return NormalizedFeature(readability_features)
         else:
             raise KeyError
 

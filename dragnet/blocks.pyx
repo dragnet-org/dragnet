@@ -283,6 +283,9 @@ cdef class PartialBlock:
     cdef cpp_map[string, vector[string]] css_tree
     cdef cpp_map[string, vector[string]] css
 
+    # the tag that starts the block (div, p, h1, etc)
+    cdef string block_start_tag
+
     # subclass callbacks
     cdef vector[callback_t] _tag_func
     cdef vector[reinit_t] _reinit_func
@@ -324,6 +327,8 @@ cdef class PartialBlock:
         self.reinit()
         self.reinit_css(True)
         self.do_css = do_css
+
+        self.block_start_tag = ''
 
         self.do_readability = do_readability
         self.ancestors.clear()
@@ -442,6 +447,7 @@ cdef class PartialBlock:
 
             kwargs = self._add_readability()
             kwargs.update(self._extract_features(True))
+            kwargs['block_start_tag'] = self.block_start_tag
             results.append(Block(block_text, link_d,
                         text_d, self.anchors, self.link_tokens, css,
                         **kwargs))
@@ -612,6 +618,7 @@ cdef class PartialBlock:
                 # add the existing block to the list,
                 # start the new block and recurse
                 self.add_block_to_results(results)
+                self.block_start_tag = tag
                 self.add_text(node, CTEXT)
                 if self.do_css:
                     self.update_css(node, False)
@@ -852,6 +859,14 @@ class TagCountReadabilityBlockifier(Blockifier):
     @staticmethod
     def blockify(s, encoding=None, parse_callback=None):
         return Blockifier.blockify(s, encoding, pb=TagCountPB,
+            do_css=True, do_readability=True,
+            parse_callback=parse_callback)
+
+class TagCountNoCSSReadabilityBlockifier(Blockifier):
+    @staticmethod
+    def blockify(s, encoding=None, parse_callback=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB,
             do_css=False, do_readability=True,
             parse_callback=parse_callback)
+
 

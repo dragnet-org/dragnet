@@ -16,7 +16,9 @@ class TestModels(unittest.TestCase):
                   weninger_model, 
                   kohlschuetter_weninger_model,
                   kohlschuetter_css_model,
-                  kohlschuetter_css_weninger_model]
+                  kohlschuetter_css_weninger_model,
+                  content_extractor,
+                  content_comments_extractor]
 
         actual_content = json.load(open(
             os.path.join(FIXTURES, 'models_content.json'), 'r'))

@@ -112,7 +112,7 @@ class DragnetModelTrainer(object):
             the features known by AllFeatures
         """
         from . import AllFeatures
-        from .blocks import TagCountBlockifier as Blkr
+        from .blocks import TagCountReadabilityBlockifier as Blkr
 
         from mozsci.map_train import run_train_models
 
@@ -354,7 +354,7 @@ def train_models(datadir, output_dir, features_to_use, model,
     import pprint
     import pickle
     from . import AllFeatures
-    from .blocks import TagCountBlockifier as Blkr
+    from .blocks import TagCountReadabilityBlockifier as Blkr
 
     from mozsci.numpy_util import NumpyEncoder
 

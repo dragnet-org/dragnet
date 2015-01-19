@@ -126,6 +126,12 @@ class TestReadabilityBlocks(unittest.TestCase):
         ]
         self.assertEqual(actual, expected)
 
+    def test_block_start_tag(self):
+        blks = blocks.TagCountReadabilityBlockifier.blockify(self.html_string)
+        actual = [blk.features['block_start_tag'] for blk in blks]
+        expected = ['div', 'p', 'p', 'div', 'p', 'p', 'h1']
+        self.assertEqual(actual, expected)
+
 
 if __name__ == "__main__":
     unittest.main()
