@@ -49,6 +49,7 @@ ext_modules = [
     Extension('dragnet.readability',
         sources=["dragnet/readability.pyx"],
         include_dirs = [get_include()],
+        extra_compile_args=['-std=c++0x'],
         language="c++"),
     ]
 
