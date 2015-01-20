@@ -37,6 +37,10 @@ def find_libxml2_include():
 
 
 ext_modules = [
+    Extension('dragnet._weninger',
+        sources=["dragnet/_weninger.pyx"],
+        include_dirs = [get_include()],
+        language="c++"),
     Extension('dragnet.lcs',
         sources=["dragnet/lcs.pyx"],
         include_dirs = [get_include()],
