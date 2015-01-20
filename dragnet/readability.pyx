@@ -40,16 +40,6 @@ class ReadabilityFeatures(object):
         cdef vector[string] block_start_tag
         cdef vector[double] block_link_density
 
-#        block_text_len = [len(block.text) for block in blocks]
-#        block_readability_class_weights = [
-#            block.features['readability_class_weights'] for block in blocks]
-#        block_ancestors = [
-#            block.features['ancestors'] for block in blocks]
-#        block_start_tag = [
-#            block.features['block_start_tag'] for block in blocks]
-#        block_link_density = [
-#            block.link_density for block in blocks]
-
         block_text_len.reserve(nblocks)
         block_readability_class_weights.reserve(nblocks)
         block_ancestors.reserve(nblocks)
