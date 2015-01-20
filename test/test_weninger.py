@@ -6,12 +6,6 @@ import numpy as np
 
 class TestWeningerSxDx(unittest.TestCase):
     def test_weninger_sx_sdx(self):
-
-        from dragnet import weninger
-        import numpy as np
-        from dragnet import weninger_OLD
-
-
         x = np.linspace(0, 10, 10)
         actual = weninger.weninger_sx_sdx(x)
         expected = np.array(
