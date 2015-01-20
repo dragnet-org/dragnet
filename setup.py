@@ -42,10 +42,14 @@ ext_modules = [
         include_dirs = [get_include()],
         language="c++"),
     Extension('dragnet.blocks',
-         sources=["dragnet/blocks.pyx"],
-         include_dirs = lxml.get_include() + [find_libxml2_include()],
-         language="c++",
-         libraries=['xml2']),
+        sources=["dragnet/blocks.pyx"],
+        include_dirs = lxml.get_include() + [find_libxml2_include()],
+        language="c++",
+        libraries=['xml2']),
+    Extension('dragnet.readability',
+        sources=["dragnet/readability.pyx"],
+        include_dirs = [get_include()],
+        language="c++"),
     ]
 
 
