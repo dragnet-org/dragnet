@@ -96,7 +96,7 @@ The training and test data is available at [dragnet_data](https://github.com/seo
 First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, then run:
 
         from dragnet.data_processing import extract_gold_standard_all_training_data
-        rootdir = '/my/data/directory/'
+        rootdir = '/path/to/dragnet_data/'
         extract_gold_standard_all_training_data(rootdir)
 
     This solves the longest common sub-sequence problem to determine
@@ -145,6 +145,8 @@ First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, the
     some *block level* classification errors to a file.
 3.  Once you have decided on a final model, train it on the entire training
 data using `dragnet.model_training.train_models`.
+4.  As a last step, test the performance of the model on the test set (see
+below).
 
 ## Evaluating content extraction models
 
@@ -155,6 +157,6 @@ to evaluate the baseline model (keep everything) run:
     from dragnet.model_training import evaluate_models_tokens
     from dragnet.models import baseline_model
 
-    rootdir = '/my/data/directory/'
+    rootdir = '/path/to/dragnet_data/'
     scores = evaluate_models_tokens(rootdir, baseline_model)
 
