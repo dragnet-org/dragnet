@@ -6,6 +6,9 @@
 // NOTE: features is the return vector.  we assume it is preinitialized
 // to length(nblocks) with 0.0
 
+const std::string DIV = "div";
+const std::string P = "p";
+
 void _readability_features(
     std::vector<uint32_t>& block_text_len,
     std::vector<std::vector<std::pair<uint32_t, int> > >& block_readability_class_weights,
@@ -29,10 +32,10 @@ void _readability_features(
     for (std::size_t k = 0; k < nblocks; ++k)
     {
         //  1. create content_score for each tag_id
-        //  read through blocks.  for each class weight written, add it's weight
+        //  read through blocks.  for each class weight written, add its weight
         //       then: if text length > 25:
         //        add in min((text_len / 100), 3) * link density to
-        //            to ancestors[-1]
+        //            to the parent
         for (it_cw = block_readability_class_weights[k].begin();
             it_cw != block_readability_class_weights[k].end(); ++it_cw)
             scores[it_cw->first] = it_cw->second;
@@ -50,7 +53,7 @@ void _readability_features(
             }
 
             if (block_text_len[k] > 25 && 
-                (block_start_tag[k] == "div" || block_start_tag[k] == "p"))
+                (block_start_tag[k] == DIV || block_start_tag[k] == P))
             {
                 uint32_t parent = block_ancestors[k].back();
                 scores[parent] += (
@@ -118,11 +121,4 @@ void _readability_features(
         }
     }
 }
-
-int main(void)
-{
-return 1;
-}
-
-
 

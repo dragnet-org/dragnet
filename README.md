@@ -7,10 +7,10 @@ Dragnet
 Dragnet isn't interested in the shiny chrome or boilerplate dressing of a 
 web page. It's interested in... 'just the facts.'  The machine learning
 models in Dragnet extract the main article content and optionally
-user generated comments from a web page.  They provide start
+user generated comments from a web page.  They provide state
 of the art performance on variety of test benchmarks.
 
-For more information on our approach checkout:
+For more information on our approach check out:
 
 * Our paper [<i>Content Extraction Using Diverse Feature Sets</i>](dragnet_www2013.pdf?raw=true), published
 at WWW in 2013, gives an overview of the machine learning approach.
@@ -33,9 +33,9 @@ from dragnet import content_extractor, content_comments_extractor
 
 # fetch HTML
 url = 'https://moz.com/devblog/dragnet-content-extraction-from-diverse-feature-sets/'
-r = requests.get(u)
+r = requests.get(url)
 
-# get main article
+# get main article without comments
 content = content_extractor.analyze(r.content)
 
 # get article and comments
@@ -43,7 +43,7 @@ content_comments = content_comments_extractor.analyze(r.content)
 ```
 
 We also provide some additional models in `dragnet.models` but
-don't recommend their use for anything other then academic curiousity.
+don't recommend their use for anything other than academic curiousity.
 
 ## A note about encoding
 
@@ -91,7 +91,9 @@ The training and test data is available at [dragnet_data](https://github.com/seo
 
 # Training content extraction models
 
-0.  Download the training data (see above).
+0.  Download the training data (see above).  In what follows `ROOTDIR` contains
+the root of the `dragnet_data` repo, another directory with similar
+structure (`HTML` and `Corrected` sub-directories).
 1.  Create the block corrected files needed to do supervised learning on the block level.
 First make a sub-directory `$ROOTDIR/block_corrected/` for the output files, then run:
 
