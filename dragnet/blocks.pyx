@@ -12,9 +12,11 @@ from libcpp.set cimport set as cpp_set
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libcpp.map cimport map as cpp_map
+from libcpp.pair cimport pair
 from libcpp cimport bool
 from cython.operator cimport preincrement as inc
 from cython.operator cimport dereference as deref
+from libc.stdint cimport uint32_t
 
 # boilerplate from http://lxml.de/capi.html
 cimport etreepublic as cetree
@@ -74,6 +76,23 @@ cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>'tagcount_since_last_block'
 cdef string TAGCOUNT = <string>'tagcount'
 cdef string ANCHOR_COUNT = <string>'anchor_count'
 cdef string MIN_DEPTH_SINCE_LAST_BLOCK = <string>'min_depth_since_last_block'
+
+
+# for the class/id readability score
+re_readability_negative = re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I)
+re_readability_positive = re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I)
+
+cdef string DIV = <string>'div'
+
+cdef cpp_set[string] READABILITY_PLUS3
+READABILITY_PLUS3 = set(["pre", "td", "blockquote"])
+
+cdef cpp_set[string] READABILITY_MINUS3
+READABILITY_MINUS3 = set(
+    ["address", "ol", "ul", "dl", "dd", "dt", "li", "form"])
+
+cdef cpp_set[string] READABILITY_MINUS5
+READABILITY_MINUS5 = set(["h1", "h2", "h3", "h4", "h5", "h6", "th"])
 
 
 cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
@@ -228,6 +247,16 @@ cdef class PartialBlock:
     This class maintains that state, as well as provides methods
     to modify it.
 
+    The recurse method works as follows:
+        given a root node, iterate over the children
+        when we encounter <div>, <p>, etc, start a new block.
+            when starting a new block do the following:
+                call name(self) with the partialblock instance just
+                    before creating the block. this returns a key->int
+                    map that is added to the block
+                after creating the block and adding to output, call reinit()
+                    to reset the partialblock
+
     To generalize, subclasses do the following:
         define a set of "feature extractors".  These are given
         a string name and specified by the following methods:
@@ -254,6 +283,9 @@ cdef class PartialBlock:
     cdef cpp_map[string, vector[string]] css_tree
     cdef cpp_map[string, vector[string]] css
 
+    # the tag that starts the block (div, p, h1, etc)
+    cdef string block_start_tag
+
     # subclass callbacks
     cdef vector[callback_t] _tag_func
     cdef vector[reinit_t] _reinit_func
@@ -262,12 +294,32 @@ cdef class PartialBlock:
 
     cdef bool do_css
 
+    cdef bool do_readability
+    # nodes are identified by a tag_id.  this tracks the id of the current
+    # node in the recursion
+    cdef uint32_t tag_id
+    # the ID for next unseen node
+    cdef uint32_t next_tag_id
+    # during node recursion, this will maintain a list of all ancestors of
+    # current node
+    cdef vector[uint32_t] ancestors
+    # this stores the ancestor list when a block is created so it can
+    # be written when the next block is stored
+    cdef vector[uint32_t] ancestors_write
+    # for each tag_id, stores whether this weight has been calculated
+    # and written out yet
+    cdef cpp_set[uint32_t] class_weights_written
+    # the class weight is only computed once, when we first see the node
+    # we'll keep a list here of all the values ids to write out
+    # the first time we see them
+    cdef vector[pair[uint32_t, int] ] class_weights
+
     def __cinit__(self, *args, **kwargs):
         self.css_attrib.clear()
         self.css_attrib.push_back('id')
         self.css_attrib.push_back('class')
 
-    def __init__(self, do_css=True):
+    def __init__(self, do_css=True, do_readability=False):
         self._tag_func.clear()
         self._reinit_func.clear()
         self._name_func.clear()
@@ -275,6 +327,21 @@ cdef class PartialBlock:
         self.reinit()
         self.reinit_css(True)
         self.do_css = do_css
+
+        self.block_start_tag = ''
+
+        self.do_readability = do_readability
+        self.ancestors.clear()
+        self.ancestors_write.clear()
+        self.tag_id = 0
+        self.next_tag_id = 1
+        self.class_weights_written.clear()
+        self.class_weights.clear()
+        if do_readability:
+            self._subtree_func.push_back(
+                <subtree_t>PartialBlock.subtree_readability)
+            self._reinit_func.push_back(
+                <reinit_t>PartialBlock.reinit_readability)
 
     cdef void _fe_reinit(self):
         # each subclass implements reinit_fename()
@@ -332,6 +399,16 @@ cdef class PartialBlock:
                 inc(it)
         return ret
 
+    cdef object _add_readability(self):
+        if self.do_readability:
+            ret = {
+                'ancestors': self.ancestors_write,
+                'readability_class_weights': self.class_weights
+            }
+            self.class_weights.clear()
+            return ret
+        else:
+            return {}
 
     cdef void add_block_to_results(self, list results):
         """Create a block from the current partial block
@@ -368,9 +445,12 @@ cdef class PartialBlock:
                     css[cssa] = ' '.join(
                         _tokens_from_text(self.css[cssa])).lower()
 
+            kwargs = self._add_readability()
+            kwargs.update(self._extract_features(True))
+            kwargs['block_start_tag'] = self.block_start_tag
             results.append(Block(block_text, link_d,
                         text_d, self.anchors, self.link_tokens, css,
-                        **self._extract_features(True)))
+                        **kwargs))
         else:
             self._extract_features(False)
 
@@ -437,7 +517,58 @@ cdef class PartialBlock:
         cdef size_t k
         for k in range(self._subtree_func.size()):
             self._subtree_func[k](self, start_or_end)
-            
+
+    cdef void subtree_readability(self, int start_or_end):
+        if start_or_end == 1:
+            self.ancestors.push_back(self.tag_id)
+        else:
+            self.tag_id = self.ancestors.back()
+            self.ancestors.pop_back()
+
+    cdef void readability_score_node(self, cetree.tree.xmlNode* node):
+        cdef int weight = 0
+        cdef cetree.tree.xmlAttr* attr
+        cdef size_t k
+        cdef string id_class
+        cdef string attrib
+        cdef string tag
+
+        # check to see if we've already scored this tag_id.
+        # if so don't score again
+        if (self.class_weights_written.find(self.tag_id) !=
+                self.class_weights_written.end()):
+            return
+
+        # first the class/id weights
+        for k in range(self.css_attrib.size()):
+            attrib = self.css_attrib[k]
+            attr = cetree.tree.xmlHasProp(node,
+                <cetree.tree.const_xmlChar*> attrib.c_str())
+            if attr is not NULL:
+                id_class = <string>cetree.attributeValue(
+                    node, attr).encode('utf-8')
+                if re_readability_negative.search(id_class):
+                    weight -= 25
+                if re_readability_positive.search(id_class):
+                    weight += 25
+
+        # now the tag name specific weight
+        tag = cetree.namespacedName(node)
+        if tag == DIV:
+            weight += 5
+        elif READABILITY_PLUS3.find(tag) != READABILITY_PLUS3.end():
+            weight += 5
+        elif READABILITY_MINUS3.find(tag) != READABILITY_MINUS3.end():
+            weight -= 3
+        elif READABILITY_MINUS5.find(tag) != READABILITY_MINUS5.end():
+            weight -= 5
+
+        # finally store it
+        self.class_weights.push_back(pair[uint32_t, int](self.tag_id, weight))
+        self.class_weights_written.insert(self.tag_id)
+    
+    cdef void reinit_readability(self):
+        self.ancestors_write = self.ancestors
 
     cdef void recurse(self, cetree.tree.xmlNode* subtree, list results,
         cetree._Document doc):
@@ -451,14 +582,24 @@ cdef class PartialBlock:
             self.update_css(subtree, True)
 
         self._subtree_fe(1)
+        if self.do_readability:
+            self.readability_score_node(subtree)
 
         # iterate through children
         if cetree.hasChild(subtree):
             node = cetree.findChild(subtree, 0)
+            self.tag_id = self.next_tag_id
+            self.next_tag_id += 1
         else:
             node = NULL
 
         while node != NULL:
+
+            # readability
+            # update the tag_id.  we do it here so it's updated for every
+            # potential parent
+            self.tag_id = self.next_tag_id
+            self.next_tag_id += 1
 
             # get the tag
             tag = cetree.namespacedName(node)
@@ -477,6 +618,7 @@ cdef class PartialBlock:
                 # add the existing block to the list,
                 # start the new block and recurse
                 self.add_block_to_results(results)
+                self.block_start_tag = tag
                 self.add_text(node, CTEXT)
                 if self.do_css:
                     self.update_css(node, False)
@@ -491,7 +633,7 @@ cdef class PartialBlock:
 
             else:
                 # a standard tag.
-                # we need to get it's text and then recurse over the subtree
+                # we need to get its text and then recurse over the subtree
                 self.add_text(node, CTEXT)
                 if self.do_css:
                     self.update_css(node, False)
@@ -562,7 +704,8 @@ cdef class TagCountPB(PartialBlock):
     def __init__(self, *args, **kwargs):
         PartialBlock.__init__(self, *args, **kwargs)
 
-        self._reinit_func.push_back(<reinit_t>TagCountPB.reinit_tagcount)
+        # don't need to add reinit since it's empty
+        #self._reinit_func.push_back(<reinit_t>TagCountPB.reinit_tagcount)
         self._subtree_func.push_back(<subtree_t>TagCountPB.subtree_tagcount)
         self._name_func.push_back(<name_t>TagCountPB.tagcount)
         self._tag_func.push_back(<callback_t>TagCountPB.tag_tagcount)
@@ -654,11 +797,12 @@ class Blockifier(object):
     """
 
     @staticmethod
-    def blocks_from_tree(tree, pb=PartialBlock, do_css=True):
+    def blocks_from_tree(tree, pb=PartialBlock,
+        do_css=True, do_readability=False):
         cdef list results = []
         cdef cetree._Element ctree
 
-        cdef PartialBlock partial_block = pb(do_css)
+        cdef PartialBlock partial_block = pb(do_css, do_readability)
         ctree = tree
         partial_block.recurse(ctree._c_node, results, ctree._doc)
 
@@ -669,7 +813,8 @@ class Blockifier(object):
     
 
     @staticmethod
-    def blockify(s, encoding=None, pb=PartialBlock, do_css=True,
+    def blockify(s, encoding=None,
+        pb=PartialBlock, do_css=True, do_readability=False,
         parse_callback=None):
         '''
         Take a string of HTML and return a series of blocks
@@ -689,7 +834,7 @@ class Blockifier(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError
 
-        blocks = Blockifier.blocks_from_tree(html, pb, do_css)
+        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability)
 
         if parse_callback is not None:
             parse_callback(html)
@@ -709,4 +854,19 @@ class TagCountNoCSSBlockifier(Blockifier):
     def blockify(s, encoding=None, parse_callback=None):
         return Blockifier.blockify(s, encoding, pb=TagCountPB, do_css=False,
             parse_callback=parse_callback)
+
+class TagCountReadabilityBlockifier(Blockifier):
+    @staticmethod
+    def blockify(s, encoding=None, parse_callback=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB,
+            do_css=True, do_readability=True,
+            parse_callback=parse_callback)
+
+class TagCountNoCSSReadabilityBlockifier(Blockifier):
+    @staticmethod
+    def blockify(s, encoding=None, parse_callback=None):
+        return Blockifier.blockify(s, encoding, pb=TagCountPB,
+            do_css=False, do_readability=True,
+            parse_callback=parse_callback)
+
 

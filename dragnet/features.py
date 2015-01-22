@@ -2,8 +2,6 @@
 
 import re
 import numpy as np
-import scipy.weave
-from .kohlschuetter import kohlschuetter_features
 import json
 
 # implementations of the features interface.
@@ -88,47 +86,6 @@ class NormalizedFeature(object):
         else:
             return mean_std
 
-
-re_capital = re.compile('[A-Z]')
-re_digit = re.compile('\d')
-def capital_digit_features(blocks, train=False):
-    """percent of block that is capitalized and numeric"""
-    features = np.zeros((len(blocks), 2))
-    features[:, 0] = [len(re_capital.findall(ele.text)) / float(len(ele.text)) for ele in blocks]
-    features[:, 1] = [len(re_digit.findall(ele.text)) / float(len(ele.text)) for ele in blocks]
-    return features
-capital_digit_features.nfeatures = 2
-
-
-def token_feature(blocks, train=False):
-    """A global token count feature"""
-    from collections import defaultdict
-    word_dict = defaultdict(lambda: 0)
-    block_tokens = []
-    token_count = 0
-    for block in blocks:
-        block_tokens.append(re.split('\W', block.text.strip()))
-        for token in block_tokens[-1]:
-            word_dict[token] += 1
-            token_count += 1
-
-    token_count = float(token_count)
-
-    nblocks = len(blocks)
-    feature = np.zeros((nblocks, 1))
-    for k in xrange(nblocks):
-        ntokens = len(block_tokens[k])
-
-        for token in block_tokens[k]:
-            feature[k] += np.log(word_dict[token])
-
-        feature[k] = feature[k] / ntokens - np.log(token_count)
-
-        if np.isinf(feature[k]):
-            feature[k] = -10.0   # just in case
-
-    return feature
-token_feature.nfeatures = 1
 
 class CSSFeatures(object):
     """Class of features from id/class attributes.

@@ -37,15 +37,24 @@ def find_libxml2_include():
 
 
 ext_modules = [
+    Extension('dragnet._weninger',
+        sources=["dragnet/_weninger.pyx"],
+        include_dirs = [get_include()],
+        language="c++"),
     Extension('dragnet.lcs',
         sources=["dragnet/lcs.pyx"],
         include_dirs = [get_include()],
         language="c++"),
     Extension('dragnet.blocks',
-         sources=["dragnet/blocks.pyx"],
-         include_dirs = lxml.get_include() + [find_libxml2_include()],
-         language="c++",
-         libraries=['xml2']),
+        sources=["dragnet/blocks.pyx"],
+        include_dirs = lxml.get_include() + [find_libxml2_include()],
+        language="c++",
+        libraries=['xml2']),
+    Extension('dragnet.readability',
+        sources=["dragnet/readability.pyx"],
+        include_dirs = [get_include()],
+        extra_compile_args=['-std=c++0x'],
+        language="c++"),
     ]
 
 
@@ -53,25 +62,28 @@ setup(
     name             = 'dragnet',
     version          = '1.0.0',
     description      = 'Just the facts, ma\'am',
-    author           = 'Dan Lecocq, Matt Peters',
-    author_email     = 'dan@seomoz.org, matt@seomoz.org',
+    author           = 'Matt Peters, Dan Lecocq',
+    author_email     = 'matt@moz.com, dan@moz.com',
     url              = 'http://github.com/seomoz/dragnet',
     license          = 'MIT',
     platforms        = 'Posix; MacOS X',
+    keywords         = 'automatic content extraction, web page dechroming, HTML parsing',
     classifiers      = [
         'License :: OSI Approved :: MIT License',
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
-        'Intended Audience :: Science/Research'
+        'Intended Audience :: Science/Research',
+        'Programming Language :: Python :: 2.7',
         ],
 
     packages         = ['dragnet'],
     package_dir      = {'dragnet':'dragnet'},
-    package_data     = {'dragnet':['pickled_models/*.pickle']},
+    package_data     = {'dragnet':['pickled_models/*']},
     cmdclass         = {'build_ext': build_ext},
     ext_modules      = ext_modules,
 )

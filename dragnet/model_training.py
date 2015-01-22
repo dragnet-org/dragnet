@@ -3,20 +3,15 @@ import re
 import json
 import numpy as np
 import pylab as plt
-import glob
-import codecs
+import cPickle
+import os
 
 from mozsci.cross_validate import cv_kfold
 
 from .blocks import Blockifier
 from . import evaluation_metrics
 from .content_extraction_model import ContentExtractionModel
-from .data_processing import simple_tokenizer, DragnetModelData, read_gold_standard, get_list_all_corrected_files, read_HTML_file
-
-
-def add_plot_title(ti_str):
-    """Add a string as a title on top of a subplot"""
-    plt.figtext(0.5, 0.94, ti_str, ha='center', color='black', weight='bold', size='large')
+from .data_processing import simple_tokenizer, DragnetModelData, read_gold_standard, get_list_all_corrected_files, read_HTML_file, add_plot_title
 
 
 def run_score_content_detection(html, gold_standard, content_detector, tokenizer=simple_tokenizer):
@@ -32,7 +27,6 @@ def run_score_content_detection(html, gold_standard, content_detector, tokenizer
     content = content_detector(html)
     content_tokens = tokenizer(content)
     return evaluation_metrics(content_tokens, gold_standard, bow=False)
-
 
 
 class DragnetModelTrainer(object):
@@ -110,32 +104,57 @@ class DragnetModelTrainer(object):
             return features, labels, weights, all_blocks
            
 
-
-    def train_model(self, data, model_library, model):
+    def train_model(self, data, model_library, features_to_use):
         """data is an instance of DragnetModelData
-        model_library is a list of model definitions as input to
-         run_train_models
-        model provides model.make_features to make the features
+        model_library: the block_models to train as a list of model
+            definitions as input to run_train_models
+        features_to_use = a list of the features to use.  Must be one of
+            the features known by AllFeatures
         """
+        from . import AllFeatures
+        from .blocks import TagCountReadabilityBlockifier as Blkr
+
         from mozsci.map_train import run_train_models
 
-        # to train the model need a set of all the features and their labels
-        # the features + labels are block level
+        # assemble the features
+        feature_instances = []
+        for f in features_to_use:
+            feature_instances.append(AllFeatures.get(f))
 
-        # get the features from the first document to see how many features we have
-        features, labels, weights = self.make_features_from_data(data, model)
+        # do feature centering
+        print "Initializing features"
+        for f in feature_instances:
+            # check to see if this feature needs to be init
+            # if so, then init it, take the return object and serialize to json
+            if hasattr(f, 'init_params'):
+                # initialize it
+                model_init = ContentExtractionModel(Blkr, [f], None)
+                features, labels, weights = self.make_features_from_data(
+                    data, model_init, train=True)
+                mean_std = f.init_params(features)
+                f.set_params(mean_std)
+
+        model_to_train = ContentExtractionModel(Blkr, feature_instances, None)
+
+        # train the model
+        print "Training the model"
+        features, labels, weights = self.make_features_from_data(data,
+            model_to_train, training_or_test='training')
 
         # cap weights!
         weights = np.minimum(weights, 200)
 
         # do kfold cross validation
-        folds = cv_kfold(len(labels), self.kfolds, seed=2)
+        if self.kfolds > 1:
+            folds = cv_kfold(len(labels), self.kfolds, seed=2)
+        else:
+            folds = None
 
         if self.weighted:
-            errors = run_train_models(processes=4, model_library=model_library,
+            errors = run_train_models(processes=1, model_library=model_library,
                 X=features, y=labels, folds=folds, weights=weights)
         else:
-            errors = run_train_models(processes=4, model_library=model_library,
+            errors = run_train_models(processes=1, model_library=model_library,
                 X=features, y=labels, folds=folds)
 
         return errors, features, labels, weights, folds
@@ -199,7 +218,7 @@ def accuracy_auc(y, ypred, weights=None):
 
 
 def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
-    tokenizer=simple_tokenizer, cetr=False):
+    tokenizer=simple_tokenizer, cetr=False, content_or_comments='both'):
     """
     Evaluate a trained model on the token level.
 
@@ -210,6 +229,8 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
         figname_root + extension
     tokenizer = implements tokenizer interface
     cetr = if True, then handle the gold standard in CETR format (parse it)
+    content_or_comments = 'content', 'comments' or 'both' to specify
+        what to include in the gold standard
 
     Outputs:
         saves png files
@@ -219,7 +240,16 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
 
     gold_standard_tokens = {}
     for fname, froot in all_files:
-        tokens = tokenizer(' '.join(read_gold_standard(datadir, froot, cetr)))
+        content, comments = read_gold_standard(datadir, froot, cetr)
+        if content_or_comments == 'content':
+            gold = content
+        elif content_or_comments == 'comments':
+            gold = comments
+        elif content_or_comments == 'both':
+            gold = content + ' ' + comments
+        else:
+            raise ValueError("Invalid input for content_or_comments")
+        tokens = tokenizer(gold)
         tokens = [token.encode('utf-8') for token in tokens]
         if len(tokens) > 0:
             gold_standard_tokens[froot] = tokens
@@ -307,7 +337,8 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
     return errors
 
 
-def train_models(datadir, output_prefix, features_to_use, lam=10):
+def train_models(datadir, output_dir, features_to_use, model,
+    content_or_comments='both'):
     """Train a content extraction model.
 
     Does feature centering, trains the logistic regression model,
@@ -315,19 +346,19 @@ def train_models(datadir, output_prefix, features_to_use, lam=10):
     to a file
 
     datadir = root directory for all the data
-    output_prefix = write the trained model files, errors, etc
-        to files starting with this.
+    output_dir = write the trained model files, errors, etc to this directory
     features_to_use = a list of the features to use.  Must be one of the features
         known by AllFeatures
-    lambda = lambda regularization parameter for LogisticRegression
+    model: an instance of the block model to train
     """
     import pprint
     import pickle
     from . import AllFeatures
-    from .blocks import TagCountBlockifier as Blkr
+    from .blocks import TagCountReadabilityBlockifier as Blkr
 
-    from mozsci.models import LogisticRegression
     from mozsci.numpy_util import NumpyEncoder
+
+    prefix = os.path.join(output_dir, '_'.join(features_to_use))
 
     # assemble the features
     feature_instances = []
@@ -336,7 +367,7 @@ def train_models(datadir, output_prefix, features_to_use, lam=10):
 
     # compute the mean/std and save them
     data = DragnetModelData(datadir)
-    trainer = DragnetModelTrainer()
+    trainer = DragnetModelTrainer(content_or_comments=content_or_comments)
 
     print "Initializing features"
     k = 0
@@ -349,7 +380,8 @@ def train_models(datadir, output_prefix, features_to_use, lam=10):
             features, labels, weights = trainer.make_features_from_data(data, model_init, train=True)
             mean_std = f.init_params(features)
             f.set_params(mean_std)
-            with open("%s_mean_std_%s.json" % (output_prefix, features_to_use[k]), 'w') as fout:
+            with open("%s_mean_std_%s.json" % (prefix, features_to_use[k]),
+                    'w') as fout:
                 fout.write("%s" % json.dumps(mean_std, cls=NumpyEncoder))
         k += 1
 
@@ -357,25 +389,20 @@ def train_models(datadir, output_prefix, features_to_use, lam=10):
 
     # train the model
     print "Training the model"
-    model = LogisticRegression(lam=lam)
     features, labels, weights = trainer.make_features_from_data(data,
-                         model_to_train, training_or_test='training')
-    model.fit(features, labels, weights=np.minimum(weights, 200))
+        model_to_train, training_or_test='training')
+    model.fit(features, labels, np.minimum(weights, 200.0))
+    train_errors = accuracy_auc(labels, model.predict(features))
 
-    print "Checking errors"
-    train_errors = accuracy_auc(labels, model.predict(features), weights=weights)
-
-    # check errors on test set
-    test_features, test_labels, test_weights = trainer.make_features_from_data(data,
-                     model_to_train, training_or_test='test')
-    test_weights = np.minimum(test_weights, 200.0)
-    test_errors = accuracy_auc(test_labels, model.predict(test_features), weights=test_weights)
+    features, labels, weights = trainer.make_features_from_data(data,
+        model_to_train, training_or_test='test')
+    test_errors = accuracy_auc(labels, model.predict(features))
 
     # write errors to a file
-    with open(output_prefix + '_block_errors.txt', 'w') as f:
+    with open(prefix + '_block_errors.txt', 'w') as f:
         f.write("Training errors for final model (block level):\n")
         pprint.pprint(train_errors, f)
-        f.write("Test errors (block level):\n")
+        f.write("Test errors for final model (block level):\n")
         pprint.pprint(test_errors, f)
 
     # pickle the final model!
@@ -383,9 +410,8 @@ def train_models(datadir, output_prefix, features_to_use, lam=10):
     pickle.dump(ContentExtractionModel(Blkr,
                         feature_instances,
                         model,
-                        threshold=0.5), open(output_prefix + '_content_model.pickle', 'w'))
+                        threshold=0.5),
+                open(prefix + '_content_model.pickle', 'w'))
 
     print "done!"
-
-
 

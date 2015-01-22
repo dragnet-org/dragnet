@@ -32,16 +32,6 @@ class TestContentExtractionModel(unittest.TestCase):
                         re.split('\s+', content.strip()))
 
 
-        # check that we maintain backward compatability
-        from dragnet import DragnetModelKohlschuetterFeatures
-        dmkf = DragnetModelKohlschuetterFeatures(block_model, mean_std)
-        content_dragnetmodelkohschuetterfeatures = dmkf.analyze(big_html_doc)
-        self.assertEqual(re.split('\s+', actual_content.strip()),
-            re.split('\s+', content_dragnetmodelkohschuetterfeatures.strip()))
-
-
 if __name__ == "__main__":
     unittest.main()
-
-
 
