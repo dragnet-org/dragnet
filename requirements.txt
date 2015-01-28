@@ -1,5 +1,7 @@
 nose
 coverage
-Cython>=0.17
+Cython>=0.21.1
 lxml
-scikit-learn==0.15
+scikit-learn==0.15.2
+numpy
+scipy

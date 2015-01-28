@@ -24,7 +24,7 @@
 import os.path
 import lxml
 
-from distutils.core import setup
+from setuptools import setup
 from numpy import get_include
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
@@ -78,12 +78,20 @@ setup(
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Intended Audience :: Science/Research',
+        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         ],
-
     packages         = ['dragnet'],
     package_dir      = {'dragnet':'dragnet'},
     package_data     = {'dragnet':['pickled_models/*']},
     cmdclass         = {'build_ext': build_ext},
     ext_modules      = ext_modules,
+    install_requires = [
+        'Cython>=0.21.1',
+        'lxml',
+        'scikit-learn==0.15.2',
+        'numpy',
+        'scipy'
+    ]
 )
+
