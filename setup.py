@@ -91,7 +91,8 @@ setup(
         'lxml',
         'scikit-learn==0.15.2',
         'numpy',
-        'scipy'
+        'scipy',
+        'mozsci'
     ]
 )
 
