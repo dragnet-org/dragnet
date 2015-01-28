@@ -2,7 +2,6 @@
 import re
 import json
 import numpy as np
-import pylab as plt
 import glob
 import codecs
 import os
@@ -12,6 +11,7 @@ from lxml import etree
 
 def add_plot_title(ti_str):
     """Add a string as a title on top of a subplot"""
+    import pylab as plt
     plt.figtext(0.5, 0.94, ti_str, ha='center', color='black', weight='bold', size='large')
 
 re_has_text = re.compile("^\s*<text")
@@ -447,6 +447,7 @@ class DragnetModelData(object):
         """Do some diagnosis if the data set
 
         Plotdir = output plots to this directory"""
+        import pylab as plt
 
         # we will accumulate the percent extracted for some histograms
         percent_extracted = []
@@ -494,7 +495,9 @@ class DragnetModelData(object):
         """Make some plots and do some exploratory analyis on training data
         training_or_test is one of "training", "test", "both"
         """
+        import pylab as plt
         from mozsci.histogram import Histogram1DFast
+
         if training_or_test == 'training':
             plot_data = self.training_data
             files = self.training_files
