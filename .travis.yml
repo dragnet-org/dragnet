@@ -14,5 +14,6 @@ install:
   - conda_deps='pip numpy scipy'
   - conda create -p $HOME/py --yes $conda_deps "python=$TRAVIS_PYTHON_VERSION"
   - export PATH=$HOME/py/bin:$PATH
+  - pip install Cython>=0.21.1
   - pip install -r requirements.txt
   - python setup.py build_ext --inplace
