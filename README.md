@@ -14,6 +14,7 @@ For more information on our approach check out:
 
 * Our paper [<i>Content Extraction Using Diverse Feature Sets</i>](dragnet_www2013.pdf?raw=true), published
 at WWW in 2013, gives an overview of the machine learning approach.
+* [A comparison](https://moz.com/devblog/benchmarking-python-content-extraction-algorithms-dragnet-readability-goose-and-eatiht/) of Dragnet and alternate content extraction packages.
 * [This blog post](https://moz.com/devblog/dragnet-content-extraction-from-diverse-feature-sets/) explains the intuition behind the algorithms.
 
 This project was originally inspired by 
