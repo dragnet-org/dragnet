@@ -58,7 +58,13 @@ Otherwise, we try to guess the encoding from a `meta` tag or specified
 
 ## Installing
 
+The build requires numpy, lxml and a new version of Cython, so first make sure
+they are installed, then install Dragnet:
+
 ```
+pip install numpy
+pip install --upgrade cython
+pip install lxml
 pip install dragnet
 ```
 
