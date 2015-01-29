@@ -2,17 +2,18 @@ language: python
 python:
   - 2.7
 script: make test
-virtualenv:
-  system_site_packages: true
 cache:
   - apt
   - pip
 install:
-  - sudo apt-get -y install libxslt-dev libxml2-dev python-numpy python-scipy python-matplotlib
+  - sudo apt-get -y install libatlas-base-dev libatlas-dev lib{blas,lapack}-dev
+  - sudo apt-get -y install libxslt-dev libxml2-dev
+  # some conda magic to install numpy, scipy
+  # see http://sburns.org/2014/03/28/faster-travis-builds.html
+  - sudo pip install conda
+  - conda_deps='pip numpy scipy'
+  - conda create -p $HOME/py --yes $conda_deps "python=$TRAVIS_PYTHON_VERSION"
+  - export PATH=$HOME/py/bin:$PATH
+  - pip install Cython>=0.21.1
   - pip install -r requirements.txt
-  - git clone https://github.com/seomoz/mozsci.git
-  - pushd mozsci
-  - pip install -r requirements.txt
-  - make install
-  - popd
   - python setup.py build_ext --inplace

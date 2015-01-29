@@ -14,6 +14,7 @@ For more information on our approach check out:
 
 * Our paper [<i>Content Extraction Using Diverse Feature Sets</i>](dragnet_www2013.pdf?raw=true), published
 at WWW in 2013, gives an overview of the machine learning approach.
+* [A comparison](https://moz.com/devblog/benchmarking-python-content-extraction-algorithms-dragnet-readability-goose-and-eatiht/) of Dragnet and alternate content extraction packages.
 * [This blog post](https://moz.com/devblog/dragnet-content-extraction-from-diverse-feature-sets/) explains the intuition behind the algorithms.
 
 This project was originally inspired by 
@@ -55,13 +56,22 @@ you can pass it down to the parser:
 Otherwise, we try to guess the encoding from a `meta` tag or specified
 `<?xml encoding=".."?>` tag.  If that fails, we assume "UTF-8".
 
-## Dependencies
+## Installing
+
+The build requires numpy, lxml and a new version of Cython, so first make sure
+they are installed, then install Dragnet:
+
+```
+pip install numpy
+pip install --upgrade cython
+pip install lxml
+pip install dragnet
+```
 
 Dragnet is written in Python (developed with 2.7, not tested on 3)
 and built on the numpy/scipy/Cython numerical computing environment.
 In addition we use <a href="http://lxml.de/">lxml</a> (libxml2)
-for HTML parsing.  The [Travis build file](.travis.yml) and
-[`requirements.txt`](requirements.txt) provide a list of dependencies.
+for HTML parsing.
 
 # Contributing
 

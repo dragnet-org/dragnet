@@ -24,7 +24,7 @@
 import os.path
 import lxml
 
-from distutils.core import setup
+from setuptools import setup
 from numpy import get_include
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
@@ -60,8 +60,8 @@ ext_modules = [
 
 setup(
     name             = 'dragnet',
-    version          = '1.0.0',
-    description      = 'Just the facts, ma\'am',
+    version          = '1.0.1',
+    description      = 'Extract the main article content (and optionally comments) from a web page',
     author           = 'Matt Peters, Dan Lecocq',
     author_email     = 'matt@moz.com, dan@moz.com',
     url              = 'http://github.com/seomoz/dragnet',
@@ -78,12 +78,21 @@ setup(
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Intended Audience :: Science/Research',
+        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         ],
-
     packages         = ['dragnet'],
     package_dir      = {'dragnet':'dragnet'},
     package_data     = {'dragnet':['pickled_models/*']},
     cmdclass         = {'build_ext': build_ext},
     ext_modules      = ext_modules,
+    install_requires = [
+        'Cython>=0.21.1',
+        'lxml',
+        'scikit-learn==0.15.2',
+        'numpy',
+        'scipy',
+        'mozsci'
+    ]
 )
+

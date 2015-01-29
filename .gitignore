@@ -8,6 +8,9 @@ dragnet/blocks.cpp
 dragnet/blocks.html
 dragnet/lcs.cpp
 dragnet/lcs.html
+dragnet/_weninger.cpp
+dragnet/readability.cpp
+
 
 documents/*
 output/*
