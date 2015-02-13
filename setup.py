@@ -30,10 +30,11 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
 def find_libxml2_include():
+    include_dirs = []
     for d in ['/usr/include/libxml2', '/usr/local/include/libxml2']:
         if os.path.exists(os.path.join(d, 'libxml/tree.h')):
-            return d
-    raise ValueError("Can't find libxml2 include headers")
+            include_dirs.append(d)
+    return include_dirs
 
 
 ext_modules = [
@@ -47,7 +48,7 @@ ext_modules = [
         language="c++"),
     Extension('dragnet.blocks',
         sources=["dragnet/blocks.pyx"],
-        include_dirs = lxml.get_include() + [find_libxml2_include()],
+        include_dirs = lxml.get_include() + find_libxml2_include(),
         language="c++",
         libraries=['xml2']),
     Extension('dragnet.readability',
