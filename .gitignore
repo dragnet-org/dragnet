@@ -2,6 +2,7 @@
 *.pyc
 *.so
 build/*
+dragnet.egg-info
 
 # cython temporary files
 dragnet/blocks.cpp
