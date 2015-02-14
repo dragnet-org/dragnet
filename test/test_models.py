@@ -41,16 +41,19 @@ class TestModels(unittest.TestCase):
         content = content_extractor.analyze(self._html)
         content_comments = content_comments_extractor.analyze(self._html)
 
-        passed = False
+        passed_content = False
+        passed_content_comments = False
         for i in xrange(5):
             actual_content, actual_content_comments = \
                 content_and_content_comments_extractor.analyze(self._html)
-            passed = actual_content == content and (
+            passed_content = actual_content == content
+            passed_content_comments = (
                 actual_content_comments == content_comments)
-            if passed:
+            if passed_content and passed_content_comments:
                 break
 
-        self.assertTrue(passed)
+        self.assertTrue(passed_content)
+        self.assertTrue(passed_content_comments)
 
     def test_content_and_content_comments_extractor_blocks(self):
         '''
@@ -60,22 +63,25 @@ class TestModels(unittest.TestCase):
         content_comments = content_comments_extractor.analyze(
             self._html, blocks=True)
 
-        passed = False
+        passed_content = False
+        passed_content_comments = False
         for i in xrange(5):
             actual_content, actual_content_comments = \
                 content_and_content_comments_extractor.analyze(
                     self._html, blocks=True)
-            passed = (
+            passed_content = (
                 [blk.text for blk in actual_content] ==
                 [blk.text for blk in content]
-            ) and (
+            )
+            passed_content_comments = (
                 [blk.text for blk in actual_content_comments] == 
                 [blk.text for blk in content_comments]
             )
-            if passed:
+            if passed_content and passed_content_comments:
                 break
 
-        self.assertTrue(passed)
+        self.assertTrue(passed_content)
+        self.assertTrue(passed_content_comments)
 
 if __name__ == "__main__":
     unittest.main()

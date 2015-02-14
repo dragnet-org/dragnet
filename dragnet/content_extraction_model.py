@@ -50,7 +50,8 @@ class ContentExtractionModel(object):
         # check the features
         self._nfeatures = sum(ele.nfeatures for ele in self._features)
         for f in self._features:
-            assert callable(f)
+            if not callable(f):
+                raise ValueError('All features must be callable')
 
     def set_threshold(self, thres):
         """Set the threshold
@@ -140,7 +141,8 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
         # check the features
         self._nfeatures = sum(ele.nfeatures for ele in self._features)
         for f in self._features:
-            assert callable(f)
+            if not callable(f):
+                raise ValueError('All features must be callable')
 
     def analyze(self, s, blocks=False, encoding=None, parse_callback=None):
         """
@@ -166,21 +168,21 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
                 features) > self._threshold
             content_comments_mask = self._content_comments_model.predict(
                 features) > self._threshold
-            results = (
-                [ele[0] for ele in zip(blocks_, content_mask) if ele[1]],
-                [ele[0] for ele in zip(blocks_, content_comments_mask)
-                    if ele[1]]
-            )
+            blocks_content = [
+                ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
+            blocks_content_comments = [
+                ele[0] for ele in zip(blocks_, content_comments_mask) if ele[1]]
         else:
             # doc is too short. return all content
-            results = (blocks_, blocks_)
+            blocks_content = blocks_
+            blocks_content_comments = blocks_
 
         if blocks:
-            return results
+            return (blocks_content, blocks_content_comments)
 
         return (
-            ' '.join(blk.text for blk in results[0]),
-            ' '.join(blk.text for blk in results[1])
+            ' '.join(blk.text for blk in blocks_content),
+            ' '.join(blk.text for blk in blocks_content_comments)
         )
 
 
