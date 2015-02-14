@@ -8,6 +8,7 @@ from gzip import GzipFile
 
 from .blocks import TagCountNoCSSBlockifier, TagCountNoCSSReadabilityBlockifier
 from .content_extraction_model import baseline_model
+from .content_extraction_model import ContentCommentsExtractionModel
 from .weninger import Weninger
 
 # make instances
@@ -44,4 +45,10 @@ kohlschuetter_model._blockifier = TagCountNoCSSBlockifier
 kohlschuetter_weninger_model._blockifier = TagCountNoCSSBlockifier
 content_extractor._blockifier = TagCountNoCSSReadabilityBlockifier
 content_comments_extractor._blockifier = TagCountNoCSSReadabilityBlockifier
+
+# finally make the model that returns both main content and content+comments
+content_and_content_comments_extractor = ContentCommentsExtractionModel(
+    content_extractor._blockifier, content_extractor._features,
+    content_extractor._block_model, content_comments_extractor._block_model,
+    content_extractor._threshold)
 

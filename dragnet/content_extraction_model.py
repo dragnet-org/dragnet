@@ -50,7 +50,8 @@ class ContentExtractionModel(object):
         # check the features
         self._nfeatures = sum(ele.nfeatures for ele in self._features)
         for f in self._features:
-            assert callable(f)
+            if not callable(f):
+                raise ValueError('All features must be callable')
 
     def set_threshold(self, thres):
         """Set the threshold
@@ -105,8 +106,6 @@ class ContentExtractionModel(object):
 
         return features, blocks
 
-
-
     @staticmethod
     def plot(blocks, content_mask):
         import pylab as plt
@@ -123,6 +122,69 @@ class ContentExtractionModel(object):
         ret = plt.bar(np.arange(len(blocks)), block_lengths_content, 0.5)
 
         fig.show()
+
+
+class ContentCommentsExtractionModel(ContentExtractionModel):
+    '''
+    Run two models: a content only and a content + comments model
+    on a document and return the output of both
+    '''
+    def __init__(self, blockifier, features,
+        content_model, content_comments_model, threshold=0.5):
+
+        self._blockifier = blockifier
+        self._features = features
+        self._content_model = content_model
+        self._content_comments_model = content_comments_model
+        self._threshold = threshold
+
+        # check the features
+        self._nfeatures = sum(ele.nfeatures for ele in self._features)
+        for f in self._features:
+            if not callable(f):
+                raise ValueError('All features must be callable')
+
+    def analyze(self, s, blocks=False, encoding=None, parse_callback=None):
+        """
+        Get the content and content+comments
+
+        s = HTML string
+        if encoding is not None, then this specifies the HTML string encoding.
+            If None, then try to guess it.
+        parse_callback: if not None then this is callable that is invoked
+            with the parse tree
+
+        if blocks is False then returns a tuple of strings:
+            (main_content_string, main_content_and_comments_string)
+        if blocks is True then returns a tuple of block instances:
+            (list of main content blocks,
+             list of main content and comments blocks)
+        """
+        features, blocks_ = self.make_features(s, encoding=encoding,
+            parse_callback=parse_callback)
+
+        if features is not None:
+            content_mask = self._content_model.predict(
+                features) > self._threshold
+            content_comments_mask = self._content_comments_model.predict(
+                features) > self._threshold
+            blocks_content = [
+                ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
+            blocks_content_comments = [
+                ele[0] for ele in zip(blocks_, content_comments_mask) if ele[1]]
+        else:
+            # doc is too short. return all content
+            blocks_content = blocks_
+            blocks_content_comments = blocks_
+
+        if blocks:
+            return (blocks_content, blocks_content_comments)
+
+        return (
+            ' '.join(blk.text for blk in blocks_content),
+            ' '.join(blk.text for blk in blocks_content_comments)
+        )
+
 
 baseline_model = ContentExtractionModel(Blockifier, [nofeatures], BaselinePredictor)
 

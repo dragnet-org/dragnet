@@ -2,6 +2,7 @@
 *.pyc
 *.so
 build/*
+dragnet.egg-info
 
 # cython temporary files
 dragnet/blocks.cpp
@@ -14,4 +15,7 @@ dragnet/readability.cpp
 
 documents/*
 output/*
+
+# vim temp files
+*.swp
 
