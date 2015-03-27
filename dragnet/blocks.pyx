@@ -57,7 +57,9 @@ BLACKLIST = set([
     'iframe', 'img', 'input', 'legend', 'link', 'menu', 'meta', 
     'noframes', 'noscript', 'object', 'optgroup', 'option', 'param', 
     'script', 'select', 'style', 'textarea', 'var', 'xmp',
-    'like', 'like-box', 'plusone'
+    'like', 'like-box', 'plusone',
+    # HTML5 vector image tags and math tags
+    'svg', 'math'
 ])
 
 
