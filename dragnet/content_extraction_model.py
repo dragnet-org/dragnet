@@ -70,6 +70,26 @@ class ContentExtractionModel(object):
         features, blocks_ = self.make_features(s, encoding=encoding,
             parse_callback=parse_callback)
         if features is not None:
+            content_mask = self._block_model.predict_proba(features)[:,1] > self._threshold
+            results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
+        else:
+            # doc is too short. return all content
+            results = blocks_
+        if blocks:
+            return results
+        return ' '.join(blk.text for blk in results)
+
+    def ranking(self, s, blocks=False, encoding=None, parse_callback=None):
+        """s = HTML string
+        returns the content as a string, or if `block`, then the blocks
+        themselves are returned.
+
+        if encoding is not None, then this specifies the HTML string encoding.
+            If None, then try to guess it.
+        """
+        features, blocks_ = self.make_features(s, encoding=encoding,
+            parse_callback=parse_callback)
+        if features is not None:
             content_mask = self._block_model.predict(features) > self._threshold
             results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
         else:
