@@ -70,7 +70,7 @@ class ContentExtractionModel(object):
         features, blocks_ = self.make_features(s, encoding=encoding,
             parse_callback=parse_callback)
         if features is not None:
-            content_mask = self._block_model.predict_proba(features)[:,1] > self._threshold
+            content_mask = self._block_model.predict(features) > self._threshold
             results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
         else:
             # doc is too short. return all content
@@ -184,6 +184,15 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
             ' '.join(blk.text for blk in blocks_content_comments)
         )
 
+class SklearnWrapper(object):
+    def __init__(self, skmodel):
+        # skmodel implements predict_proba and has classes_ attribute
+        self._skmodel = skmodel
+        classes = list(skmodel.classes_)
+        self._positive_idx = classes.index(1)
+
+    def predict(self, X):
+        return self._skmodel.predict_proba(X)[:, self._positive_idx]
 
 baseline_model = ContentExtractionModel(Blockifier, [nofeatures], BaselinePredictor)
 
