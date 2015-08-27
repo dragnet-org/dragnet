@@ -287,6 +287,7 @@ cdef class PartialBlock:
 
     # the tag that starts the block (div, p, h1, etc)
     cdef string block_start_tag
+    cdef object block_start_element
 
     # subclass callbacks
     cdef vector[callback_t] _tag_func
@@ -331,6 +332,7 @@ cdef class PartialBlock:
         self.do_css = do_css
 
         self.block_start_tag = ''
+        self.block_start_element = None
 
         self.do_readability = do_readability
         self.ancestors.clear()
@@ -450,6 +452,7 @@ cdef class PartialBlock:
             kwargs = self._add_readability()
             kwargs.update(self._extract_features(True))
             kwargs['block_start_tag'] = self.block_start_tag
+            kwargs['block_start_element'] = self.block_start_element
             results.append(Block(block_text, link_d,
                         text_d, self.anchors, self.link_tokens, css,
                         **kwargs))
@@ -587,6 +590,10 @@ cdef class PartialBlock:
         if self.do_readability:
             self.readability_score_node(subtree)
 
+        # first iteration through need to set
+        if self.block_start_element is None:
+            self.block_start_element = cetree.elementFactory(doc, subtree)
+
         # iterate through children
         if cetree.hasChild(subtree):
             node = cetree.findChild(subtree, 0)
@@ -621,6 +628,7 @@ cdef class PartialBlock:
                 # start the new block and recurse
                 self.add_block_to_results(results)
                 self.block_start_tag = tag
+                self.block_start_element = cetree.elementFactory(doc, node)
                 self.add_text(node, CTEXT)
                 if self.do_css:
                     self.update_css(node, False)
