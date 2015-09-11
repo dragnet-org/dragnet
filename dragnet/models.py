@@ -46,6 +46,8 @@ kohlschuetter_weninger_model._blockifier = TagCountNoCSSBlockifier
 content_extractor._blockifier = TagCountNoCSSReadabilityBlockifier
 content_extractor._block_model = SklearnWrapper(content_extractor._block_model)
 content_comments_extractor._blockifier = TagCountNoCSSReadabilityBlockifier
+content_comments_extractor._block_model = SklearnWrapper(
+    content_comments_extractor._block_model)
 
 # finally make the model that returns both main content and content+comments
 content_and_content_comments_extractor = ContentCommentsExtractionModel(
