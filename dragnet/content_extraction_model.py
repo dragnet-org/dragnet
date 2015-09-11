@@ -79,7 +79,6 @@ class ContentExtractionModel(object):
             return results
         return ' '.join(blk.text for blk in results)
 
-
     def make_features(self, s, train=False, encoding=None, parse_callback=None):
         """s = HTML string
            return features, blocks
@@ -185,6 +184,15 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
             ' '.join(blk.text for blk in blocks_content_comments)
         )
 
+class SklearnWrapper(object):
+    def __init__(self, skmodel):
+        # skmodel implements predict_proba and has classes_ attribute
+        self._skmodel = skmodel
+        classes = list(skmodel.classes_)
+        self._positive_idx = classes.index(1)
+
+    def predict(self, X):
+        return self._skmodel.predict_proba(X)[:, self._positive_idx]
 
 baseline_model = ContentExtractionModel(Blockifier, [nofeatures], BaselinePredictor)
 
