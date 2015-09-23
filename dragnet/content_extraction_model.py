@@ -67,33 +67,34 @@ class ContentExtractionModel(object):
         if encoding is not None, then this specifies the HTML string encoding.
             If None, then try to guess it.
         """
-        features, blocks_ = self.make_features(s, encoding=encoding,
+        # blockify html into blocks
+        blocks_ = self._blockifier.blockify(s, encoding=encoding,
             parse_callback=parse_callback)
+
+        # make features, run model and return content
+        return self.analyze_from_blocks(blocks_, return_blocks=blocks)
+
+    def analyze_from_blocks(self, blocks, return_blocks=False):
+        # 2. - make features
+        features = self.make_features_from_blocks(blocks)
+
+        # 3/4 - run model and select results
         if features is not None:
             content_mask = self._block_model.predict(features) > self._threshold
-            results = [ele[0] for ele in zip(blocks_, content_mask) if ele[1]]
+            results = [ele[0] for ele in zip(blocks, content_mask) if ele[1]]
         else:
             # doc is too short. return all content
-            results = blocks_
-        if blocks:
+            results = blocks
+
+        if return_blocks:
             return results
-        return ' '.join(blk.text for blk in results)
+        else:
+            return ' '.join(blk.text for blk in results)
 
-    def make_features(self, s, train=False, encoding=None, parse_callback=None):
-        """s = HTML string
-           return features, blocks
-
-           raises BlockifyError if there is an error parsing the doc
-           and None if doc is too short (< 3 blocks)
-           
-           train = if true, then passes it into feature maker"""
-
-        blocks = self._blockifier.blockify(s, encoding=encoding,
-            parse_callback=parse_callback)
-
+    def make_features_from_blocks(self, blocks, train=False):
         # doc needs to be at least three blocks, otherwise return everything
         if len(blocks) < 3:
-            return None, blocks
+            return None
 
         # compute the features
         features = np.zeros((len(blocks), self._nfeatures))
@@ -103,7 +104,23 @@ class ContentExtractionModel(object):
             features[:, offset:offset_end] = f(blocks, train)
             offset = offset_end
 
-        return features, blocks
+        return features
+
+    def make_features(self, s, train=False, encoding=None, parse_callback=None):
+        """s = HTML string
+           return features, blocks
+
+           raises BlockifyError if there is an error parsing the doc
+           and None if doc is too short (< 3 blocks)
+           
+           train = if true, then passes it into feature maker"""
+        # note: this method isn't needed by ContentExtractionModel anymore
+        # but is kept for now for backward compatibilty with training
+        # code
+        blocks = self._blockifier.blockify(s, encoding=encoding,
+            parse_callback=parse_callback)
+
+        return self.make_features_from_blocks(blocks, train), blocks
 
     @staticmethod
     def plot(blocks, content_mask):
