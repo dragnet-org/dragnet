@@ -176,8 +176,13 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
             (list of main content blocks,
              list of main content and comments blocks)
         """
-        features, blocks_ = self.make_features(s, encoding=encoding,
-            parse_callback=parse_callback)
+        # just a wrapper around base class method for now
+        # all the subclass specific logic is in analyze_from_blocks
+        return super(ContentCommentsExtractionModel, self).analyze(
+            s, blocks=blocks, encoding=encoding, parse_callback=parse_callback)
+
+    def analyze_from_blocks(self, blocks_, return_blocks=False):
+        features = self.make_features_from_blocks(blocks_)
 
         if features is not None:
             content_mask = self._content_model.predict(
@@ -193,13 +198,13 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
             blocks_content = blocks_
             blocks_content_comments = blocks_
 
-        if blocks:
+        if return_blocks:
             return (blocks_content, blocks_content_comments)
-
-        return (
-            ' '.join(blk.text for blk in blocks_content),
-            ' '.join(blk.text for blk in blocks_content_comments)
-        )
+        else:
+            return (
+                ' '.join(blk.text for blk in blocks_content),
+                ' '.join(blk.text for blk in blocks_content_comments)
+            )
 
 class SklearnWrapper(object):
     def __init__(self, skmodel):
