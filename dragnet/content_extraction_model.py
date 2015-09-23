@@ -75,10 +75,10 @@ class ContentExtractionModel(object):
         return self.analyze_from_blocks(blocks_, return_blocks=blocks)
 
     def analyze_from_blocks(self, blocks, return_blocks=False):
-        # 2. - make features
+        # make features
         features = self.make_features_from_blocks(blocks)
 
-        # 3/4 - run model and select results
+        # run model and select results
         if features is not None:
             content_mask = self._block_model.predict(features) > self._threshold
             results = [ele[0] for ele in zip(blocks, content_mask) if ele[1]]
@@ -113,13 +113,12 @@ class ContentExtractionModel(object):
            raises BlockifyError if there is an error parsing the doc
            and None if doc is too short (< 3 blocks)
            
-           train = if true, then passes it into feature maker"""
-        # note: this method isn't needed by ContentExtractionModel anymore
-        # but is kept for now for backward compatibilty with training
-        # code
+           train = if true, then passes it into feature maker
+        """
+        # note: this method is not longer needed by ContentExtractionModel
+        # but is kept for now for backward compatibilty with training code
         blocks = self._blockifier.blockify(s, encoding=encoding,
             parse_callback=parse_callback)
-
         return self.make_features_from_blocks(blocks, train), blocks
 
     @staticmethod

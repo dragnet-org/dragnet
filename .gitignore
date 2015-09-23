@@ -16,6 +16,8 @@ dragnet/readability.cpp
 documents/*
 output/*
 
+.coverage
+
 # vim temp files
 *.swp
 
