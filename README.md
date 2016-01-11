@@ -58,20 +58,44 @@ Otherwise, we try to guess the encoding from a `meta` tag or specified
 
 ## Installing
 
-The build requires numpy, lxml and a new version of Cython, so first make sure
-they are installed, then install Dragnet:
-
-```
-pip install numpy
-pip install --upgrade cython
-pip install lxml
-pip install dragnet
-```
-
 Dragnet is written in Python (developed with 2.7, not tested on 3)
 and built on the numpy/scipy/Cython numerical computing environment.
 In addition we use <a href="http://lxml.de/">lxml</a> (libxml2)
 for HTML parsing.
+
+We recommend installing from the master branch to ensure you have the latest
+version.
+
+### Installing vagrant:
+
+1. Install [vagrant](https://www.vagrantup.com/downloads.html).
+2. Install [Virtual Box](https://www.virtualbox.org/wiki/Downloads).
+3. Clone the master branch: `git clone git@github.com:seomoz/dragnet.git`
+4. Bring up the vagrant box: `vagrant up --provider=virtualbox`
+5. Log into the vagrant box:
+
+```bash
+vagrant ssh
+# inside the vagrant vm
+$ cd /vagrant
+# these should now pass
+$ make test
+```
+
+### Installing without vagrant
+
+1.  Install numpy, a new version of Cython and [lxml](http://lxml.de/installation.html).  You can install numpy and cython with pip, but lxml may require some
+additional packages (libxml2).
+2.  Clone the master branch: `git clone git@github.com:seomoz/dragnet.git`
+3.  Install the requirements: `sudo pip install -r dragnet/requirements.txt`
+4.  Build dragnet
+
+```bash
+$ cd dragnet
+$ sudo make install
+# these should now pass
+$ make test
+```
 
 # Contributing
 

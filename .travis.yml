@@ -5,15 +5,7 @@ script: make test
 cache:
   - apt
   - pip
-install:
-  - sudo apt-get -y install libatlas-base-dev libatlas-dev lib{blas,lapack}-dev
-  - sudo apt-get -y install libxslt-dev libxml2-dev
-  # some conda magic to install numpy, scipy
-  # see http://sburns.org/2014/03/28/faster-travis-builds.html
-  - sudo pip install conda
-  - conda_deps='pip numpy scipy'
-  - conda create -p $HOME/py --yes $conda_deps "python=$TRAVIS_PYTHON_VERSION"
+install: ./provision.sh
+script:
   - export PATH=$HOME/py/bin:$PATH
-  - pip install Cython>=0.21.1
-  - pip install -r requirements.txt
-  - python setup.py build_ext --inplace
+  - make test
