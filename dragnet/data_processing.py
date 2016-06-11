@@ -14,11 +14,10 @@ def add_plot_title(ti_str):
     import pylab as plt
     plt.figtext(0.5, 0.94, ti_str, ha='center', color='black', weight='bold', size='large')
 
-re_has_text = re.compile("^\s*<text")
-re_open_tag = re.compile('^\s*<text.+encoding\s*=\s*"([a-zA-Z0-9-_\s]+)"\s*>')
-re_end_tag = re.compile('</\s*text\s*>\s*$')
+
 def read_HTML_file(datadir, fileroot):
-    """Reads the HTML file from the datadir with fileroot.
+    """
+    Reads the HTML file from the datadir with fileroot.
     This checks for an optional <text> tag specifying the encoding,
     and captures the encoding/removes the tag if found (in the case
     of cleaneval).
@@ -27,18 +26,11 @@ def read_HTML_file(datadir, fileroot):
     where encoding is None if no <text> tag
     """
     raw_content = open('%s/HTML/%s.html' % (datadir, fileroot), 'r').read()
-    has_text = re_has_text.search(raw_content)
-    if has_text:
-        # we have a text tag.  need to strip it off, capture encoding
-        mo = re_open_tag.search(raw_content)
-        encoding = mo.group(1)
-        if encoding.lower() == "unset" or encoding.lower().startswith('unknown'):
-            encoding = None
-        raw_content = re_open_tag.sub('', raw_content)
+    selector = 'content="text/html.{1,7}charset=(.*?)".{0,5}/'
+    charset = re.findall(re.compile(selector, re.DOTALL), raw_content)
 
-        # don't forget about the end tag
-        raw_content = re_end_tag.sub('', raw_content).strip()
-
+    if charset:
+        encoding = charset[0].lower()
     else:
         encoding = None
 
