@@ -30,7 +30,7 @@ def read_HTML_file(datadir, fileroot):
     charset = re.findall(re.compile(selector, re.DOTALL), raw_content)
 
     if charset:
-        encoding = charset[0].lower()
+        encoding = charset[0].strip().lower()
     else:
         encoding = None
 
