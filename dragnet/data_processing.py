@@ -26,7 +26,7 @@ def read_HTML_file(datadir, fileroot):
     where encoding is None if no <text> tag
     """
     raw_content = open('%s/HTML/%s.html' % (datadir, fileroot), 'r').read()
-    selector = 'content="text/html.{1,7}charset=(.*?)".{0,5}/'
+    selector = 'content="text/html.{1,5}charset=(.*?)"'
     charset = re.findall(re.compile(selector, re.DOTALL), raw_content)
 
     if charset:
