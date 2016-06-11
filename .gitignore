@@ -22,4 +22,5 @@ output/*
 *.swp
 
 .vagrant
+.idea
 
