@@ -1,11 +1,11 @@
-
 import numpy as np
+
 
 class KMeans(object):
 
     def __init__(self, clusters):
         self.clusters = clusters
-        self.centers = None # (nclusters X nx)
+        self.centers = None  # (nclusters X nx)
         self._nx = None
         self._errtol = 1e-3
         self._maxiterations = 50
@@ -30,7 +30,7 @@ class KMeans(object):
     def _init_one_center(self, X, k):
         # initialize center k randomly
         self.centers[k, :] = X[np.random.randint(X.shape[0]), :]
-    
+
     def _init_centers(self, X):
         """initialize centers to random values"""
         # randomly assign data in X to a cluster center, then take means
@@ -72,6 +72,7 @@ class KMeans(object):
 
         fig.show()
 
+
 class KMeansFixedOrigin(KMeans):
     """KMeans with once cluster always fixed to origin"""
 
@@ -82,5 +83,3 @@ class KMeansFixedOrigin(KMeans):
     def update_centers(self, X, cc):
         super(KMeansFixedOrigin, self).update_centers(X, cc)
         self.centers[0, :] = np.zeros(self._nx)
-
-

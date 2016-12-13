@@ -1,9 +1,8 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import re
 import numpy as np
 from .blocks import Blockifier
+
 
 class IdentityPredictor(object):
     """Mock out the machine learning model with an identity model."""
@@ -15,6 +14,7 @@ class IdentityPredictor(object):
     def fit(*args, **kargs):
         pass
 
+
 class BaselinePredictor(object):
     """Always predict content"""
     @staticmethod
@@ -25,16 +25,19 @@ class BaselinePredictor(object):
     def fit(*args, **kwargs):
         pass
 
+
 def nofeatures(blocks, *args, **kwargs):
     return np.zeros((len(blocks), 1))
+
 nofeatures.nfeatures = 1
+
 
 class ContentExtractionModel(object):
     """Content extraction model
 
     Encapsulates a blockifier, some feature generators and a
     machine learing block model
-    
+
     Implements analyze, make_features"""
 
     def __init__(self, blockifier, features, block_model, threshold=0.5):
@@ -55,7 +58,7 @@ class ContentExtractionModel(object):
 
     def set_threshold(self, thres):
         """Set the threshold
-        
+
         0<= thres <= 1.0"""
         self._threshold = thres
 
@@ -68,8 +71,8 @@ class ContentExtractionModel(object):
             If None, then try to guess it.
         """
         # blockify html into blocks
-        blocks_ = self._blockifier.blockify(s, encoding=encoding,
-            parse_callback=parse_callback)
+        blocks_ = self._blockifier.blockify(
+            s, encoding=encoding, parse_callback=parse_callback)
 
         # make features, run model and return content
         return self.analyze_from_blocks(blocks_, return_blocks=blocks)
@@ -112,13 +115,13 @@ class ContentExtractionModel(object):
 
            raises BlockifyError if there is an error parsing the doc
            and None if doc is too short (< 3 blocks)
-           
+
            train = if true, then passes it into feature maker
         """
         # note: this method is not longer needed by ContentExtractionModel
         # but is kept for now for backward compatibilty with training code
-        blocks = self._blockifier.blockify(s, encoding=encoding,
-            parse_callback=parse_callback)
+        blocks = self._blockifier.blockify(
+            s, encoding=encoding, parse_callback=parse_callback)
         return self.make_features_from_blocks(blocks, train), blocks
 
     @staticmethod
@@ -133,20 +136,19 @@ class ContentExtractionModel(object):
         block_lengths_no_content = block_lengths.copy()
         block_lengths_no_content[content_mask] = 0.0
 
-        ret = plt.bar(np.arange(len(blocks)), block_lengths_no_content, 0.5)
-        ret = plt.bar(np.arange(len(blocks)), block_lengths_content, 0.5)
+        plt.bar(np.arange(len(blocks)), block_lengths_no_content, 0.5)
+        plt.bar(np.arange(len(blocks)), block_lengths_content, 0.5)
 
         fig.show()
 
 
 class ContentCommentsExtractionModel(ContentExtractionModel):
-    '''
+    """
     Run two models: a content only and a content + comments model
     on a document and return the output of both
-    '''
+    """
     def __init__(self, blockifier, features,
-        content_model, content_comments_model, threshold=0.5):
-
+                 content_model, content_comments_model, threshold=0.5):
         self._blockifier = blockifier
         self._features = features
         self._content_model = content_model
@@ -203,7 +205,8 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
             return (
                 ' '.join(blk.text for blk in blocks_content),
                 ' '.join(blk.text for blk in blocks_content_comments)
-            )
+                )
+
 
 class SklearnWrapper(object):
     def __init__(self, skmodel):
@@ -216,4 +219,3 @@ class SklearnWrapper(object):
         return self._skmodel.predict_proba(X)[:, self._positive_idx]
 
 baseline_model = ContentExtractionModel(Blockifier, [nofeatures], BaselinePredictor)
-

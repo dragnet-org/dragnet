@@ -13,7 +13,7 @@ from .models import content_extractor, content_comments_extractor
 
 class AllFeatures(object):
     """Easy access to feature instances.
-    
+
     We need a way to get instances of the feature classes.
     Since these classes are potentially mutated by clients,
     we create a new instance on each access"""
@@ -32,4 +32,3 @@ class AllFeatures(object):
             return NormalizedFeature(readability_features)
         else:
             raise KeyError
-

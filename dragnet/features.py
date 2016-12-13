@@ -1,8 +1,6 @@
 #! /usr/bin/env python
-
 import re
 import numpy as np
-import json
 
 # implementations of the features interface.
 #
@@ -15,12 +13,12 @@ import json
 # It has an attribute "feature.nfeatures" that gives number of features
 #
 # To allow the feature to set itself from some data, feature can optionally
-#   implement 
+#   implement
 #       feature.init_parms(computed_features) AND
 #       features.set_params(ret)
 #   where computed_features is a call with train=True,
 #   and ret is the returned value from features.init_params.
-#
+
 
 def normalize_features(features, mean_std):
     """Normalize the features IN PLACE.
@@ -30,7 +28,7 @@ def normalize_features(features, mean_std):
        mean_std = {'mean':[list of means],
                    'std':[list of std] }
        the lists are the same length as features.shape[1]
-       
+
        if features is None, then do nothing"""
     if features is not None:
         for k in xrange(features.shape[1]):
@@ -41,7 +39,7 @@ class NormalizedFeature(object):
     """Normalize a feature with mean/std
 
     This is an abstraction of a normalized feature
-    It acts sort of like a decorator on anything 
+    It acts sort of like a decorator on anything
     that implements the feature interface.
 
     Instances of this object also implement the feature interface"""
@@ -66,8 +64,8 @@ class NormalizedFeature(object):
         return features
 
     def init_params(self, features):
-        self._mean_std = {'mean':features.mean(axis=0),
-                          'std':features.std(axis=0) }
+        self._mean_std = {'mean': features.mean(axis=0),
+                          'std': features.std(axis=0)}
         return self._mean_std
 
     def set_params(self, mean_std):
@@ -147,5 +145,3 @@ class CSSFeatures(object):
                 ret[:, feature] = [re.search(token, block.css[attrib]) is not None for block in blocks]
                 feature += 1
         return ret
-
-

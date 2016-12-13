@@ -3,10 +3,11 @@
 
 # A /rough/ implementation of that described by Kohlschütter et al.:
 #    http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
-
 import numpy as np
+
 from .content_extraction_model import ContentExtractionModel
 from .blocks import Blockifier
+
 
 def kohlschuetter_features(blocks, train=False):
     """The text density/link density features
@@ -15,23 +16,25 @@ def kohlschuetter_features(blocks, train=False):
     assert len(blocks) >= 3
 
     features = np.zeros((len(blocks), 6))
-    for i in range(1, len(blocks)-1):
-        previous = blocks[i-1]
-        current  = blocks[i]
-        next     = blocks[i+1]
-        features[i, :] = [previous.link_density, previous.text_density,
-                              current.link_density, current.text_density,
-                              next.link_density, next.text_density]
+    for i in range(1, len(blocks) - 1):
+        previous = blocks[i - 1]
+        current = blocks[i]
+        next_ = blocks[i + 1]
+        features[i, :] = [
+            previous.link_density, previous.text_density,
+            current.link_density, current.text_density,
+            next_.link_density, next_.text_density]
     i = 0
     features[0, :] = [0.0, 0.0,
                       blocks[i].link_density, blocks[i].text_density,
                       blocks[i + 1].link_density, blocks[i + 1].text_density]
     i = len(blocks) - 1
     features[-1, :] = [blocks[i - 1].link_density, blocks[i - 1].text_density,
-                      blocks[i].link_density, blocks[i].text_density,
-                      0.0, 0.0]
+                       blocks[i].link_density, blocks[i].text_density,
+                       0.0, 0.0]
 
     return features
+
 kohlschuetter_features.nfeatures = 6
 
 
@@ -42,7 +45,7 @@ class KohlschuetterBlockModel(object):
     def predict(features):
         """Takes a the features
         Returns a list True/False of ones classified as content
-        
+
         Note: this is the decision tree published in the original paper
         We benchmarked it against our data set and it performed poorly.
         We attribute this to differences the blockify implementation
@@ -72,8 +75,8 @@ class KohlschuetterBlockModel(object):
 
         for i in xrange(features.shape[0]):
             (previous_link_density, previous_text_density,
-            current_link_density, current_text_density,
-            next_link_density, next_text_density) = features[i, :]
+             current_link_density, current_text_density,
+             next_link_density, next_text_density) = features[i, :]
             if current_link_density <= 0.333333:
                 if previous_link_density <= 0.555556:
                     if current_text_density <= 9:
@@ -81,27 +84,25 @@ class KohlschuetterBlockModel(object):
                             if previous_text_density <= 4:
                                 # Boilerplate
                                 results.append(False)
-                            else: # previous.text_density > 4
+                            else:  # previous.text_density > 4
                                 results.append(True)
-                        else: # next.text_density > 10
+                        else:  # next.text_density > 10
                             results.append(True)
-                    else: # current.text_density > 9
+                    else:  # current.text_density > 9
                         if next_text_density == 0:
                             results.append(False)
-                        else: # next.text_density > 0
+                        else:  # next.text_density > 0
                             results.append(True)
-                else: # previous.link_density > 0.555556
+                else:  # previous.link_density > 0.555556
                     if next_text_density <= 11:
                         # Boilerplate
                         results.append(False)
-                    else: # next.text_density > 11
+                    else:  # next.text_density > 11
                         results.append(True)
-            else: # current.link_density > 0.333333
+            else:  # current.link_density > 0.333333
                 # Boilerplace
                 results.append(False)
 
         return results
 
 kohlschuetter = ContentExtractionModel(Blockifier, [kohlschuetter_features], KohlschuetterBlockModel)
-
-

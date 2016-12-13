@@ -1,9 +1,9 @@
+from __future__ import print_function
 
 import re
 import json
 import numpy as np
 import pylab as plt
-import cPickle
 import os
 
 from mozsci.cross_validate import cv_kfold
@@ -11,10 +11,13 @@ from mozsci.cross_validate import cv_kfold
 from .blocks import Blockifier
 from . import evaluation_metrics
 from .content_extraction_model import ContentExtractionModel
-from .data_processing import simple_tokenizer, DragnetModelData, read_gold_standard, get_list_all_corrected_files, read_HTML_file, add_plot_title
+from .data_processing import (simple_tokenizer, DragnetModelData, read_gold_standard,
+                              get_list_all_corrected_files, read_HTML_file,
+                              add_plot_title)
 
 
-def run_score_content_detection(html, gold_standard, content_detector, tokenizer=simple_tokenizer):
+def run_score_content_detection(html, gold_standard, content_detector,
+                                tokenizer=simple_tokenizer):
     """
     Input:
         html = html string
@@ -30,7 +33,9 @@ def run_score_content_detection(html, gold_standard, content_detector, tokenizer
 
 
 class DragnetModelTrainer(object):
-    def __init__(self, tokenizer=simple_tokenizer, content_or_comments='both', kfolds=5, weighted=False):
+
+    def __init__(self, tokenizer=simple_tokenizer, content_or_comments='both',
+                 kfolds=5, weighted=False):
         """
         tokenizer = callable with interface
             list_of_tokens = tokenizer(string)
@@ -38,7 +43,7 @@ class DragnetModelTrainer(object):
         """
         self.tokenizer = tokenizer
         if content_or_comments not in ('content', 'comments', 'both'):
-            raise InputError("invalid content_or_comments")
+            raise ValueError("invalid content_or_comments")
         self.content_or_comments = content_or_comments
         self.kfolds = kfolds
         self.weighted = weighted
@@ -56,7 +61,8 @@ class DragnetModelTrainer(object):
                     content[1],
                     content[2] + comments[2])
 
-    def make_features_from_data(self, data, model, training_or_test='training', return_blocks=False, train=False):
+    def make_features_from_data(self, data, model, training_or_test='training',
+                                return_blocks=False, train=False):
         """Given the data and a model, make the features
         using model.make_features
 
@@ -73,7 +79,7 @@ class DragnetModelTrainer(object):
             raise ValueError
 
         first_data_features, blocks = model.make_features(
-                data_for_features[0][0], train, encoding=data_for_features[0][3])
+            data_for_features[0][0], train, encoding=data_for_features[0][3])
         features = np.zeros((0, first_data_features.shape[1]))
         labels = np.zeros((0,))
         weights = np.zeros((0,))   # the token counts in the blocks
@@ -102,7 +108,6 @@ class DragnetModelTrainer(object):
             return features, labels, weights
         else:
             return features, labels, weights, all_blocks
-           
 
     def train_model(self, data, model_library, features_to_use):
         """data is an instance of DragnetModelData
@@ -122,7 +127,7 @@ class DragnetModelTrainer(object):
             feature_instances.append(AllFeatures.get(f))
 
         # do feature centering
-        print "Initializing features"
+        print("Initializing features")
         for f in feature_instances:
             # check to see if this feature needs to be init
             # if so, then init it, take the return object and serialize to json
@@ -137,9 +142,9 @@ class DragnetModelTrainer(object):
         model_to_train = ContentExtractionModel(Blkr, feature_instances, None)
 
         # train the model
-        print "Training the model"
-        features, labels, weights = self.make_features_from_data(data,
-            model_to_train, training_or_test='training')
+        print("Training the model")
+        features, labels, weights = self.make_features_from_data(
+            data, model_to_train, training_or_test='training')
 
         # cap weights!
         weights = np.minimum(weights, 200)
@@ -151,25 +156,26 @@ class DragnetModelTrainer(object):
             folds = None
 
         if self.weighted:
-            errors = run_train_models(processes=1, model_library=model_library,
+            errors = run_train_models(
+                processes=1, model_library=model_library,
                 X=features, y=labels, folds=folds, weights=weights)
         else:
-            errors = run_train_models(processes=1, model_library=model_library,
+            errors = run_train_models(
+                processes=1, model_library=model_library,
                 X=features, y=labels, folds=folds)
 
         return errors, features, labels, weights, folds
 
 
-
 def plot_errors(errors, reg_parm_str):
     """reg_parm_str the key for the kwargs that defines the regularization
     coef
-    
+
     e.g. 'C', 'lam', 'minsize' for liblinear, logistic regression, ClassTree"""
 
     # train/test X error number X error type
     # error type is accuracy, auc, f1, precision, recall in order
-    errors_plot = np.zeros((2, len(errors), 5))  
+    errors_plot = np.zeros((2, len(errors), 5))
     reg_parm = np.zeros(len(errors))
     k = 0
     for model, err in errors.iteritems():
@@ -210,15 +216,16 @@ def accuracy_auc(y, ypred, weights=None):
     """Compute the accuracy, AUC, precision, recall and f1"""
     from mozsci.evaluation import classification_error, auc_wmw_fast, precision_recall_f1
     prf1 = precision_recall_f1(y, ypred, weights=weights)
-    return { 'accuracy':1.0 - classification_error(y, ypred, weights=weights),
-             'auc':auc_wmw_fast(y, ypred, weights=weights),
-             'precision':prf1[0],
-             'recall':prf1[1],
-             'f1':prf1[2] }
+    return {'accuracy': 1.0 - classification_error(y, ypred, weights=weights),
+            'auc': auc_wmw_fast(y, ypred, weights=weights),
+            'precision': prf1[0],
+            'recall': prf1[1],
+            'f1': prf1[2]}
 
 
 def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
-    tokenizer=simple_tokenizer, cetr=False, content_or_comments='both'):
+                           tokenizer=simple_tokenizer, cetr=False,
+                           content_or_comments='both'):
     """
     Evaluate a trained model on the token level.
 
@@ -272,9 +279,8 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
         else:
             dm = lambda x: dragnet_model.analyze(x, encoding=encoding)
             errors[k, :] = run_score_content_detection(
-                    html, gstok, dragnet_model.analyze, tokenizer=tokenizer)
+                html, gstok, dragnet_model.analyze, tokenizer=tokenizer)
         k += 1
-
 
     # make some plots
     # if just a single model, plot histograms of precision, recall, f1
@@ -338,7 +344,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
 
 
 def train_models(datadir, output_dir, features_to_use, model,
-    content_or_comments='both'):
+                 content_or_comments='both'):
     """Train a content extraction model.
 
     Does feature centering, trains the logistic regression model,
@@ -369,7 +375,7 @@ def train_models(datadir, output_dir, features_to_use, model,
     data = DragnetModelData(datadir)
     trainer = DragnetModelTrainer(content_or_comments=content_or_comments)
 
-    print "Initializing features"
+    print("Initializing features")
     k = 0
     for f in feature_instances:
         # check to see if this feature needs to be init
@@ -380,22 +386,21 @@ def train_models(datadir, output_dir, features_to_use, model,
             features, labels, weights = trainer.make_features_from_data(data, model_init, train=True)
             mean_std = f.init_params(features)
             f.set_params(mean_std)
-            with open("%s_mean_std_%s.json" % (prefix, features_to_use[k]),
-                    'w') as fout:
+            with open("%s_mean_std_%s.json" % (prefix, features_to_use[k]), 'w') as fout:
                 fout.write("%s" % json.dumps(mean_std, cls=NumpyEncoder))
         k += 1
 
     model_to_train = ContentExtractionModel(Blkr, feature_instances, None)
 
     # train the model
-    print "Training the model"
-    features, labels, weights = trainer.make_features_from_data(data,
-        model_to_train, training_or_test='training')
+    print("Training the model")
+    features, labels, weights = trainer.make_features_from_data(
+        data, model_to_train, training_or_test='training')
     model.fit(features, labels, np.minimum(weights, 200.0))
     train_errors = accuracy_auc(labels, model.predict(features))
 
-    features, labels, weights = trainer.make_features_from_data(data,
-        model_to_train, training_or_test='test')
+    features, labels, weights = trainer.make_features_from_data(
+        data, model_to_train, training_or_test='test')
     test_errors = accuracy_auc(labels, model.predict(features))
 
     # write errors to a file
@@ -407,11 +412,7 @@ def train_models(datadir, output_dir, features_to_use, model,
 
     # pickle the final model!
     # use the one with threshold = 0.5
-    pickle.dump(ContentExtractionModel(Blkr,
-                        feature_instances,
-                        model,
-                        threshold=0.5),
+    pickle.dump(ContentExtractionModel(Blkr, feature_instances, model, threshold=0.5),
                 open(prefix + '_content_model.pickle', 'w'))
 
-    print "done!"
-
+    print("done!")
