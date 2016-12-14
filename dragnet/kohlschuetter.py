@@ -7,6 +7,7 @@ import numpy as np
 
 from .content_extraction_model import ContentExtractionModel
 from .blocks import Blockifier
+from .compat import range_
 
 
 def kohlschuetter_features(blocks, train=False):
@@ -16,7 +17,7 @@ def kohlschuetter_features(blocks, train=False):
     assert len(blocks) >= 3
 
     features = np.zeros((len(blocks), 6))
-    for i in range(1, len(blocks) - 1):
+    for i in range_(1, len(blocks) - 1):
         previous = blocks[i - 1]
         current = blocks[i]
         next_ = blocks[i + 1]
@@ -73,7 +74,7 @@ class KohlschuetterBlockModel(object):
 
         results = []
 
-        for i in xrange(features.shape[0]):
+        for i in range_(features.shape[0]):
             (previous_link_density, previous_text_density,
              current_link_density, current_text_density,
              next_link_density, next_text_density) = features[i, :]

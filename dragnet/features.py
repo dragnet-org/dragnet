@@ -2,6 +2,8 @@
 import re
 import numpy as np
 
+from .compat import range_, string_
+
 # implementations of the features interface.
 #
 # feature is a callable feature(list_of_blocks, train=False)
@@ -31,7 +33,7 @@ def normalize_features(features, mean_std):
 
        if features is None, then do nothing"""
     if features is not None:
-        for k in xrange(features.shape[1]):
+        for k in range_(features.shape[1]):
             features[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
 
 
@@ -79,7 +81,7 @@ class NormalizedFeature(object):
         or a json blob.
         if a string, load it, otherwise just return"""
         import json
-        if isinstance(mean_std, basestring):
+        if isinstance(mean_std, string_):
             return json.load(open(mean_std, 'r'))
         else:
             return mean_std
@@ -95,47 +97,47 @@ class CSSFeatures(object):
     # attribute.
     # The features are 0/1 flags whether these tokens
     # appear in the CSS tags
-    attribute_tokens = {'id':['nav',
-                              'ss',
-                              'top',
-                              'content',
-                              'link',
-                              'title',
-                              'comment',
-                              'tools',
-                              'rating',
-                              'ss'],
-                     'class':['menu',
-                              'widget',
-                              'nav',
-                              'share',
-                              'facebook',
-                              'cat',
-                              'top',
-                              'content',
-                              'item',
-                              'twitter',
-                              'button',
-                              'title',
-                              'header',
-                              'ss',
-                              'post',
-                              'comment',
-                              'meta',
-                              'alt',
-                              'time',
-                              'depth',
-                              'thread',
-                              'author',
-                              'tools',
-                              'reply'
-                              'url',
-                              'avatar',
-                              'ss']}
+    attribute_tokens = {'id': ['nav',
+                               'ss',
+                               'top',
+                               'content',
+                               'link',
+                               'title',
+                               'comment',
+                               'tools',
+                               'rating',
+                               'ss'],
+                        'class': ['menu',
+                                  'widget',
+                                  'nav',
+                                  'share',
+                                  'facebook',
+                                  'cat',
+                                  'top',
+                                  'content',
+                                  'item',
+                                  'twitter',
+                                  'button',
+                                  'title',
+                                  'header',
+                                  'ss',
+                                  'post',
+                                  'comment',
+                                  'meta',
+                                  'alt',
+                                  'time',
+                                  'depth',
+                                  'thread',
+                                  'author',
+                                  'tools',
+                                  'reply',
+                                  'url',
+                                  'avatar']  # , 'ss']  <-- duplicate?!
+                        }
 
     _attribute_order = ['id', 'class']
 
-    nfeatures = sum(len(ele) for ele in attribute_tokens.itervalues())
+    nfeatures = sum(len(ele) for ele in attribute_tokens.values())
 
     def __call__(self, blocks, train=False):
         ret = np.zeros((len(blocks), CSSFeatures.nfeatures))

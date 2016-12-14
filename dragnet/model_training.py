@@ -10,6 +10,7 @@ from mozsci.cross_validate import cv_kfold
 
 from .blocks import Blockifier
 from . import evaluation_metrics
+from .compat import range_
 from .content_extraction_model import ContentExtractionModel
 from .data_processing import (simple_tokenizer, DragnetModelData, read_gold_standard,
                               get_list_all_corrected_files, read_HTML_file,
@@ -200,9 +201,9 @@ def plot_errors(errors, reg_parm_str):
     label = ['train', 'test']
     fig = plt.figure(1)
     fig.clf()
-    for k in xrange(2):
+    for k in range_(2):
         varn = 0
-        for varn in xrange(len(vars)):
+        for varn in range_(len(vars)):
             plt.subplot(230 + varn + 1)
             plt.plot(np.log(reg_parm), errors_plot[k, :, varn], label=label[k])
             plt.title(vars[varn])
@@ -271,7 +272,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
     for froot, gstok in gold_standard_tokens.iteritems():
         html, encoding = read_HTML_file(datadir, froot)
         if use_list:
-            for i in xrange(len(dragnet_model)):
+            for i in range_(len(dragnet_model)):
                 # make an analyze function to handle the encoding
                 dm = lambda x: dragnet_model[i].analyze(x, encoding=encoding)
                 errors[k, :, i] = run_score_content_detection(
@@ -289,7 +290,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
         fig = plt.figure(1)
         fig.clf()
 
-        for k in xrange(3):
+        for k in range_(3):
             plt.subplot(2, 2, k + 1)
             plt.hist(errors[:, k], 20)
             plt.title("%s %s" % (ti[k], np.mean(errors[:, k])))
@@ -316,7 +317,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
         avg_scores = scores.mean(axis=0)
         std_scores = scores.std(axis=0)
 
-        for k in xrange(3):
+        for k in range_(3):
             ax = plt.subplot(2, 2, k + 1)
             plt.plot(thresholds, avg_scores[k, :], 'b')
             plt.plot(thresholds, avg_scores[k, :] + std_scores[k, :], 'k--')
@@ -332,7 +333,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
         # write a table
         if figname_root is not None:
             ftable.write("Threshold | Precision | Recall | F1\n")
-            for k in xrange(len(thresholds)):
+            for k in range_(len(thresholds)):
                 ftable.write("%s            %5.3f    %5.3f   %5.3f\n" % (thresholds[k], avg_scores[0, k], avg_scores[1, k], avg_scores[2, k]))
 
             i += 1

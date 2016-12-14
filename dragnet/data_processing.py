@@ -7,6 +7,7 @@ import codecs
 import os
 
 from .blocks import Blockifier, simple_tokenizer, text_from_subtree
+from .compat import range_, unicode_
 from lxml import etree
 
 
@@ -179,9 +180,9 @@ def extract_gold_standard(datadir, fileroot,
 
     NN = 0
 
-    for k in xrange(len(gold_standard_content_comments)):
+    for k in range_(len(gold_standard_content_comments)):
         txt = gold_standard_content_comments[k]
-        if type(txt) == unicode:
+        if isinstance(txt, unicode_):
             gold_standard_tokens = tokenizer(txt.encode('utf-8'))
         else:
             gold_standard_tokens = tokenizer(txt)
@@ -371,8 +372,8 @@ class DragnetModelData(object):
             blocks = Blockifier.blockify(datum[0], encoding=datum[3])
             extracted = np.logical_or(datum[1][0], datum[2][0])
             assert len(blocks) == len(extracted)
-            content_css.extend([blocks[k].css for k in xrange(len(blocks)) if extracted[k]])
-            no_content_css.extend([blocks[k].css for k in xrange(len(blocks)) if not extracted[k]])
+            content_css.extend([blocks[k].css for k in range_(len(blocks)) if extracted[k]])
+            no_content_css.extend([blocks[k].css for k in range_(len(blocks)) if not extracted[k]])
 
         # make a list of the most popular tokens
         from collections import defaultdict
@@ -403,11 +404,10 @@ class DragnetModelData(object):
                     cumcount = 0
                     for count, token in popular_tokens_sorted[c][tag]:
                         cumcount += count
-                        f.write("%s\t%s\t%s\t%s\n" %
-                                    (count,
-                                     token,
-                                     float(count)/total_tokens,
-                                     float(cumcount) / total_tokens))
+                        f.write("%s\t%s\t%s\t%s\n" % (count,
+                                                      token,
+                                                      float(count) / total_tokens,
+                                                      float(cumcount) / total_tokens))
 
         # take the ratio of token count in content vs no content
         # for the tokens in the specified list
@@ -552,7 +552,7 @@ class DragnetModelData(object):
         # number of tokens in block vs block number
         block_length_vs_block_percent = np.zeros((len(plot_data), bins))
 
-        for datum_number in xrange(len(plot_data)):
+        for datum_number in range_(len(plot_data)):
             datum = plot_data[datum_number]
             k = 1
             for c in ['content', 'comments']:

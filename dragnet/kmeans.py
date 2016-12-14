@@ -1,5 +1,7 @@
 import numpy as np
 
+from .compat import range_
+
 
 class KMeans(object):
 
@@ -14,12 +16,12 @@ class KMeans(object):
         """Returns the indices of the closest clusters to X
         Return is length(X.shape[0])"""
         distances = np.zeros((X.shape[0], self.clusters))
-        for k in xrange(self.clusters):
+        for k in range_(self.clusters):
             distances[:, k] = np.sum((X - self.centers[k, :]) ** 2, axis=1)
         return distances.argmin(axis=1)
 
     def update_centers(self, X, cc):
-        for k in xrange(self.clusters):
+        for k in range_(self.clusters):
             these_indices = cc == k
             if np.any(these_indices):
                 self.centers[k, :] = np.mean(X[these_indices, :], axis=0)
@@ -35,7 +37,7 @@ class KMeans(object):
         """initialize centers to random values"""
         # randomly assign data in X to a cluster center, then take means
         self.centers = np.zeros((self.clusters, self._nx))
-        for k in xrange(self.clusters):
+        for k in range_(self.clusters):
             self._init_one_center(X, k)
 
     def fit(self, X):
@@ -59,13 +61,14 @@ class KMeans(object):
             last_centers = self.centers.copy()
 
     def plot_clusters(self, X):
+        import matplotlib.pyplot as plt
         assert X.shape[1] == 2
         fig = plt.figure(1)
         fig.clf()
 
         colors = ['b', 'r', 'g']
         indices = self.closest_centers(X)
-        for k in xrange(self.clusters):
+        for k in range_(self.clusters):
             this_cluster = indices == k
             plt.scatter(X[this_cluster, 0], X[this_cluster, 1], s=2, color=colors[k])
             plt.plot(self.centers[k][0], self.centers[k][1], 'kx', markersize=10)
