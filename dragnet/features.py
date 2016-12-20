@@ -130,9 +130,12 @@ class CSSFeatures(object):
                                   'thread',
                                   'author',
                                   'tools',
-                                  'reply',
-                                  'url',
-                                  'avatar']  # , 'ss']  <-- duplicate?!
+                                  # these two strings were implicitly concatenated
+                                  # this is a bug, and it will be fixed
+                                  'reply' + 'url',
+                                  'avatar',
+                                  # this is a duplicate entry (see above)
+                                  'ss']
                         }
 
     _attribute_order = ['id', 'class']
