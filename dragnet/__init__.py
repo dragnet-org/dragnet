@@ -1,4 +1,3 @@
-from dragnet.arias import AriasFeatures, Arias
 from dragnet.blocks import Blockifier, PartialBlock, BlockifyError
 from dragnet.features import NormalizedFeature, CSSFeatures
 from dragnet.content_extraction_model import ContentExtractionModel
@@ -22,8 +21,6 @@ class AllFeatures(object):
             return NormalizedFeature(kohlschuetter_features)
         elif key == 'css':
             return CSSFeatures()
-        elif key == 'arias':
-            return AriasFeatures(*args, **kwargs)
         elif key == 'weninger':
             return weninger_features_kmeans
         elif key == 'readability':
