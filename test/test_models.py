@@ -2,18 +2,22 @@
 import unittest
 import json
 import os.path
-from dragnet.models import * 
+
+from dragnet.models import *
+from dragnet.compat import range_
 
 FIXTURES = 'test/datafiles'
 
+
 class TestModels(unittest.TestCase):
+
     def setUp(self):
         self._html = open(os.path.join(
             FIXTURES, 'models_testing.html'), 'r').read()
 
     def test_models(self):
         models = [kohlschuetter_model,
-                  weninger_model, 
+                  weninger_model,
                   kohlschuetter_weninger_model,
                   kohlschuetter_css_model,
                   kohlschuetter_css_weninger_model,
@@ -23,14 +27,14 @@ class TestModels(unittest.TestCase):
         actual_content = json.load(open(
             os.path.join(FIXTURES, 'models_content.json'), 'r'))
 
-        for k in xrange(len(models)):
+        for k in range_(len(models)):
             # some of the models (weninger) aren't deterministic
             # so the content doesn't match exactly every time,
             # although it passes most of the time
             # we allow a max of 5 failures before failing the entire test
             m = models[k]
             passed = False
-            for i in xrange(5):
+            for i in range_(5):
                 content = m.analyze(self._html)
                 if actual_content[k].encode('utf-8') == content:
                     passed = True
@@ -43,7 +47,7 @@ class TestModels(unittest.TestCase):
 
         passed_content = False
         passed_content_comments = False
-        for i in xrange(5):
+        for i in range_(5):
             actual_content, actual_content_comments = \
                 content_and_content_comments_extractor.analyze(self._html)
             passed_content = actual_content == content
@@ -65,18 +69,18 @@ class TestModels(unittest.TestCase):
 
         passed_content = False
         passed_content_comments = False
-        for i in xrange(5):
+        for i in range_(5):
             actual_content, actual_content_comments = \
                 content_and_content_comments_extractor.analyze(
                     self._html, blocks=True)
             passed_content = (
                 [blk.text for blk in actual_content] ==
                 [blk.text for blk in content]
-            )
+                )
             passed_content_comments = (
-                [blk.text for blk in actual_content_comments] == 
+                [blk.text for blk in actual_content_comments] ==
                 [blk.text for blk in content_comments]
-            )
+                )
             if passed_content and passed_content_comments:
                 break
 
@@ -85,5 +89,3 @@ class TestModels(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-

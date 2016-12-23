@@ -1,22 +1,27 @@
+from __future__ import print_function
 
 import re
-import json
 import numpy as np
 import glob
 import codecs
 import os
 
 from .blocks import Blockifier, simple_tokenizer, text_from_subtree
+from .compat import range_, unicode_
 from lxml import etree
+
 
 def add_plot_title(ti_str):
     """Add a string as a title on top of a subplot"""
     import pylab as plt
     plt.figtext(0.5, 0.94, ti_str, ha='center', color='black', weight='bold', size='large')
 
+
 re_has_text = re.compile("^\s*<text")
 re_open_tag = re.compile('^\s*<text.+encoding\s*=\s*"([a-zA-Z0-9-_\s]+)"\s*>')
 re_end_tag = re.compile('</\s*text\s*>\s*$')
+
+
 def read_HTML_file(datadir, fileroot):
     """Reads the HTML file from the datadir with fileroot.
     This checks for an optional <text> tag specifying the encoding,
@@ -52,6 +57,7 @@ def read_gold_standard(datadir, fileroot, cetr=False):
         (1) assume no comments and (2) parse the gold standard to remove tags"""
 
     corrected_file = datadir + '/Corrected/%s.html.corrected.txt' % fileroot
+
     def read_file(encoding):
         return codecs.open(corrected_file, 'r', encoding=encoding).read()
 
@@ -166,7 +172,6 @@ def extract_gold_standard(datadir, fileroot,
             all_blocks_tokens_block_id.extend([i] * len(block))
         i += 1
 
-
     gold_standard_content_comments = read_gold_standard(datadir, fileroot, cetr)
     content_comments = ['content', 'comments']
 
@@ -175,20 +180,20 @@ def extract_gold_standard(datadir, fileroot,
 
     NN = 0
 
-    for k in xrange(len(gold_standard_content_comments)):
+    for k in range_(len(gold_standard_content_comments)):
         txt = gold_standard_content_comments[k]
-        if type(txt) == unicode:
+        if isinstance(txt, unicode_):
             gold_standard_tokens = tokenizer(txt.encode('utf-8'))
         else:
             gold_standard_tokens = tokenizer(txt)
-    
-        print "Got all tokens for %s.  %s in all blocks, %s in gold standard %s" % (fileroot, len(all_blocks_tokens), len(gold_standard_tokens), content_comments[k])
+
+        print("Got all tokens for %s.  %s in all blocks, %s in gold standard %s" % (fileroot, len(all_blocks_tokens), len(gold_standard_tokens), content_comments[k]))
         ABT = len(all_blocks_tokens)
         NN += len(gold_standard_tokens)
 
-        tokens_in_gold_standard = check_inclusion(all_blocks_tokens,
-            gold_standard_tokens)
-    
+        tokens_in_gold_standard = check_inclusion(
+            all_blocks_tokens, gold_standard_tokens)
+
         # now make a percentage of tokens in the gold standard for each block
         blocks_token_count = [0] * len(blocks)
         blocks_tokens_in_gold_standard = [0] * len(blocks)
@@ -198,7 +203,7 @@ def extract_gold_standard(datadir, fileroot,
             if block[0]:
                 blocks_tokens_in_gold_standard[block[1]] += 1
                 blocks_tokens_in_gold_standard_tokens[block[1]] += block[2] + ' '
-    
+
         # the array of block level token percent
         token_percent = [-1 if ele[0] == 0 else float(ele[1]) / ele[0] for ele in zip(blocks_token_count, blocks_tokens_in_gold_standard)]
 
@@ -208,11 +213,9 @@ def extract_gold_standard(datadir, fileroot,
     if NN > ABT:
         with open('bad_data.txt', 'a') as fbad:
             fbad.write('\t'.join((fileroot, str(NN), str(ABT), datadir)) + '\n')
-        
 
     # write the final output file
-    with open(datadir + '/block_corrected/%s.block_corrected.txt' % fileroot,
-        'w') as f:
+    with open(datadir + '/block_corrected/%s.block_corrected.txt' % fileroot, 'w') as f:
         for block in zip(content_comments_percent[0], content_comments_percent[1], blocks_tokens, content_comments_tokens[0], content_comments_tokens[1]):
             f.write(str(block[0]) + '\t' + str(block[1]) + '\t')
             if block[2] == '':
@@ -243,7 +246,7 @@ def extract_gold_standard_all_training_data(datadir, nprocesses=1, **kwargs):
     # all the corrected files
     for file, fileroot in get_list_all_corrected_files(datadir):
         if fileroot not in fileroot_already_corrected:
-            print "Extracting gold standard for file %s" % fileroot
+            print("Extracting gold standard for file %s" % fileroot)
             if use_pool:
                 p.apply_async(extract_gold_standard, (datadir, fileroot), kwargs)
             else:
@@ -252,7 +255,6 @@ def extract_gold_standard_all_training_data(datadir, nprocesses=1, **kwargs):
     if use_pool:
         p.close()
         p.join()
-
 
 
 class DragnetModelData(object):
@@ -281,7 +283,7 @@ class DragnetModelData(object):
         elif source == 'all':
             re_keep = ''  # match anything
         else:
-            raise InputError, "Invalid source"
+            raise ValueError("Invalid source")
         self._re_source = re.compile(re_keep)
         self._source = source
 
@@ -292,12 +294,12 @@ class DragnetModelData(object):
         """Return nkeep sample HTML docs from the training data
         Returns [(fileroot1, data), (..), ..]"""
 
-        ordering = zip(np.random.rand(len(self.training_files)),
-                    np.arange(len(self.training_files)))
+        ordering = zip(
+            np.random.rand(len(self.training_files)),
+            np.arange(len(self.training_files)))
         ordering.sort()
         indices_to_keep = [ind for seed, ind in ordering[:nkeep]]
         return [(self.training_files[ind], self.training_data[ind]) for ind in indices_to_keep]
-
 
     def _read_all_data(self, datadir, block_percent_threshold, source):
         """
@@ -329,7 +331,7 @@ class DragnetModelData(object):
                     '%s/block_corrected/%s.block_corrected.txt' %
                     (datadir, fileroot), 'r')
                 blocks = block_corrected_file.read()[:-1].split('\n')
-    
+
                 content = []
                 comments = []
                 for block in blocks:
@@ -337,7 +339,7 @@ class DragnetModelData(object):
                     # will store the weights as the total number of tokens in the document
                     content.append((float(block_split[0]), len(block_split[2].strip().split()), block_split[3].strip().split()))
                     comments.append((float(block_split[1]), len(block_split[2].strip().split()), block_split[4].strip().split()))
-    
+
                 ret = []
                 for content_comments in [content, comments]:
                     extracted_flag = (np.array([ele[0] for ele in content_comments]) > block_percent_threshold).astype(np.int)
@@ -347,7 +349,7 @@ class DragnetModelData(object):
                     for this_block_tokens in [ele[2] for ele in content_comments if ele[1] > 0]:
                         tokens.extend(this_block_tokens)
                     ret.append((extracted_flag, counts, tokens))
-    
+
                 if fileroot in training_fileroot:
                     self.training_data.append((html, ret[0], ret[1], encoding))
                     self.training_files.append(fileroot)
@@ -357,7 +359,6 @@ class DragnetModelData(object):
 
         print("..done!")
         print("Got %s training, %s test documents" % (len(self.training_data), len(self.test_data)))
-
 
     @staticmethod
     def diagnose_css(datadir, plotdir):
@@ -371,8 +372,8 @@ class DragnetModelData(object):
             blocks = Blockifier.blockify(datum[0], encoding=datum[3])
             extracted = np.logical_or(datum[1][0], datum[2][0])
             assert len(blocks) == len(extracted)
-            content_css.extend([blocks[k].css for k in xrange(len(blocks)) if extracted[k]])
-            no_content_css.extend([blocks[k].css for k in xrange(len(blocks)) if not extracted[k]])
+            content_css.extend([blocks[k].css for k in range_(len(blocks)) if extracted[k]])
+            no_content_css.extend([blocks[k].css for k in range_(len(blocks)) if not extracted[k]])
 
         # make a list of the most popular tokens
         from collections import defaultdict
@@ -394,7 +395,6 @@ class DragnetModelData(object):
                 popular_tokens_sorted[c][tag] = [(v, k) for k, v in popular_tokens[c][tag].iteritems()]
                 popular_tokens_sorted[c][tag].sort(reverse=True)
 
-
         # write to a file with percent of total
         for c in ['content', 'no_content']:
             for tag in ['id', 'class']:
@@ -404,11 +404,10 @@ class DragnetModelData(object):
                     cumcount = 0
                     for count, token in popular_tokens_sorted[c][tag]:
                         cumcount += count
-                        f.write("%s\t%s\t%s\t%s\n" %
-                                    (count,
-                                     token,
-                                     float(count)/total_tokens,
-                                     float(cumcount) / total_tokens))
+                        f.write("%s\t%s\t%s\t%s\n" % (count,
+                                                      token,
+                                                      float(count) / total_tokens,
+                                                      float(cumcount) / total_tokens))
 
         # take the ratio of token count in content vs no content
         # for the tokens in the specified list
@@ -440,8 +439,6 @@ class DragnetModelData(object):
                 for t in content_no_content_ratio[tag]:
                     f.write("%s\t%s\t%s\t%s\n" % t)
 
-
-
     @staticmethod
     def diagnose_data(datadir, plotdir, training_or_test='both'):
         """Do some diagnosis if the data set
@@ -452,9 +449,9 @@ class DragnetModelData(object):
         # we will accumulate the percent extracted for some histograms
         percent_extracted = []
         for s, t in [('all', 'All data'),
-                    ('technoratti', 'Technoratti'),
-                    ('domain_list', "Domain list"),
-                    ('reader', "Popular RSS on Google Reader")]:
+                     ('technoratti', 'Technoratti'),
+                     ('domain_list', "Domain list"),
+                     ('reader', "Popular RSS on Google Reader")]:
 
             data = DragnetModelData(datadir, source=s)
             data._diagnose_data_one_source(plotdir, t, training_or_test='both')
@@ -473,7 +470,6 @@ class DragnetModelData(object):
         fig.show()
         fig.savefig(plotdir + '/percent_tokens_extracted.png')
 
-
     def _get_percent_tokens_extracted_in_block(self, datadir):
         ret = []
         for file, fileroot in get_list_all_corrected_files(datadir):
@@ -489,7 +485,6 @@ class DragnetModelData(object):
                     ret.append(float(block_split[0]))
 
         return np.asarray(ret)
-
 
     def _diagnose_data_one_source(self, plotdir, ti, training_or_test='both'):
         """Make some plots and do some exploratory analyis on training data
@@ -508,11 +503,11 @@ class DragnetModelData(object):
             plot_data = self.training_data + self.test_data
             files = self.training_files + self.test_files
         else:
-            raise InputError, "Invalid training_or_test"
+            raise ValueError("Invalid training_or_test")
 
         # block_level_aggreate = holds block count of # extracted as
         #                        content, comments and total
-        block_level_aggregate = {'content':[], 'comments':[], 'total':[]}
+        block_level_aggregate = {'content': [], 'comments': [], 'total': []}
         for datum in plot_data:
             k = 1
             block_level_aggregate['total'].append(len(datum[1][1]))
@@ -542,7 +537,7 @@ class DragnetModelData(object):
         for s in ['content', 'comments']:
             txt += "\nTotal %s %s (%s %%)" % (s, int(np.sum(block_level_aggregate[s])), np.sum(block_level_aggregate[s]) / np.sum(block_level_aggregate['total']) * 100)
         plt.figtext(0.6, 0.4, txt)
-        
+
         add_plot_title(ti + '\nBlock level, training + test')
 
         fig.show()
@@ -550,13 +545,14 @@ class DragnetModelData(object):
 
         # percent extracted as content vs block number
         bins = 20
-        content_percent_vs_block_percent = {'content':np.zeros((len(plot_data), bins)),
-                                            'comments':np.zeros((len(plot_data), bins))}
+        content_percent_vs_block_percent = {
+            'content': np.zeros((len(plot_data), bins)),
+            'comments': np.zeros((len(plot_data), bins))}
 
         # number of tokens in block vs block number
         block_length_vs_block_percent = np.zeros((len(plot_data), bins))
 
-        for datum_number in xrange(len(plot_data)):
+        for datum_number in range_(len(plot_data)):
             datum = plot_data[datum_number]
             k = 1
             for c in ['content', 'comments']:
@@ -630,4 +626,3 @@ def split_data(datadir):
     # write training/test lists
     open(datadir + '/training.txt', 'w').write('\n'.join([ele[1] for ele in all_files[:ntrain]]))
     open(datadir + '/test.txt', 'w').write('\n'.join([ele[1] for ele in all_files[ntrain:]]))
-

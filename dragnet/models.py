@@ -1,4 +1,3 @@
-
 import pkgutil
 import cPickle as pickle
 import os
@@ -22,8 +21,8 @@ with GzipFile(
 
 with GzipFile(
     fileobj=StringIO(pkgutil.get_data(
-        'dragnet', 
-         os.path.join('pickled_models', 
+        'dragnet',
+         os.path.join('pickled_models',
             'kohlschuetter_weninger_readability_content_comments_model.pickle.gz'))),
     mode='r') as fin:
     content_comments_extractor = pickle.load(fin)
@@ -36,7 +35,7 @@ kohlschuetter_css_model = pickle.loads(
 kohlschuetter_css_weninger_model = pickle.loads(
     pkgutil.get_data('dragnet', 'pickled_models/kohlschuetter_css_weninger_100.0_content_model.pickle'))
 kohlschuetter_weninger_model = pickle.loads(
-        pkgutil.get_data('dragnet', 'pickled_models/kohlschuetter_weninger_1.0_content_model.pickle'))
+    pkgutil.get_data('dragnet', 'pickled_models/kohlschuetter_weninger_1.0_content_model.pickle'))
 
 
 # monkey patch the blockifiers to eliminate CSS features when not needed
@@ -54,4 +53,3 @@ content_and_content_comments_extractor = ContentCommentsExtractionModel(
     content_extractor._blockifier, content_extractor._features,
     content_extractor._block_model, content_comments_extractor._block_model,
     content_extractor._threshold)
-

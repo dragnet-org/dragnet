@@ -2,6 +2,7 @@
 *.pyc
 *.so
 build/*
+dist/*
 dragnet.egg-info
 
 # cython temporary files
@@ -22,4 +23,3 @@ output/*
 *.swp
 
 .vagrant
-

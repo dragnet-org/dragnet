@@ -51,23 +51,21 @@ cdef inline int int_min(int a, int b): return a if a <= b else b
 
 # tags we'll ignore completely
 cdef cpp_set[string] BLACKLIST
-BLACKLIST = set([
-    'applet', 'area', 'base', 'basefont', 'bdo', 'button', 
-    'caption', 'fieldset', 'fram', 'frameset', 
-    'iframe', 'img', 'input', 'legend', 'link', 'menu', 'meta', 
-    'noframes', 'noscript', 'object', 'optgroup', 'option', 'param', 
-    'script', 'select', 'style', 'textarea', 'var', 'xmp',
-    'like', 'like-box', 'plusone',
+BLACKLIST = {
+    b'applet', b'area', b'base', b'basefont', b'bdo', b'button',
+    b'caption', b'fieldset', b'fram', b'frameset',
+    b'iframe', b'img', b'input', b'legend', b'link', b'menu', b'meta',
+    b'noframes', b'noscript', b'object', b'optgroup', b'option', b'param',
+    b'script', b'select', b'style', b'textarea', b'var', b'xmp',
+    b'like', b'like-box', b'plusone',
     # HTML5 vector image tags and math tags
-    'svg', 'math'
-])
+    b'svg', b'math'
+    }
 
 
 # tags defining the blocks we'll extract
 cdef cpp_set[string] BLOCKS
-BLOCKS = set([
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'table', 'map',
-])
+BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'map'}
 
 # define some commonly used strings here, otherwise Cython will always add
 # a little python overhead when using them even though they are constat
@@ -87,14 +85,13 @@ re_readability_positive = re.compile('article|body|content|entry|hentry|main|pag
 cdef string DIV = <string>'div'
 
 cdef cpp_set[string] READABILITY_PLUS3
-READABILITY_PLUS3 = set(["pre", "td", "blockquote"])
+READABILITY_PLUS3 = {b'pre', b'td', b'blockquote'}
 
 cdef cpp_set[string] READABILITY_MINUS3
-READABILITY_MINUS3 = set(
-    ["address", "ol", "ul", "dl", "dd", "dt", "li", "form"])
+READABILITY_MINUS3 = {b'address', b'ol', b'ul', b'dl', b'dd', b'dt', b'li', b'form'}
 
 cdef cpp_set[string] READABILITY_MINUS5
-READABILITY_MINUS5 = set(["h1", "h2", "h3", "h4", "h5", "h6", "th"])
+READABILITY_MINUS5 = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'th'}
 
 
 cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
@@ -571,7 +568,7 @@ cdef class PartialBlock:
         # finally store it
         self.class_weights.push_back(pair[uint32_t, int](self.tag_id, weight))
         self.class_weights_written.insert(self.tag_id)
-    
+
     cdef void reinit_readability(self):
         self.ancestors_write = self.ancestors
 
@@ -695,12 +692,12 @@ cdef class TagCountPB(PartialBlock):
     # Since we don't output empty blocks, we also keep track of the
     # tag count since the last block we output as an additional feature
     #
-    
+
     # _tc = tag count in the current block, since the last <div>, <p>, etc.
     # _tc_lb = tag count since last block.  This is the tag count in prior
     # empty blocks, accumulated since the last block was output, excluding
     # the current block
-    
+
     # so tc gets updated with each tag
     # tc is reset on block formation, even for empty blocks
     #
@@ -776,7 +773,7 @@ xml_re = re.compile('<\?\s*xml[^>]*encoding\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.
 def guess_encoding(s, default='utf-8'):
     """Try to guess the encoding of s -- check the XML declaration
     and the HTML meta tag
-    
+
     if default=CHARDET then use chardet to guess the default"""
     mo = xml_re.search(s)
     if mo:
@@ -820,7 +817,7 @@ class Blockifier(object):
         partial_block.add_block_to_results(results)
 
         return results
-    
+
 
     @staticmethod
     def blockify(s, encoding=None,
@@ -878,5 +875,3 @@ class TagCountNoCSSReadabilityBlockifier(Blockifier):
         return Blockifier.blockify(s, encoding, pb=TagCountPB,
             do_css=False, do_readability=True,
             parse_callback=parse_callback)
-
-

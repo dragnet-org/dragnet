@@ -1,14 +1,15 @@
+"""
+The Levenshtein distance code was originally taken from (retrieved June 21, 2012):
+   http://mwh.geek.nz/2009/04/26/python-damerau-levenshtein-distance/
+
+It may eventually be updated to use different scores for insertions, deletions,
+transpositions, etc. For the time being, however, it remains as presented in
+the article.
+"""
+
+from .compat import range_
 
 
-import json
-import re
-
-# The Levenshtein distance code was originally taken from (retrieved June 21, 2012):
-#    http://mwh.geek.nz/2009/04/26/python-damerau-levenshtein-distance/
-#
-# It may eventually be updated to use different scores for insrtions, deletions,
-# transpositions, etc. For the time being, however, it remains as presented in
-# the article.
 def dameraulevenshtein(seq1, seq2):
     """Calculate the Damerau-Levenshtein distance between sequences.
 
@@ -38,22 +39,21 @@ def dameraulevenshtein(seq1, seq2):
     # so we only store those.
     oneago = None
     thisrow = range(1, len(seq2) + 1) + [0]
-    for x in xrange(len(seq1)):
+    for x in range_(len(seq1)):
         # Python lists wrap around for negative indices, so put the
         # leftmost column at the *end* of the list. This matches with
         # the zero-indexed strings and saves extra calculation.
         twoago, oneago, thisrow = oneago, thisrow, [0] * len(seq2) + [x + 1]
-        for y in xrange(len(seq2)):
+        for y in range_(len(seq2)):
             delcost = oneago[y] + 1
             addcost = thisrow[y - 1] + 1
             subcost = oneago[y - 1] + (seq1[x] != seq2[y])
             thisrow[y] = min(delcost, addcost, subcost)
             # This block deals with transpositions
-            if (x > 0 and y > 0 and seq1[x] == seq2[y - 1]
-                and seq1[x-1] == seq2[y] and seq1[x] != seq2[y]):
+            if (x > 0 and y > 0 and seq1[x] == seq2[y - 1] and
+                    seq1[x - 1] == seq2[y] and seq1[x] != seq2[y]):
                 thisrow[y] = min(thisrow[y], twoago[y - 2] + 1)
     return thisrow[len(seq2) - 1]
-
 
 
 def evaluation_metrics(predicted, actual, bow=True):
@@ -105,9 +105,5 @@ def evaluation_metrics(predicted, actual, bow=True):
     else:
         f1 = 2.0 * precision * recall / (precision + recall)
 
-    #return (precision, recall, f1, dameraulevenshtein(predicted, actual))
+    # return (precision, recall, f1, dameraulevenshtein(predicted, actual))
     return (precision, recall, f1)
-
-
-
-

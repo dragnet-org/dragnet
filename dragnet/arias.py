@@ -1,13 +1,14 @@
 #! /usr/bin/env python
-
-# A /rough/ implementation of that described by Aurias et al.:
-#    https://lirias.kuleuven.be/bitstream/123456789/215528/1/AriasEtAl2009.pdf
-
+"""
+A *rough* implementation of that described by Aurias et al.:
+https://lirias.kuleuven.be/bitstream/123456789/215528/1/AriasEtAl2009.pdf
+"""
 from .blocks import Blockifier
 from .content_extraction_model import ContentExtractionModel, IdentityPredictor
 
 import numpy as np
 import scipy.weave
+
 
 class AriasFeatures(object):
     """A global feature based on connected blocks of long text
@@ -24,7 +25,6 @@ class AriasFeatures(object):
         self._percent_cutoff = percent_cutoff
         self._window = window
 
-
     def __call__(self, blocks, train=False):
         from scipy import percentile
         features = np.zeros((len(blocks), AriasFeatures.nfeatures))
@@ -35,7 +35,6 @@ class AriasFeatures(object):
         lowindex, highindex = AriasFeatures.strip(block_lengths, index, self._window, cutoff)
         features[lowindex:(highindex + 1), 0] = 1.0
         return features
-
 
     @staticmethod
     def strip(block_lengths, index, window, cutoff):
@@ -83,9 +82,10 @@ class AriasFeatures(object):
             }
             ret(1) = lastindex;
         """
-        scipy.weave.inline(c_code,
-                ['ret', 'nblock', 'index', 'window', 'cutoff', 'block_lengths'],
-                type_converters=scipy.weave.converters.blitz)
+        scipy.weave.inline(
+            c_code,
+            ['ret', 'nblock', 'index', 'window', 'cutoff', 'block_lengths'],
+            type_converters=scipy.weave.converters.blitz)
         return ret
 
 
@@ -108,18 +108,19 @@ class Arias(ContentExtractionModel):
         import matplotlib.pyplot as plt
 
         # First, plot up to the low point in blue...
-        p1 = plt.bar(np.arange(low), [len(l) for l in L[0:low]], linewidth=0.0)
+        plt.bar(np.arange(low), [len(l) for l in L[0:low]], linewidth=0.0)
         # And now from low-high in red
-        p2 = plt.bar(np.arange(low, hi+1), [len(l) for l in L[low:hi+1]],
+        plt.bar(
+            np.arange(low, hi + 1), [len(l) for l in L[low:hi + 1]],
             linewidth=0.0, color='r')
         # And from then on in blue
-        p3 = plt.bar(np.arange(hi+1, len(L)), [len(l) for l in L[hi+1:]],
+        plt.bar(
+            np.arange(hi + 1, len(L)), [len(l) for l in L[hi + 1:]],
             linewidth=0.0)
         # Lastly, apply a line across the board at the cutoff
-        line = plt.plot([0, len(L)], [cutoff, cutoff], 'g-')
+        plt.plot([0, len(L)], [cutoff, cutoff], 'g-')
 
         plt.xlabel('Order')
         plt.ylabel('Length')
         plt.title(name)
         plt.show()
-

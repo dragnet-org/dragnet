@@ -1,8 +1,8 @@
 #! /usr/bin/env python
-
 import re
 import numpy as np
-import json
+
+from .compat import range_, string_
 
 # implementations of the features interface.
 #
@@ -15,12 +15,12 @@ import json
 # It has an attribute "feature.nfeatures" that gives number of features
 #
 # To allow the feature to set itself from some data, feature can optionally
-#   implement 
+#   implement
 #       feature.init_parms(computed_features) AND
 #       features.set_params(ret)
 #   where computed_features is a call with train=True,
 #   and ret is the returned value from features.init_params.
-#
+
 
 def normalize_features(features, mean_std):
     """Normalize the features IN PLACE.
@@ -30,10 +30,10 @@ def normalize_features(features, mean_std):
        mean_std = {'mean':[list of means],
                    'std':[list of std] }
        the lists are the same length as features.shape[1]
-       
+
        if features is None, then do nothing"""
     if features is not None:
-        for k in xrange(features.shape[1]):
+        for k in range_(features.shape[1]):
             features[:, k] = (features[:, k] - mean_std['mean'][k]) / mean_std['std'][k]
 
 
@@ -41,7 +41,7 @@ class NormalizedFeature(object):
     """Normalize a feature with mean/std
 
     This is an abstraction of a normalized feature
-    It acts sort of like a decorator on anything 
+    It acts sort of like a decorator on anything
     that implements the feature interface.
 
     Instances of this object also implement the feature interface"""
@@ -66,8 +66,8 @@ class NormalizedFeature(object):
         return features
 
     def init_params(self, features):
-        self._mean_std = {'mean':features.mean(axis=0),
-                          'std':features.std(axis=0) }
+        self._mean_std = {'mean': features.mean(axis=0),
+                          'std': features.std(axis=0)}
         return self._mean_std
 
     def set_params(self, mean_std):
@@ -81,7 +81,7 @@ class NormalizedFeature(object):
         or a json blob.
         if a string, load it, otherwise just return"""
         import json
-        if isinstance(mean_std, basestring):
+        if isinstance(mean_std, string_):
             return json.load(open(mean_std, 'r'))
         else:
             return mean_std
@@ -97,47 +97,50 @@ class CSSFeatures(object):
     # attribute.
     # The features are 0/1 flags whether these tokens
     # appear in the CSS tags
-    attribute_tokens = {'id':['nav',
-                              'ss',
-                              'top',
-                              'content',
-                              'link',
-                              'title',
-                              'comment',
-                              'tools',
-                              'rating',
-                              'ss'],
-                     'class':['menu',
-                              'widget',
-                              'nav',
-                              'share',
-                              'facebook',
-                              'cat',
-                              'top',
-                              'content',
-                              'item',
-                              'twitter',
-                              'button',
-                              'title',
-                              'header',
-                              'ss',
-                              'post',
-                              'comment',
-                              'meta',
-                              'alt',
-                              'time',
-                              'depth',
-                              'thread',
-                              'author',
-                              'tools',
-                              'reply'
-                              'url',
-                              'avatar',
-                              'ss']}
+    attribute_tokens = {'id': ['nav',
+                               'ss',
+                               'top',
+                               'content',
+                               'link',
+                               'title',
+                               'comment',
+                               'tools',
+                               'rating',
+                               'ss'],
+                        'class': ['menu',
+                                  'widget',
+                                  'nav',
+                                  'share',
+                                  'facebook',
+                                  'cat',
+                                  'top',
+                                  'content',
+                                  'item',
+                                  'twitter',
+                                  'button',
+                                  'title',
+                                  'header',
+                                  'ss',
+                                  'post',
+                                  'comment',
+                                  'meta',
+                                  'alt',
+                                  'time',
+                                  'depth',
+                                  'thread',
+                                  'author',
+                                  'tools',
+                                  # these two strings were implicitly concatenated
+                                  # this is a bug, and it will be fixed
+                                  'reply' + 'url',
+                                  'avatar',
+                                  # this is a duplicate entry (see above)
+                                  'ss']
+                        }
 
     _attribute_order = ['id', 'class']
 
-    nfeatures = sum(len(ele) for ele in attribute_tokens.itervalues())
+    nfeatures = sum(len(ele) for ele in attribute_tokens.values())
 
     def __call__(self, blocks, train=False):
         ret = np.zeros((len(blocks), CSSFeatures.nfeatures))
@@ -147,5 +150,3 @@ class CSSFeatures(object):
                 ret[:, feature] = [re.search(token, block.css[attrib]) is not None for block in blocks]
                 feature += 1
         return ret
-
-
