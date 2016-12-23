@@ -9,7 +9,7 @@ Vagrant.configure(2) do |config|
     # lxml has trouble building if the amount of memory is 512:
     # http://stackoverflow.com/questions/16149613/installing-lxml-with-pip-in-virtualenv-ubuntu-12-10-error-command-gcc-failed
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = "1024"
+    vb.memory = "2048"
   end
 
    config.vm.provision "shell", privileged: false, inline: <<-SHELL
