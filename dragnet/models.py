@@ -1,10 +1,9 @@
 import pkgutil
-import cPickle as pickle
 import os
 
-from StringIO import StringIO
 from gzip import GzipFile
 
+from .compat import PY2, pickle, bytes_io
 from .blocks import TagCountNoCSSBlockifier, TagCountNoCSSReadabilityBlockifier
 from .content_extraction_model import baseline_model
 from .content_extraction_model import ContentCommentsExtractionModel, SklearnWrapper
@@ -12,20 +11,28 @@ from .weninger import Weninger
 
 # make instances
 with GzipFile(
-    fileobj=StringIO(pkgutil.get_data(
-        'dragnet',
-         os.path.join('pickled_models',
-            'kohlschuetter_weninger_readability_content_model.pickle.gz'))),
-    mode='r') as fin:
-    content_extractor = pickle.load(fin)
+        fileobj=bytes_io(pkgutil.get_data(
+            'dragnet',
+            os.path.join(
+                'pickled_models',
+                'kohlschuetter_weninger_readability_content_model.pickle.gz'))),
+        mode='rb') as fin:
+    if PY2 is True:
+        content_extractor = pickle.load(fin)
+    else:
+        content_extractor = pickle.load(fin, encoding='bytes')  # TODO: which encoding?
 
 with GzipFile(
-    fileobj=StringIO(pkgutil.get_data(
-        'dragnet',
-         os.path.join('pickled_models',
-            'kohlschuetter_weninger_readability_content_comments_model.pickle.gz'))),
-    mode='r') as fin:
-    content_comments_extractor = pickle.load(fin)
+        fileobj=bytes_io(pkgutil.get_data(
+            'dragnet',
+            os.path.join(
+                'pickled_models',
+                'kohlschuetter_weninger_readability_content_comments_model.pickle.gz'))),
+        mode='rb') as fin:
+    if PY2 is True:
+        content_comments_extractor = pickle.load(fin)
+    else:
+        content_comments_extractor = pickle.load(fin, encoding='bytes')  # TODO: which encoding?
 
 weninger_model = Weninger()
 kohlschuetter_model = pickle.loads(
