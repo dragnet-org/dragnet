@@ -30,10 +30,19 @@ import numpy as np
 import math
 
 
+RE_HTML_ENCODING = re.compile(
+    r'<\s*meta[^>]+charset\s*?=\s*?[\'"]?([^>]*?)[ /;\'">]',
+    flags=re.IGNORECASE)
+RE_XML_ENCODING = re.compile(
+    r'^<\?.*?encoding\s*?=\s*?[\'"](.*?)[\'"].*?\?>',
+    flags=re.IGNORECASE)
+RE_TEXT = re.compile(r'[^\W_]+', flags=re.UNICODE)
 re_tokenizer = re.compile('[\W_]+', re.UNICODE)
 re_tokenizer_nounicode = re.compile('[\W_]+')
-simple_tokenizer = lambda x: [ele for ele in re_tokenizer.split(x)
-    if len(ele) > 0]
+
+
+def simple_tokenizer(x):
+    return [ele for ele in re_tokenizer.split(x) if len(ele) > 0]
 
 # need a typedef for the callback function in text_from_subtree
 # and a default function that does nothing
@@ -61,7 +70,6 @@ BLACKLIST = {
     # HTML5 vector image tags and math tags
     b'svg', b'math'
     }
-
 
 # tags defining the blocks we'll extract
 cdef cpp_set[string] BLOCKS
@@ -768,44 +776,40 @@ cdef class TagCountPB(PartialBlock):
             self._min_depth_last_block = self._min_depth_last_block_pending
 
 
-html_re = re.compile('meta\s[^>]*charset\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
-xml_re = re.compile('<\?\s*xml[^>]*encoding\s*=\s*"{0,1}\s*([a-zA-Z0-9-]+)', re.I)
-def guess_encoding(s, default='utf-8'):
-    """Try to guess the encoding of s -- check the XML declaration
-    and the HTML meta tag
+def guess_encoding(markup, default='utf-8'):
+    """
+    Try to guess the encoding of ``markup`` by checking the XML declaration
+    and the HTML meta tag.
 
-    if default=CHARDET then use chardet to guess the default"""
-    mo = xml_re.search(s)
+    if default=CHARDET then use chardet to guess the default
+    """
+    xml_endpos = 1024
+    html_endpos = max(2048, int(len(markup) * 0.05))
+    mo = RE_XML_ENCODING.search(markup, endpos=xml_endpos)
     if mo:
-        encoding = mo.group(1)
-    else:
-        moh = html_re.search(s)
-        if moh:
-            encoding = moh.group(1)
-        else:
-            if default == 'CHARDET':
-                from chardet.universaldetector import UniversalDetector
-                u = UniversalDetector()
-                u.feed(s)
-                u.close()
-                encoding = u.result['encoding']
-                print "Guessing encoding with chardet of %s" % encoding
-            else:
-                encoding = default
-    return encoding
+        return mo.group(1)
+    moh = RE_HTML_ENCODING.search(markup, endpos=html_endpos)
+    if moh:
+        return moh.group(1)
+    if default.lower() == 'chardet':
+        from chardet.universaldetector import UniversalDetector
+        u = UniversalDetector()
+        u.feed(markup)
+        u.close()
+        return u.result['encoding']
+    return default
 
 
 class Blockifier(object):
-    """A blockifier for web-page de-chroming that loosely follows the approach in
-        Kohlschütter et al.:
-        http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
+    """
+    A blockifier for web-page de-chroming that loosely follows the approach in
+    Kohlschütter et al.: http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
 
-      Implements the blockify interface
+    Implements the blockify interface.
     """
 
     @staticmethod
-    def blocks_from_tree(tree, pb=PartialBlock,
-        do_css=True, do_readability=False):
+    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False):
         cdef list results = []
         cdef cetree._Element ctree
 
@@ -818,17 +822,27 @@ class Blockifier(object):
 
         return results
 
-
     @staticmethod
     def blockify(s, encoding=None,
-        pb=PartialBlock, do_css=True, do_readability=False,
-        parse_callback=None):
-        '''
-        Take a string of HTML and return a series of blocks
+                 pb=PartialBlock, do_css=True, do_readability=False,
+                 parse_callback=None):
+        """
+        Given HTML string ``s`` return a sequence of blocks with text content.
 
-        if encoding is None, then try to extract it from the HTML
-        parse_callback, if not None, will be called on the parse result
-        '''
+        Args:
+            s (str): HTML document as a string
+            encoding (str): encoding of ``s``; if None (encoding unknown), the
+                original encoding will be guessed from the HTML itself
+            pb
+            do_css (bool): if True, add CSS-related attributes to blocks
+            do_readability (bool): if True, add readability-related attributes
+                to blocks
+            parse_callback (Callable): if not None, will be called on the
+                result of parsing in order to modify state for [reasons]
+
+        Returns:
+            List[Block]: ordered sequence of blocks with text content
+        """
         # First, we need to parse the thing
         encoding = encoding or guess_encoding(s, default='utf-8')
         try:
@@ -847,31 +861,33 @@ class Blockifier(object):
             parse_callback(html)
 
         # only return blocks with some text content
-        return [ele for ele in blocks if re_tokenizer.sub('', ele.text) != '']
+        return [ele for ele in blocks if RE_TEXT.search(ele.text)]
 
 
 class TagCountBlockifier(Blockifier):
     @staticmethod
     def blockify(s, encoding=None, parse_callback=None):
-        return Blockifier.blockify(s, encoding, pb=TagCountPB,
-            parse_callback=parse_callback)
+        return Blockifier.blockify(s, encoding=encoding, pb=TagCountPB,
+                                   do_css=True, do_readability=False,
+                                   parse_callback=parse_callback)
 
 class TagCountNoCSSBlockifier(Blockifier):
     @staticmethod
     def blockify(s, encoding=None, parse_callback=None):
-        return Blockifier.blockify(s, encoding, pb=TagCountPB, do_css=False,
-            parse_callback=parse_callback)
+        return Blockifier.blockify(s, encoding=encoding, pb=TagCountPB,
+                                   do_css=False, do_readability=False,
+                                   parse_callback=parse_callback)
 
 class TagCountReadabilityBlockifier(Blockifier):
     @staticmethod
     def blockify(s, encoding=None, parse_callback=None):
-        return Blockifier.blockify(s, encoding, pb=TagCountPB,
-            do_css=True, do_readability=True,
-            parse_callback=parse_callback)
+        return Blockifier.blockify(s, encoding=encoding, pb=TagCountPB,
+                                   do_css=True, do_readability=True,
+                                   parse_callback=parse_callback)
 
 class TagCountNoCSSReadabilityBlockifier(Blockifier):
     @staticmethod
     def blockify(s, encoding=None, parse_callback=None):
-        return Blockifier.blockify(s, encoding, pb=TagCountPB,
-            do_css=False, do_readability=True,
-            parse_callback=parse_callback)
+        return Blockifier.blockify(s, encoding=encoding, pb=TagCountPB,
+                                   do_css=False, do_readability=True,
+                                   parse_callback=parse_callback)

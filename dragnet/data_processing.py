@@ -238,6 +238,10 @@ def extract_gold_standard_all_training_data(datadir, nprocesses=1, **kwargs):
         from multiprocessing import Pool
         p = Pool(processes=nprocesses)
 
+    block_corr_dir = os.path.join(datadir, 'block_corrected')
+    if not os.path.isdir(block_corr_dir):
+        os.mkdir(block_corr_dir)
+
     # get a list of files that have already been block corrected
     # don't block correct them again
     files_already_block_corrected = glob.glob(datadir + "/block_corrected/*")

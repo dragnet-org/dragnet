@@ -1,8 +1,9 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-
-# A /rough/ implementation of that described by Kohlschütter et al.:
-#    http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
+"""
+A *rough* implementation of that described by Kohlschütter et al.:
+   http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
+"""
 import numpy as np
 
 from .content_extraction_model import ContentExtractionModel
@@ -12,7 +13,7 @@ from .compat import range_
 
 def kohlschuetter_features(blocks, train=False):
     """The text density/link density features
-    from Kohlschuetter.  Implements the features interface"""
+    from Kohlschuetter. Implements the features interface"""
     # need at least 3 blocks to make features
     assert len(blocks) >= 3
 
@@ -35,8 +36,6 @@ def kohlschuetter_features(blocks, train=False):
                        0.0, 0.0]
 
     return features
-
-kohlschuetter_features.nfeatures = 6
 
 
 class KohlschuetterBlockModel(object):

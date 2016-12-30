@@ -29,8 +29,6 @@ class BaselinePredictor(object):
 def nofeatures(blocks, *args, **kwargs):
     return np.zeros((len(blocks), 1))
 
-nofeatures.nfeatures = 1
-
 
 class ContentExtractionModel(object):
     """Content extraction model
@@ -51,10 +49,9 @@ class ContentExtractionModel(object):
         self._threshold = threshold
 
         # check the features
-        self._nfeatures = sum(ele.nfeatures for ele in self._features)
         for f in self._features:
             if not callable(f):
-                raise ValueError('All features must be callable')
+                raise TypeError('All features must be callable')
 
     def set_threshold(self, thres):
         """Set the threshold
@@ -98,16 +95,8 @@ class ContentExtractionModel(object):
         # doc needs to be at least three blocks, otherwise return everything
         if len(blocks) < 3:
             return None
-
         # compute the features
-        features = np.zeros((len(blocks), self._nfeatures))
-        offset = 0
-        for f in self._features:
-            offset_end = offset + f.nfeatures
-            features[:, offset:offset_end] = f(blocks, train)
-            offset = offset_end
-
-        return features
+        return np.column_stack(tuple(f(blocks, train) for f in self._features))
 
     def make_features(self, s, train=False, encoding=None, parse_callback=None):
         """s = HTML string
@@ -156,7 +145,6 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
         self._threshold = threshold
 
         # check the features
-        self._nfeatures = sum(ele.nfeatures for ele in self._features)
         for f in self._features:
             if not callable(f):
                 raise ValueError('All features must be callable')
