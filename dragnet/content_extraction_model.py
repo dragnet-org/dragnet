@@ -147,7 +147,7 @@ class ContentCommentsExtractionModel(ContentExtractionModel):
         # check the features
         for f in self._features:
             if not callable(f):
-                raise ValueError('All features must be callable')
+                raise TypeError('All features must be callable')
 
     def analyze(self, s, blocks=False, encoding=None, parse_callback=None):
         """

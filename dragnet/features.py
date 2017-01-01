@@ -2,20 +2,17 @@
 """
 Implementations of the features interface.
 
-feature is a callable feature(list_of_blocks, train=False)
-  that takes list of blocks and returns a numpy array of computed_features
-      (len(blocks), nfeatures)
-The optional keyword "train" that is only called in an initial
-  pre-processing state for training
+A feature is a callable -- ``feature(List[Block], train=bool)`` -- that takes a
+a list of blocks (created by :func:`Blockifier.blockify()`) and returns a numpy
+array of computed features with shape (num blocks, num features).
 
-It has an attribute "feature.nfeatures" that gives number of features
+The optional boolean param ``train`` is only used in an initial pre-processing
+state for training.
 
-To allow the feature to set itself from some data, feature can optionally
-  implement
-      feature.init_parms(computed_features) AND
-      features.set_params(ret)
-  where computed_features is a call with train=True,
-  and ret is the returned value from features.init_params.
+To (optionally) allow the feature to set itself from some data, implement
+``feature.init_parms(computed_features)`` *and* ``features.set_params(ret)``,
+where ``computed_features`` is a call with ``train=True``, and ``ret`` is the
+returned value from ``features.init_params``.
 """
 import re
 import numpy as np
