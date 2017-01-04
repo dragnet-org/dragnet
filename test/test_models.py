@@ -47,7 +47,7 @@ class TestModels(unittest.TestCase):
 
         passed_content = False
         passed_content_comments = False
-        for i in range_(5):
+        for i in range_(10):
             actual_content, actual_content_comments = \
                 content_and_content_comments_extractor.analyze(self._html)
             passed_content = actual_content == content
