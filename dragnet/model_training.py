@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import io
 import re
 import json
 import numpy as np
@@ -10,7 +11,7 @@ from mozsci.cross_validate import cv_kfold
 
 from .blocks import Blockifier
 from . import evaluation_metrics
-from .compat import range_
+from .compat import range_, sklearn_path
 from .content_extraction_model import ContentExtractionModel
 from .data_processing import (simple_tokenizer, DragnetModelData, read_gold_standard,
                               get_list_all_corrected_files, read_HTML_file,
@@ -66,7 +67,6 @@ class DragnetModelTrainer(object):
                                 return_blocks=False, train=False):
         """Given the data and a model, make the features
         using model.make_features
-
         uses self.comments_or_content
         If return_blocks = True then also return the block level strings
         train = passed into model.make_features"""
@@ -93,8 +93,18 @@ class DragnetModelTrainer(object):
                 # document is too short -- has < blocks.
                 # skip it
                 continue
-            features = np.vstack((features, training_features))
             this_labels, this_weight, this_tokens = self._get_labels(content, comments)
+
+            if (training_features.shape[0] != len(this_weight) or
+                    len(this_labels) != len(this_weight)):
+                print('\nskipping file because of array shape mismatch...')
+                print('len(blocks) =', len(blocks))
+                print('len(this_labels) =', len(this_labels))
+                print('len(this_weight) =', len(this_weight))
+                # raise ValueError("Number of features, labels and weights do not match!")
+                continue
+
+            features = np.vstack((features, training_features))
             weights = np.hstack((weights, this_weight))
             labels = np.hstack((labels, this_labels))
             if return_blocks:
@@ -296,6 +306,7 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
             plt.title("%s %s" % (ti[k], np.mean(errors[:, k])))
 
         add_plot_title("Token level evaluation")
+        plt.tight_layout()
         fig.show()
 
         if figname_root is not None:
@@ -347,11 +358,9 @@ def evaluate_models_tokens(datadir, dragnet_model, figname_root=None,
 def train_models(datadir, output_dir, features_to_use, model,
                  content_or_comments='both'):
     """Train a content extraction model.
-
     Does feature centering, trains the logistic regression model,
     pickles the final model and writes the train/test block level errors
     to a file
-
     datadir = root directory for all the data
     output_dir = write the trained model files, errors, etc to this directory
     features_to_use = a list of the features to use.  Must be one of the features
@@ -365,7 +374,13 @@ def train_models(datadir, output_dir, features_to_use, model,
 
     from mozsci.numpy_util import NumpyEncoder
 
-    prefix = os.path.join(output_dir, '_'.join(features_to_use))
+    if not os.path.isdir(os.path.join(output_dir, sklearn_path)):
+        os.makedirs(os.path.join(output_dir, sklearn_path))
+    prefix = os.path.join(output_dir, sklearn_path, '_'.join(features_to_use))
+    if content_or_comments == 'content':
+        prefix += '_content'
+    else:
+        prefix += '_content_comments'
 
     # assemble the features
     feature_instances = []
@@ -387,7 +402,7 @@ def train_models(datadir, output_dir, features_to_use, model,
             features, labels, weights = trainer.make_features_from_data(data, model_init, train=True)
             mean_std = f.init_params(features)
             f.set_params(mean_std)
-            with open("%s_mean_std_%s.json" % (prefix, features_to_use[k]), 'w') as fout:
+            with io.open("%s_mean_std_%s.json" % (prefix, features_to_use[k]), mode='wb') as fout:
                 fout.write("%s" % json.dumps(mean_std, cls=NumpyEncoder))
         k += 1
 
@@ -405,7 +420,7 @@ def train_models(datadir, output_dir, features_to_use, model,
     test_errors = accuracy_auc(labels, model.predict(features))
 
     # write errors to a file
-    with open(prefix + '_block_errors.txt', 'w') as f:
+    with io.open(prefix + '_block_errors.txt', mode='wb') as f:
         f.write("Training errors for final model (block level):\n")
         pprint.pprint(train_errors, f)
         f.write("Test errors for final model (block level):\n")
@@ -413,7 +428,9 @@ def train_models(datadir, output_dir, features_to_use, model,
 
     # pickle the final model!
     # use the one with threshold = 0.5
-    pickle.dump(ContentExtractionModel(Blkr, feature_instances, model, threshold=0.5),
-                open(prefix + '_content_model.pickle', 'w'))
+    model = ContentExtractionModel(Blkr, feature_instances, model, threshold=0.5)
+    with io.open(prefix + '_model.pickle', mode='wb') as f:
+        pickle.dump(model, f)
 
     print("done!")
+    return model
