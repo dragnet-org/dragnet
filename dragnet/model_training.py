@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import gzip
 import io
 import re
 import json
@@ -429,7 +430,7 @@ def train_models(datadir, output_dir, features_to_use, model,
     # pickle the final model!
     # use the one with threshold = 0.5
     model = ContentExtractionModel(Blkr, feature_instances, model, threshold=0.5)
-    with io.open(prefix + '_model.pickle', mode='wb') as f:
+    with gzip.GzipFile(prefix + '_model.pickle.gz', mode='wb') as f:
         pickle.dump(model, f)
 
     print("done!")

@@ -14,9 +14,7 @@ from .weninger import Weninger
 
 def _load_pickled_model(fname, compressed='gzip'):
     model_bytes = pkgutil.get_data(
-        'dragnet', os.path.join('pickled_models', fname))
-    # model_bytes = pkgutil.get_data(
-    #     'dragnet', os.path.join('pickled_models', sklearn_path, fname))
+        'dragnet', os.path.join('pickled_models', sklearn_path, fname))
     if compressed == 'gzip':
         with gzip.GzipFile(fileobj=bytes_io(model_bytes), mode='rb') as f:
             return pickle.load(f)
