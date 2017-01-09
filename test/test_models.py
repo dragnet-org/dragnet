@@ -5,6 +5,8 @@ import os.path
 
 from dragnet.models import *
 from dragnet.compat import range_
+from dragnet.blocks import simple_tokenizer
+from dragnet.util import evaluation_metrics
 
 FIXTURES = 'test/datafiles'
 
@@ -35,10 +37,13 @@ class TestModels(unittest.TestCase):
             # although it passes most of the time
             # we allow a max of 5 failures before failing the entire test
             m = models[k]
+            gold_standard = actual_content[k].encode('utf-8')
             passed = False
-            for i in range_(10):
+            for i in range_(5):
                 content = m.analyze(self._html)
-                if actual_content[k].encode('utf-8') == content:
+                _, _, f1 = evaluation_metrics(
+                    simple_tokenizer(gold_standard), simple_tokenizer(content))
+                if f1 >= 0.98:
                     passed = True
                     break
             self.assertTrue(passed)
