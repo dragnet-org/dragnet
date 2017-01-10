@@ -102,7 +102,7 @@ class DragnetModelTrainer(object):
                 print('len(blocks) =', len(blocks))
                 print('len(this_labels) =', len(this_labels))
                 print('len(this_weight) =', len(this_weight))
-                # raise ValueError("Number of features, labels and weights do not match!")
+                raise ValueError("Number of features, labels and weights do not match!")
                 continue
 
             features = np.vstack((features, training_features))
