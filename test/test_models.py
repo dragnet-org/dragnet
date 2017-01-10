@@ -33,7 +33,7 @@ class TestModels(unittest.TestCase):
             m = models[k]
             gold_standard = actual_content[k].encode('utf-8')
             passed = False
-            for i in range_(5):
+            for i in range_(10):
                 content = m.analyze(self._html)
                 _, _, f1 = evaluation_metrics(
                     simple_tokenizer(gold_standard), simple_tokenizer(content))
