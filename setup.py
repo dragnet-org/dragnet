@@ -24,7 +24,7 @@
 import os.path
 import lxml
 
-from distutils.core import setup
+from setuptools import setup
 from numpy import get_include
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
