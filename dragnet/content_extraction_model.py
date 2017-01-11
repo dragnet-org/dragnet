@@ -60,12 +60,20 @@ class ContentExtractionModel(object):
         self._threshold = thres
 
     def analyze(self, s, blocks=False, encoding=None, parse_callback=None):
-        """s = HTML string
-        returns the content as a string, or if `block`, then the blocks
-        themselves are returned.
+        """
+        Given an HTML string, extract just its main content or content+comments
+        and return it as a string or as a sequence of blocks.
 
-        if encoding is not None, then this specifies the HTML string encoding.
-            If None, then try to guess it.
+        Args:
+            s (str): a single HTML document as a string
+            blocks (bool): if True, return sequence of ``Block`` objects; if
+                False, return combined text from all blocks
+            encoding (str): the encoding used for ``s``; if None, the encoding
+                is guessed based on the HTML's content
+            parse_callback (Callable)
+
+        Returns:
+            str or List[``Block``]
         """
         # blockify html into blocks
         blocks_ = self._blockifier.blockify(
