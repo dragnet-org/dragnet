@@ -84,7 +84,7 @@ setup(
         ],
     packages         = ['dragnet'],
     package_dir      = {'dragnet':'dragnet'},
-    package_data     = {'dragnet':['pickled_models/*']},
+    package_data     = {'dragnet':['pickled_models/*/*']},
     cmdclass         = {'build_ext': build_ext},
     ext_modules      = ext_modules,
     install_requires = [
