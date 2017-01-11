@@ -24,7 +24,7 @@
 import os.path
 import lxml
 
-from setuptools import setup
+from distutils.core import setup
 from numpy import get_include
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
@@ -84,7 +84,7 @@ setup(
         ],
     packages         = ['dragnet'],
     package_dir      = {'dragnet':'dragnet'},
-    package_data     = {'dragnet':['pickled_models/*']},
+    package_data     = {'dragnet':['pickled_models/*/*']},
     cmdclass         = {'build_ext': build_ext},
     ext_modules      = ext_modules,
     install_requires = [
