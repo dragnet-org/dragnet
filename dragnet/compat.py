@@ -25,3 +25,10 @@ if '0.15.2' <= sklearn_version <= '0.17.1':
     sklearn_path = 'sklearn_0.15.2_0.17.1'
 elif sklearn_version >= '0.18.0':
     sklearn_path = 'sklearn_0.18.0'
+else:
+    raise Exception('incompatible scikit-learn version: "{}"'.format(sklearn_version))
+
+if sklearn_version < '0.18.0':
+    from sklearn.cross_validation import train_test_split
+else:
+    from sklearn.model_selection import train_test_split
