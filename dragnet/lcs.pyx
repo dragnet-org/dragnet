@@ -1,11 +1,11 @@
+"""
+longest common subsequence
 
-# longest common subsequence
+modified from the code snippets at
+http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Longest_common_subsequence#Python
 
-# modified from the code snippets at
-# http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Longest_common_subsequence#Python
-#
-# cython -a lcs.pyx to output HTML
-
+cython -a lcs.pyx to output HTML
+"""
 import numpy as np
 
 cimport cython

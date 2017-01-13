@@ -7,9 +7,9 @@ import re
 
 import ftfy
 from lxml import etree
+import numpy as np
 
 from dragnet.blocks import Blockifier, simple_tokenizer, text_from_subtree
-from dragnet.compat import range_, unicode_
 from dragnet.lcs import check_inclusion
 
 
@@ -112,7 +112,7 @@ def extract_gold_standard(data_dir, fileroot,
         text; ``comments_frac`` is the same but for comments text.
     """
     # read the raw html, split it into blocks, and tokenize each block
-    raw_html = read_raw_html(data_dir, fileroot)
+    raw_html = read_html_file(data_dir, fileroot)
     from dragnet.blocks import BlockifyError
     try:
         blocks = [b.text for b in Blockifier.blockify(raw_html)]
@@ -174,7 +174,7 @@ def extract_gold_standard(data_dir, fileroot,
 
         return (frac_blocks_tokens_in_gs, blocks_tokens_strs_in_gs)
 
-    gs_content, gs_comments = read_gold_standard(data_dir, fileroot, cetr)
+    gs_content, gs_comments = read_gold_standard_file(data_dir, fileroot, cetr)
     frac_blocks_tokens_in_gs_content, blocks_tokens_strs_in_gs_content = \
         get_frac_and_str_tokens_in_gs(gs_content)
     frac_blocks_tokens_in_gs_comments, blocks_tokens_strs_in_gs_comments = \
@@ -224,7 +224,7 @@ def get_filenames(dirname, full_path=False, match_regex=None, extension=None):
             yield filename
 
 
-def read_raw_html(data_dir, fileroot):
+def read_html_file(data_dir, fileroot):
     """
     Read the HTML file corresponding to identifier ``fileroot``
     in the raw HTML directory below the root ``data_dir``.
@@ -249,41 +249,7 @@ def read_raw_html(data_dir, fileroot):
     return raw_html
 
 
-# for reference
-# re_has_text = re.compile("^\s*<text")
-# re_open_tag = re.compile('^\s*<text.+encoding\s*=\s*"([a-zA-Z0-9-_\s]+)"\s*>')
-# re_end_tag = re.compile('</\s*text\s*>\s*$')
-#
-#
-# def read_HTML_file(datadir, fileroot):
-#     """Reads the HTML file from the datadir with fileroot.
-#     This checks for an optional <text> tag specifying the encoding,
-#     and captures the encoding/removes the tag if found (in the case
-#     of cleaneval).
-#
-#     Returns HTML string, encoding
-#     where encoding is None if no <text> tag
-#     """
-#     raw_content = open('%s/HTML/%s.html' % (datadir, fileroot), 'r').read()
-#     has_text = re_has_text.search(raw_content)
-#     if has_text:
-#         # we have a text tag.  need to strip it off, capture encoding
-#         mo = re_open_tag.search(raw_content)
-#         encoding = mo.group(1)
-#         if encoding.lower() == "unset" or encoding.lower().startswith('unknown'):
-#             encoding = None
-#         raw_content = re_open_tag.sub('', raw_content)
-#
-#         # don't forget about the end tag
-#         raw_content = re_end_tag.sub('', raw_content).strip()
-#
-#     else:
-#         encoding = None
-#
-#     return raw_content, encoding
-
-
-def read_gold_standard(data_dir, fileroot, cetr=False):
+def read_gold_standard_file(data_dir, fileroot, cetr=False):
     """
     Read the gold standard content file corresponding to identifier ``fileroot``
     in the gold standard directory below the root ``data_dir``.
@@ -325,15 +291,105 @@ def read_gold_standard(data_dir, fileroot, cetr=False):
     return content_comments
 
 
-# import numpy as np
-#
-#
-# def add_plot_title(ti_str):
-#     """Add a string as a title on top of a subplot"""
-#     import pylab as plt
-#     plt.figtext(0.5, 0.94, ti_str, ha='center', color='black', weight='bold', size='large')
-#
-#
+def read_gold_standard_blocks_file(data_dir, fileroot, split_blocks=True):
+    """
+    Read the gold standard blocks file corresponding to identifier ``fileroot``
+    in the gold standard blocks directory below the root ``data_dir``.
+
+    Args:
+        data_dir (str)
+        fileroot (str)
+        split_blocks (bool): If True, split the file's content into blocks.
+
+    Returns:
+        str or List[str]
+    """
+    fname = os.path.join(
+        data_dir, GOLD_STANDARD_BLOCKS_DIRNAME, fileroot + GOLD_STANDARD_BLOCKS_EXT)
+    with io.open(fname, mode='rb') as f:
+        data = f.read()
+    if split_blocks:
+        return data[:-1].split('\n')
+    return data
+
+
+def _parse_content_or_comments_blocks(blocks, block_pct_tokens_thresh):
+    is_above_thresh = (np.array([ele[0] for ele in blocks]) > block_pct_tokens_thresh).astype(np.int)
+    token_counts = np.array([ele[1] for ele in blocks])
+    # TODO: make sure all_tokens isn't needed
+    # all_tokens = list(itertools.chain.from_iterable(
+    #     ele[2] for ele in content_blocks if ele[1] > 0))
+    # return (is_above_thresh, token_counts, all_tokens)
+    return (is_above_thresh, token_counts)
+
+
+def prepare_data(data_dir, fileroot, block_pct_tokens_thresh):
+    """
+    Prepare data for a single HTML + gold standard blocks example, uniquely
+    identified by ``fileroot``.
+
+    Args:
+        data_dir (str)
+        fileroot (str)
+        block_pct_tokens_thresh (float): must be in [0.0, 1.0]
+
+    Returns:
+        Tuple[str, List[float, int, List[str]], List[float, int, List[str]]]
+
+    See Also:
+        :func:`prepare_all_data`
+    """
+    if not 0.0 <= block_pct_tokens_thresh <= 1.0:
+        raise ValueError('block_pct_tokens_thresh must be in the range [0.0, 1.0]')
+
+    html = read_html_file(data_dir, fileroot)
+    blocks = read_gold_standard_blocks_file(data_dir, fileroot, split_blocks=True)
+
+    content_blocks = []
+    comments_blocks = []
+    for block in blocks:
+        block_split = block.split('\t')
+        num_block_tokens = len(block_split[2].split())
+        # TODO: do we need to get the tokens in each block? i.e. [3] and [4]?
+        # total number of tokens in the block used to weight features
+        content_blocks.append(
+            (float(block_split[0]), num_block_tokens, block_split[3].split()))
+        comments_blocks.append(
+            (float(block_split[1]), num_block_tokens, block_split[4].split()))
+
+    parsed_content_blocks = _parse_content_or_comments_blocks(
+        content_blocks, block_pct_tokens_thresh)
+    parsed_comments_blocks = _parse_content_or_comments_blocks(
+        comments_blocks, block_pct_tokens_thresh)
+
+    return (html, parsed_content_blocks, parsed_comments_blocks)
+
+
+def prepare_all_data(data_dir, block_pct_tokens_thresh=0.1):
+    """
+    Prepare data for all HTML + gold standard blocks examples in ``data_dir``.
+
+    Args:
+        data_dir (str)
+        block_pct_tokens_thresh (float): must be in [0.0, 1.0]
+
+    Returns:
+        List[Tuple[str, List[float, int, List[str]], List[float, int, List[str]]]]
+
+    See Also:
+        :func:`prepare_data`
+    """
+    gs_blocks_dir = os.path.join(data_dir, GOLD_STANDARD_BLOCKS_DIRNAME)
+    gs_blocks_filenames = get_filenames(
+        gs_blocks_dir, full_path=False, match_regex=re.escape(GOLD_STANDARD_BLOCKS_EXT))
+    gs_blocks_fileroots = (
+        re.search(r'(.+)' + re.escape(GOLD_STANDARD_BLOCKS_EXT), gs_blocks_filename).group(1)
+        for gs_blocks_filename in gs_blocks_filenames)
+
+    return [prepare_data(data_dir, fileroot, block_pct_tokens_thresh)
+            for fileroot in gs_blocks_fileroots]
+
+
 # class DragnetModelData(object):
 #     """
 #     the data needed to train a model
@@ -366,17 +422,6 @@ def read_gold_standard(data_dir, fileroot, cetr=False):
 #
 #         # now read in all the data
 #         self._read_all_data(datadir, block_percent_threshold, source)
-#
-#     def take_small_sample(self, nkeep):
-#         """Return nkeep sample HTML docs from the training data
-#         Returns [(fileroot1, data), (..), ..]"""
-#
-#         ordering = zip(
-#             np.random.rand(len(self.training_files)),
-#             np.arange(len(self.training_files)))
-#         ordering.sort()
-#         indices_to_keep = [ind for seed, ind in ordering[:nkeep]]
-#         return [(self.training_files[ind], self.training_data[ind]) for ind in indices_to_keep]
 #
 #     def _read_all_data(self, datadir, block_percent_threshold, source):
 #         """
@@ -703,3 +748,9 @@ def read_gold_standard(data_dir, fileroot, cetr=False):
 #     # write training/test lists
 #     open(datadir + '/training.txt', 'w').write('\n'.join([ele[1] for ele in all_files[:ntrain]]))
 #     open(datadir + '/test.txt', 'w').write('\n'.join([ele[1] for ele in all_files[ntrain:]]))
+#
+#
+# def add_plot_title(ti_str):
+#     """Add a string as a title on top of a subplot"""
+#     import pylab as plt
+#     plt.figtext(0.5, 0.94, ti_str, ha='center', color='black', weight='bold', size='large')
