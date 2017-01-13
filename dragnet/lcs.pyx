@@ -38,7 +38,7 @@ def longest_common_subsequence(X, Y):
     cdef int i, j
     for i in range(1, m+1):
         for j in range(1, n+1):
-            if xx[i-1] == yy[j-1]: 
+            if xx[i-1] == yy[j-1]:
                 C[i, j] = C[i-1, j-1] + 1
             else:
                 C[i, j] = int_max(C[i, j-1], C[i-1, j])
@@ -100,5 +100,3 @@ def check_inclusion(x, y):
 
     ret.reverse()
     return ret
-
-
