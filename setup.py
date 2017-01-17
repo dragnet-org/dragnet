@@ -61,7 +61,7 @@ ext_modules = [
 
 setup(
     name             = 'dragnet',
-    version          = '1.0.1',
+    version          = '1.1.0',
     description      = 'Extract the main article content (and optionally comments) from a web page',
     author           = 'Matt Peters, Dan Lecocq',
     author_email     = 'matt@moz.com, dan@moz.com',
