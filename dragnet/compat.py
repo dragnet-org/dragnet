@@ -8,6 +8,7 @@ if PY2:
     bytes_ = str
     unicode_ = unicode
     string_ = (str, unicode)
+    from itertools import izip as zip_
     import cPickle as pickle
     from StringIO import StringIO as bytes_io
 else:
@@ -15,6 +16,7 @@ else:
     bytes_ = bytes
     unicode_ = str
     string_ = (bytes, str)
+    zip_ = zip
     import pickle
     from io import BytesIO as bytes_io
 
