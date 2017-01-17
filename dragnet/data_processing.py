@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 import io
+import itertools
 import multiprocessing
 import os
 import re
@@ -10,12 +11,13 @@ from lxml import etree
 import numpy as np
 
 from dragnet.blocks import Blockifier, simple_tokenizer, text_from_subtree
+from dragnet.compat import unicode_
 from dragnet.lcs import check_inclusion
 
 
-RAW_HTML_DIRNAME = 'HTML'  # 'html'
-GOLD_STANDARD_DIRNAME = 'Corrected'  # 'gold_standard'
-GOLD_STANDARD_BLOCKS_DIRNAME = 'block_corrected'  # 'gold_standard_blocks'
+RAW_HTML_DIRNAME = 'HTML'
+GOLD_STANDARD_DIRNAME = 'Corrected'
+GOLD_STANDARD_BLOCKS_DIRNAME = 'block_corrected'
 
 RAW_HTML_EXT = '.html'
 GOLD_STANDARD_EXT = '.html.corrected.txt'  # '.txt'
@@ -316,11 +318,9 @@ def read_gold_standard_blocks_file(data_dir, fileroot, split_blocks=True):
 def _parse_content_or_comments_blocks(blocks, block_pct_tokens_thresh):
     is_above_thresh = (np.array([ele[0] for ele in blocks]) > block_pct_tokens_thresh).astype(np.int)
     token_counts = np.array([ele[1] for ele in blocks])
-    # TODO: make sure all_tokens isn't needed
-    # all_tokens = list(itertools.chain.from_iterable(
-    #     ele[2] for ele in content_blocks if ele[1] > 0))
-    # return (is_above_thresh, token_counts, all_tokens)
-    return (is_above_thresh, token_counts)
+    all_tokens = list(itertools.chain.from_iterable(
+        ele[2] for ele in blocks if ele[1] > 0))
+    return (is_above_thresh, token_counts, all_tokens)
 
 
 def prepare_data(data_dir, fileroot, block_pct_tokens_thresh):
@@ -350,8 +350,7 @@ def prepare_data(data_dir, fileroot, block_pct_tokens_thresh):
     for block in blocks:
         block_split = block.split('\t')
         num_block_tokens = len(block_split[2].split())
-        # TODO: do we need to get the tokens in each block? i.e. [3] and [4]?
-        # total number of tokens in the block used to weight features
+        # total number of tokens in block is used as weights
         content_blocks.append(
             (float(block_split[0]), num_block_tokens, block_split[3].split()))
         comments_blocks.append(
