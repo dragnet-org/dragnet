@@ -56,6 +56,15 @@ ext_modules = [
         include_dirs = [get_include()],
         extra_compile_args=['-std=c++0x'],
         language="c++"),
+    Extension('dragnet.features_.readability',
+              sources=["dragnet/features_/readability.pyx"],
+              include_dirs=[get_include()],
+              extra_compile_args=['-std=c++0x'],
+              language="c++"),
+    Extension('dragnet.features_.weninger',
+              sources=["dragnet/features_/weninger.pyx"],
+              include_dirs=[get_include()],
+              language="c++"),
     ]
 
 
@@ -93,7 +102,7 @@ setup(
         'scikit-learn>=0.15.2,<0.19.0',
         'numpy',
         'scipy',
-        'mozsci'
+        'mozsci',
         'ftfy>=4.1.0,<5.0.0'
-    ]
+        ]
 )

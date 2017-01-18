@@ -12,6 +12,8 @@ dragnet/lcs.cpp
 dragnet/lcs.html
 dragnet/_weninger.cpp
 dragnet/readability.cpp
+dragnet/features_/readability.cpp
+dragnet/features_/weninger.cpp
 
 
 documents/*
