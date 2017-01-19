@@ -4,11 +4,10 @@ TODO
 import re
 
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
 
-from .base import Feature
 
-
-class CSSFeatures(Feature):
+class CSSFeatures(BaseEstimator, TransformerMixin):
     """
     Class of features from id/class attributes.
 

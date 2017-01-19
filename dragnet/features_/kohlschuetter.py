@@ -4,12 +4,12 @@ A *rough* implementation of that described by Kohlschütter et al.:
    http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
 """
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
 
-from .base import Feature
-from ..util import sliding_window
+from ._kohlschuetter import make_kohlschuetter_features
 
 
-class KohlschuetterFeatures(Feature):
+class KohlschuetterFeatures(BaseEstimator, TransformerMixin):
     """
     The text density/link density features
     from Kohlschuetter. Implements the features interface.
@@ -31,28 +31,4 @@ class KohlschuetterFeatures(Feature):
                 floats corresponding to the link and text densities of
                 a block and its immediate neighbors in the sequence.
         """
-        nblocks = len(blocks)
-        if nblocks < 3:
-            raise ValueError(
-                'at least 3 blocks are needed to make Kohlschuetter features')
-
-        features = np.empty((nblocks, 6), dtype=float)
-        i = 0
-        features[i, :] = (
-            0.0, 0.0,
-            blocks[i].link_density, blocks[i].text_density,
-            blocks[i + 1].link_density, blocks[i + 1].text_density
-            )
-        for i, (prevb, currb, nextb) in enumerate(sliding_window(blocks, 3)):
-            features[i + 1, :] = (
-                prevb.link_density, prevb.text_density,
-                currb.link_density, currb.text_density,
-                nextb.link_density, nextb.text_density
-                )
-        i = nblocks - 1
-        features[i, :] = (
-            blocks[i - 1].link_density, blocks[i - 1].text_density,
-            blocks[i].link_density, blocks[i].text_density,
-            0.0, 0.0
-            )
-        return features
+        return make_kohlschuetter_features(blocks)
