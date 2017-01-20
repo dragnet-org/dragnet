@@ -22,7 +22,7 @@ cpdef _blocks_to_ctrs(blocks):
         block_lengths[i] = len(blocks[i].text)
         tag_counts[i] = blocks[i].features['tagcount']
 
-    return block_lengths / tag_counts
+    return block_lengths / np.maximum(tag_counts, 1.0)
 
 
 @cython.boundscheck(False)
