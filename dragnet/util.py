@@ -6,10 +6,7 @@ It may eventually be updated to use different scores for insertions, deletions,
 transpositions, etc. For the time being, however, it remains as presented in
 the article.
 """
-from collections import deque
-from itertools import islice, tee
-
-from .compat import range_, zip_
+from .compat import range_
 
 
 def dameraulevenshtein(seq1, seq2):
@@ -109,27 +106,3 @@ def evaluation_metrics(predicted, actual, bow=True):
 
     # return (precision, recall, f1, dameraulevenshtein(predicted, actual))
     return (precision, recall, f1)
-
-
-def sliding_window(seq, n):
-    """
-    A sequence of overlapping subsequences. Borrowed from the `toolz` package.
-
-    >>> list(sliding_window([1, 2, 3, 4], 2))
-    [(1, 2), (2, 3), (3, 4)]
-
-    This function creates a sliding window suitable for transformations like
-    sliding means / smoothing
-    >>> mean = lambda seq: float(sum(seq)) / len(seq)
-    >>> list(map(mean, sliding_window([1, 2, 3, 4], 2)))
-    [1.5, 2.5, 3.5]
-
-    Args:
-        seq (Sequence[object])
-        n (int): width of window, i.e. number of objects in each window
-
-    Yields:
-        Tuple[object]: next ``n``-tuple of objects in ``seq``
-    """
-    return zip_(*(deque(islice(it, i), 0) or it
-                for i, it in enumerate(tee(seq, n))))

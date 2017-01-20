@@ -323,7 +323,7 @@ def _parse_content_or_comments_blocks(blocks, block_pct_tokens_thresh):
     return (is_above_thresh, token_counts, all_tokens)
 
 
-def prepare_data(data_dir, fileroot, block_pct_tokens_thresh):
+def prepare_data(data_dir, fileroot, block_pct_tokens_thresh=0.1):
     """
     Prepare data for a single HTML + gold standard blocks example, uniquely
     identified by ``fileroot``.
@@ -334,7 +334,15 @@ def prepare_data(data_dir, fileroot, block_pct_tokens_thresh):
         block_pct_tokens_thresh (float): must be in [0.0, 1.0]
 
     Returns:
-        Tuple[str, List[float, int, List[str]], List[float, int, List[str]]]
+        Tuple[str, Tuple[np.array[int], np.array[int], List[str]], Tuple[np.array[int], np.array[int], List[str]]]:
+            The first element is simply the raw html as a string. The second and
+            third elements are 3-tuples for content and comments, respectively,
+            where the first element is a numpy array of 1s and 0s whose values
+            correspond to whether or not a given block is considered non-content
+            or not; the second element is a numpy integer array whose values are
+            the total number of tokens in each block; and the third element is
+            a flat list of content or comment tokens as strings, concatenated
+            from all blocks.
 
     See Also:
         :func:`prepare_all_data`
