@@ -16,6 +16,7 @@ class KohlschuetterFeatures(BaseEstimator, TransformerMixin):
 
     TODO: better docs
     """
+    _name = 'kohlschuetter'
 
     def fit(self, blocks, y=None):
         return self

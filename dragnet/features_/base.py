@@ -6,18 +6,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import StandardScaler
 
 
-class Feature(BaseEstimator, TransformerMixin):
-    """
-    Abstract Base Class for all classes of ``Feature``.
-    """
-
-    def fit(self, X, y=None):
-        raise NotImplementedError
-
-    def transform(self, X, y=None):
-        raise NotImplementedError
-
-
 class StandardizedFeature(BaseEstimator, TransformerMixin):
     """
     Args:
@@ -79,5 +67,6 @@ class StandardizedFeature(BaseEstimator, TransformerMixin):
         """
         if self.scaler is None:
             return self.feature.transform(blocks)
+            # TODO: raise an exception instead?
         else:
             return self.scaler.transform(self.feature.transform(blocks))
