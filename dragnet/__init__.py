@@ -27,3 +27,7 @@ class AllFeatures(object):
             return NormalizedFeature(readability_features)
         else:
             raise KeyError
+
+
+from dragnet import features_
+from dragnet import extractor

@@ -6,6 +6,8 @@ It may eventually be updated to use different scores for insertions, deletions,
 transpositions, etc. For the time being, however, it remains as presented in
 the article.
 """
+from __future__ import division
+
 from .compat import range_
 
 
@@ -89,20 +91,18 @@ def evaluation_metrics(predicted, actual, bow=True):
         p = predicted
         a = actual
 
-    if len(p) == 0:
+    try:
+        precision = true_positive / len(p)
+    except ZeroDivisionError:
         precision = 0.0
-    else:
-        precision = true_positive / float(len(p))
-
-    if len(a) == 0:
+    try:
+        recall = true_positive / len(a)
+    except ZeroDivisionError:
         recall = 0.0
-    else:
-        recall = true_positive / float(len(a))
-
-    if precision + recall == 0:
+    try:
+        f1 = 2.0 * (precision * recall) / (precision + recall)
+    except ZeroDivisionError:
         f1 = 0.0
-    else:
-        f1 = 2.0 * precision * recall / (precision + recall)
 
     # return (precision, recall, f1, dameraulevenshtein(predicted, actual))
     return (precision, recall, f1)

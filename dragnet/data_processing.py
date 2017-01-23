@@ -741,20 +741,6 @@ def prepare_all_data(data_dir, block_pct_tokens_thresh=0.1):
 #         fig.savefig(plotdir + '/' + self._source + '_block_level_block_position.png')
 #
 #
-# def split_data(datadir):
-#     """Split the data into training/test sets.
-#     write files containing test and training data file roots
-#     test = 30% of data
-#     """
-#     from random import shuffle
-#     all_files = get_list_all_corrected_files(datadir)
-#     shuffle(all_files)
-#     nfiles = len(all_files)
-#     ntrain = int(nfiles * 0.7)
-#
-#     # write training/test lists
-#     open(datadir + '/training.txt', 'w').write('\n'.join([ele[1] for ele in all_files[:ntrain]]))
-#     open(datadir + '/test.txt', 'w').write('\n'.join([ele[1] for ele in all_files[ntrain:]]))
 #
 #
 # def add_plot_title(ti_str):

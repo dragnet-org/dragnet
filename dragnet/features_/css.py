@@ -16,6 +16,7 @@ class CSSFeatures(BaseEstimator, TransformerMixin):
 
     TODO: better documentation
     """
+    _name = 'css'
 
     # tokens that we search for in each block's CSS attribute
     # first 'id', then 'class'

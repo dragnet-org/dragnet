@@ -7,6 +7,8 @@ from ._weninger import make_weninger_features
 
 class WeningerFeatures(BaseEstimator, TransformerMixin):
 
+    _name = 'weninger'
+
     def __init__(self, sigma=1.0):
         self.sigma = 1.0
 
@@ -31,6 +33,8 @@ class WeningerFeatures(BaseEstimator, TransformerMixin):
 
 
 class WeningerClusteredFeatures(BaseEstimator, TransformerMixin):
+
+    _name = 'clustered_weninger'
 
     def __init__(self, n_clusters=3, n_init=3, max_iter=50, tol=0.001):
         self.n_clusters = n_clusters

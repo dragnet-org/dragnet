@@ -7,6 +7,7 @@ class ReadabilityFeatures(BaseEstimator, TransformerMixin):
     """
     TODO
     """
+    _name = 'readability'
 
     def fit(self, blocks, y=None):
         """
