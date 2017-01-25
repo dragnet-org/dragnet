@@ -5,8 +5,10 @@ from ._readability import make_readability_features
 
 class ReadabilityFeatures(BaseEstimator, TransformerMixin):
     """
-    TODO
+    An sklearn-style transformer that takes an ordered sequence of ``Block`` objects
+    and returns a 2D array of subtree-based features, based on ``readability``.
     """
+
     __name__ = 'readability'
 
     def fit(self, blocks, y=None):

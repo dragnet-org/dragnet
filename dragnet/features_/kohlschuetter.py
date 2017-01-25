@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-A *rough* implementation of that described by Kohlschütter et al.:
-   http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
-"""
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -11,11 +7,14 @@ from ._kohlschuetter import make_kohlschuetter_features
 
 class KohlschuetterFeatures(BaseEstimator, TransformerMixin):
     """
-    The text density/link density features
-    from Kohlschuetter. Implements the features interface.
+    An sklearn-style transformer that takes an ordered sequence of ``Block`` objects
+    and returns a 2D array of text and link density-based features, as described
+    by Kohlschütter et al.
 
-    TODO: better docs
+    References:
+        http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf
     """
+
     __name__ = 'kohlschuetter'
 
     def fit(self, blocks, y=None):

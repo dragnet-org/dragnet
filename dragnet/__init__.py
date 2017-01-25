@@ -30,4 +30,4 @@ class AllFeatures(object):
 
 
 from dragnet import features_
-from dragnet import extractor
+from dragnet.extractor import Extractor
