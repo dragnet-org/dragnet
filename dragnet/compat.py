@@ -32,5 +32,7 @@ else:
 
 if sklearn_version < '0.18.0':
     from sklearn.cross_validation import train_test_split
+    from sklearn.grid_search import GridSearchCV
 else:
     from sklearn.model_selection import train_test_split
+    from sklearn.model_selection import GridSearchCV

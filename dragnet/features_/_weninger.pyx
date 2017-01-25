@@ -36,6 +36,7 @@ cpdef sx_sdx(np.ndarray[np.float64_t, ndim=1] x, float sigma=1.0):
     Args:
         x (`np.ndarray`): 1D array of some aspect of a sequence of blocks, e.g.
             their content-tag-ratios or lengths.
+        sigma (float): Standard deviation for Gaussian kernel used in smoothing.
 
     Returns:
         :class:`np.ndarray`: 2D array of shape (len(x), 2), where values are

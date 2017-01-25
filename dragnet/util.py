@@ -8,7 +8,10 @@ the article.
 """
 from __future__ import division
 
-from .compat import range_
+from sklearn.pipeline import FeatureUnion, make_union
+
+from .compat import range_, string_
+from .features_ import get_feature
 
 
 def dameraulevenshtein(seq1, seq2):
@@ -106,3 +109,37 @@ def evaluation_metrics(predicted, actual, bow=True):
 
     # return (precision, recall, f1, dameraulevenshtein(predicted, actual))
     return (precision, recall, f1)
+
+
+def get_and_union_features(features):
+    """
+    Get and combine features in a :class:`FeatureUnion`.
+
+    Args:
+        features (str or List[str], ``Features`` or List[``Features``], or List[Tuple[str, ``Features``]]):
+            One or more features to be used to transform blocks into a matrix of
+            numeric values. If more than one, a :class:`FeatureUnion` is
+            automatically constructed. Example inputs::
+
+                features = 'weninger'
+                features = ['weninger', 'kohlschuetter']
+                features = WeningerFeatures()
+                features = [WeningerFeatures(), KohlschuetterFeatures()]
+                features = [('weninger', WeningerFeatures()), ('kohlschuetter', KohlschuetterFeatures())]
+
+    Returns:
+        :class:`FeatureUnion` or ``Features``
+    """
+    if not features:
+        raise ValueError('invalid `features`: may not be null')
+    if isinstance(features, (list, tuple)):
+        if isinstance(features[0], tuple):
+            return FeatureUnion(features)
+        elif isinstance(features[0], string_):
+            return FeatureUnion([(feature, get_feature(feature)) for feature in features])
+        else:
+            return make_union(*features)
+    elif isinstance(features, string_):
+        return get_feature(features)
+    else:
+        return features

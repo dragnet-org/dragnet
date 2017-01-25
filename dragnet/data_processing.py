@@ -20,14 +20,14 @@ GOLD_STANDARD_DIRNAME = 'Corrected'
 GOLD_STANDARD_BLOCKS_DIRNAME = 'block_corrected'
 
 RAW_HTML_EXT = '.html'
-GOLD_STANDARD_EXT = '.html.corrected.txt'  # '.txt'
-GOLD_STANDARD_BLOCKS_EXT = '.block_corrected.txt'  # '.blocks.txt'
+GOLD_STANDARD_EXT = '.html.corrected.txt'
+GOLD_STANDARD_BLOCKS_EXT = '.block_corrected.txt'
 
 RE_COMMENTS_DELIM = re.compile(r'\n*!@#\$%\^&\*\(\)\s+COMMENTS\n*')
 
 
-def extract_gold_standard_all_training_data(data_dir, nprocesses=1,
-                                            overwrite=False, **kwargs):
+def extract_all_gold_standard_data(data_dir, nprocesses=1,
+                                   overwrite=False, **kwargs):
     """
     Extract the gold standard block-level content and comment percentages from a
     directory of labeled data (only those for which the gold standard blocks are
@@ -739,8 +739,6 @@ def prepare_all_data(data_dir, block_pct_tokens_thresh=0.1):
 #         add_plot_title(ti + '\nPercent of blocks extracted, # tokens in doc, training + test')
 #         fig.show()
 #         fig.savefig(plotdir + '/' + self._source + '_block_level_block_position.png')
-#
-#
 #
 #
 # def add_plot_title(ti_str):
