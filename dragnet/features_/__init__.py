@@ -1,3 +1,4 @@
+from dragnet.features_.base import StandardizedFeature
 from dragnet.features_.css import CSSFeatures
 from dragnet.features_.kohlschuetter import KohlschuetterFeatures
 from dragnet.features_.readability import ReadabilityFeatures

@@ -6,6 +6,16 @@ from ._weninger import make_weninger_features
 
 
 class WeningerFeatures(BaseEstimator, TransformerMixin):
+    """
+    An sklearn-style transformer that takes an ordered sequence of ``Block`` objects
+    and returns a 2D array of content tag-based features, as described by
+    Weninger et al.
+
+    References:
+        Weninger, Tim, William H. Hsu, and Jiawei Han. "CETR: content extraction
+            via tag ratios." Proceedings of the 19th international conference on
+            World wide web. ACM, 2010.
+    """
 
     __name__ = 'weninger'
 
@@ -33,8 +43,18 @@ class WeningerFeatures(BaseEstimator, TransformerMixin):
 
 
 class ClusteredWeningerFeatures(BaseEstimator, TransformerMixin):
+    """
+    An sklearn-style transformer that takes an ordered sequence of ``Block`` objects
+    and returns a 2D array of content tag-based features that have been clustered
+    using a modified k-means algorithm, as described by Weninger et al.
 
-    _name = 'clustered_weninger'
+    References:
+        Weninger, Tim, William H. Hsu, and Jiawei Han. "CETR: content extraction
+            via tag ratios." Proceedings of the 19th international conference on
+            World wide web. ACM, 2010.
+    """
+
+    __name__ = 'clustered_weninger'
 
     def __init__(self, n_clusters=3, n_init=3, max_iter=50, tol=0.001):
         self.n_clusters = n_clusters

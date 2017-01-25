@@ -10,6 +10,9 @@ from .util import get_and_union_features
 
 class Extractor(BaseEstimator, ClassifierMixin):
     """
+    An sklearn-style classifier that extracts the main content (and/or comments)
+    from an HTML document.
+
     Args:
         blockifier (``Blockifier``)
         features (str or List[str], ``Features`` or List[``Features``], or List[Tuple[str, ``Features``]]):
@@ -64,6 +67,15 @@ class Extractor(BaseEstimator, ClassifierMixin):
 
     def fit(self, blocks, labels, weights=None):
         """
+        Fit :class`Extractor` features and model to a training dataset.
+
+        Args:
+            blocks (List[Block])
+            labels (``np.ndarray``)
+            weights (``np.ndarray``)
+
+        Returns:
+            :class`Extractor`
         """
         features_mat = self.features.fit_transform(blocks)
         self.model.fit(features_mat, labels, sample_weight=weights)
@@ -72,7 +84,7 @@ class Extractor(BaseEstimator, ClassifierMixin):
     def concatenate_data(self, data):
         """
         Concatenate the blocks, labels, and weights of many files' data.
-        Primarily useful for training/testing an ``Extractor``.
+        Primarily useful for training/testing an :class`Extractor`.
 
         Args:
             data: Output of :func:`dragnet.data_processing.prepare_all_data`.
@@ -187,6 +199,8 @@ class Extractor(BaseEstimator, ClassifierMixin):
 
     def predict(self, blocks):
         """
+        Predict class (content=1 or not-content=0) of each block in a sequence.
+
         Args:
             blocks (List[Block]): Blockify'd HTML document.
 
@@ -200,4 +214,4 @@ class Extractor(BaseEstimator, ClassifierMixin):
         else:
             self._positive_idx = (
                 self._positive_idx or list(self.model.classes_).index(1))
-            return (self.model.predict_proba(features_mat) > self.prob_threshold)[:, self._positive_idx]
+            return (self.model.predict_proba(features_mat) > self.prob_threshold)[:, self._positive_idx].astype(int)

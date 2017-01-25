@@ -9,6 +9,7 @@ import pprint
 
 from sklearn.externals import joblib
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.pipeline import FeatureUnion
 
 from .blocks import simple_tokenizer
 from .compat import GridSearchCV, sklearn_path, string_, train_test_split
@@ -84,13 +85,7 @@ def train_model(extractor, data_dir, output_dir=None):
         :class:`Extractor`: A trained extractor model.
     """
     # set up directories and file naming
-    if output_dir is not None:
-        output_dir = os.path.join(output_dir, sklearn_path)
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
-        fname_prefix = '_'.join(
-            f._name if hasattr(f, '__name__') else str(f) for f in extractor.features)
-        fname_prefix += '_'.join(sorted(extractor.to_extract))
+    output_dir, fname_prefix = _set_up_output_dir_and_fname_prefix(output_dir, extractor)
 
     # prepare, split, and concatenate the data
     logging.info('preparing, splitting, and concatenating the data...')
@@ -147,13 +142,7 @@ def train_many_models(extractor, param_grid, data_dir, output_dir=None,
             set of params.
     """
     # set up directories and file naming
-    if output_dir is not None:
-        output_dir = os.path.join(output_dir, sklearn_path)
-        if not os.path.isdir(output_dir):
-            os.makedirs(output_dir)
-        fname_prefix = '_'.join(
-            f._name if hasattr(f, '__name__') else str(f) for f in extractor.features)
-        fname_prefix += '_'.join(sorted(extractor.to_extract))
+    output_dir, fname_prefix = _set_up_output_dir_and_fname_prefix(output_dir, extractor)
 
     # prepare, split, and concatenate the data
     logging.info('preparing, splitting, and concatenating the data...')
@@ -185,6 +174,23 @@ def train_many_models(extractor, param_grid, data_dir, output_dir=None,
     _write_model_to_disk(output_dir, fname_prefix, best_extractor)
 
     return best_extractor
+
+
+def _set_up_output_dir_and_fname_prefix(output_dir, extractor):
+    if output_dir is not None:
+        output_dir = os.path.join(output_dir, sklearn_path)
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+        if isinstance(extractor.features, FeatureUnion):
+            fname_prefix = '_'.join(sorted(f[0] for f in extractor.features.transformer_list))
+        elif hasattr(extractor.features, '__name__'):
+            fname_prefix = extractor.features.__name__
+        else:
+            fname_prefix = str(extractor.features)
+        fname_prefix += '_' + '_'.join(sorted(extractor.to_extract))
+    else:
+        fname_prefix = ''
+    return output_dir, fname_prefix
 
 
 def _report_model_performance(output_dir, fname_prefix, train_eval, test_eval):
