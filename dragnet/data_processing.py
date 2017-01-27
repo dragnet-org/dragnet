@@ -215,7 +215,7 @@ def get_filenames(dirname, full_path=False, match_regex=None, extension=None):
     if not os.path.exists(dirname):
         raise OSError('directory "{}" does not exist'.format(dirname))
     match_regex = re.compile(match_regex) if match_regex else None
-    for filename in os.listdir(dirname):
+    for filename in sorted(os.listdir(dirname)):
         if extension and not os.path.splitext(filename)[-1] == extension:
             continue
         if match_regex and not match_regex.search(filename):

@@ -11,7 +11,7 @@ from __future__ import division
 from sklearn.pipeline import FeatureUnion, make_union
 
 from .compat import range_, string_
-from .features_ import get_feature
+from .features import get_feature
 
 
 def dameraulevenshtein(seq1, seq2):

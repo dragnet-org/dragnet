@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.pipeline import FeatureUnion
 
 from .blocks import simple_tokenizer
-from .compat import GridSearchCV, sklearn_path, string_, train_test_split
+from .compat import GridSearchCV, model_path, string_, train_test_split
 from .data_processing import prepare_all_data
 from .util import dameraulevenshtein
 
@@ -176,7 +176,7 @@ def train_many_models(extractor, param_grid, data_dir, output_dir=None,
 
 def _set_up_output_dir_and_fname_prefix(output_dir, extractor):
     if output_dir is not None:
-        output_dir = os.path.join(output_dir, sklearn_path)
+        output_dir = os.path.join(output_dir, model_path)
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
         if isinstance(extractor.features, FeatureUnion):
