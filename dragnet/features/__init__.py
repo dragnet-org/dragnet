@@ -1,8 +1,8 @@
-from dragnet.features_.base import StandardizedFeature
-from dragnet.features_.css import CSSFeatures
-from dragnet.features_.kohlschuetter import KohlschuetterFeatures
-from dragnet.features_.readability import ReadabilityFeatures
-from dragnet.features_.weninger import WeningerFeatures, ClusteredWeningerFeatures
+from dragnet.features.base import StandardizedFeature
+from dragnet.features.css import CSSFeatures
+from dragnet.features.kohlschuetter import KohlschuetterFeatures
+from dragnet.features.readability import ReadabilityFeatures
+from dragnet.features.weninger import WeningerFeatures, ClusteredWeningerFeatures
 
 
 def get_feature(name):

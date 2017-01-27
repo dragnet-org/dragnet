@@ -1,6 +1,3 @@
-"""
-TODO
-"""
 import re
 
 import numpy as np
@@ -9,12 +6,10 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 class CSSFeatures(BaseEstimator, TransformerMixin):
     """
-    Class of features from id/class attributes.
-
-    The features are 0/1 flags whether the attributes have
-    a give set of tokens
-
-    TODO: better documentation
+    An sklearn-style transformer that takes an ordered sequence of ``Block`` objects
+    and returns a 2D array of CSS-based features, where each value is 0 or 1,
+    depending on the absence or presence of certain tokens in a block's
+    CSS id or class attribute.
     """
     __name__ = 'css'
 
@@ -36,12 +31,15 @@ class CSSFeatures(BaseEstimator, TransformerMixin):
     def fit(self, blocks, y=None):
         """
         This method returns the current instance unchanged, since no fitting is
-        required for this :class:`Feature`. It's here only for API consistency.
+        required for this ``Feature``. It's here only for API consistency.
         """
         return self
 
     def transform(self, blocks, y=None):
         """
+        Transform an ordered sequence of blocks into a 2D features matrix with
+        shape (num blocks, num features).
+
         Args:
             blocks (List[Block]): as output by :class:`Blockifier.blockify`
             y (None): This isn't used, it's only here for API consistency.

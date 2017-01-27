@@ -5,8 +5,6 @@ import logging
 import os
 import pprint
 
-# import matplotlib.pyplot as plt
-
 from sklearn.externals import joblib
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.pipeline import FeatureUnion
