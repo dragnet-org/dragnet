@@ -5,7 +5,7 @@ import warnings
 
 from sklearn import __version__ as sklearn_version
 
-from .compat import PY2, pickle, bytes_io, sklearn_path
+from .compat import pickle, bytes_io, model_path
 from .blocks import TagCountNoCSSReadabilityBlockifier
 from .content_extraction_model import baseline_model
 from .content_extraction_model import ContentCommentsExtractionModel, SklearnWrapper
@@ -13,7 +13,7 @@ from .content_extraction_model import ContentCommentsExtractionModel, SklearnWra
 
 def _load_pickled_model(fname, compressed='gzip'):
     model_bytes = pkgutil.get_data(
-        'dragnet', os.path.join('pickled_models', sklearn_path, fname))
+        'dragnet', os.path.join('pickled_models', model_path, fname))
     if compressed == 'gzip':
         with gzip.GzipFile(fileobj=bytes_io(model_bytes), mode='rb') as f:
             return pickle.load(f)

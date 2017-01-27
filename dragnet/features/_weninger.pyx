@@ -1,6 +1,3 @@
-"""
-TODO
-"""
 cimport cython
 cimport numpy as np
 
@@ -16,7 +13,6 @@ cpdef _blocks_to_ctrs(blocks):
         np.empty(nblocks, dtype=np.float64)
     cdef np.ndarray[np.float64_t, ndim=1, mode='c'] tag_counts = \
         np.empty(nblocks, dtype=np.float64)
-
     cdef int i
     for i in range(0, nblocks):
         block_lengths[i] = len(blocks[i].text)

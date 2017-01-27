@@ -1,6 +1,3 @@
-"""
-TODO
-"""
 cimport cython
 cimport numpy as np
 np.import_array()
