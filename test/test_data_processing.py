@@ -58,69 +58,45 @@ class TestGetFilenames(unittest.TestCase):
         rmtree(self.data_dir)
 
 
-# class Testread_gold_standard(unittest.TestCase):
-#
-#     actual_chinese_content = u'\n\n            <h>\u9ad8\u8003\u8bed\u6587\u5168\u7a0b\u68c0\u6d4b\u4e09\uff1a\u6b63\u786e\u4f7f\u7528\u8bcd\u8bed\uff08\u719f\u8bed\u4e00\uff09\n\n\n            <h>LEARNING.SOHU.COM    2004\u5e745\u670822\u65e515:36   \n\n\n   '
-#
-#     def test_read_gold_standard(self):
-#         all_files = data_processing.get_list_all_corrected_files(FIXTURES)
-#         all_files.sort()
-#
-#         chars = {'ascii': u'ascii yo!', 'iso-8859-1': u'\xd3', 'utf-8': u'\xae', 'utf-16': u'\xae'}
-#
-#         for e in chars:
-#             content_comments = data_processing.read_gold_standard(
-#                 FIXTURES, e)
-#             actual_content = (u"Content here\nmore content\n" + chars[e] + u"\n")
-#             self.assertEqual(content_comments[0], actual_content)
-#             self.assertEqual(content_comments[1], '\nsome comments\n')
-#
-#     def test_utf8(self):
-#         gs = ' '.join(data_processing.read_gold_standard(FIXTURES,
-#             'utf-8_chinese'))
-#         self.assertEqual(gs, Testread_gold_standard.actual_chinese_content)
-#
-#
-# class Testextract_gold_standard(unittest.TestCase):
-#
-#     datadir = FIXTURES
-#
-#     @staticmethod
-#     def _remove_output(names, catch_errors, name_maker=None):
-#         import os
-#         for fn in names:
-#             if name_maker:
-#                 fn_to_remove = name_maker(fn)
-#             else:
-#                 fn_to_remove = fn
-#
-#             if catch_errors:
-#                 try:
-#                     os.remove(fn_to_remove)
-#                 except:
-#                     pass
-#             else:
-#                 os.remove(fn_to_remove)
-#
-#     def test_extract_gold_standard(self):
-#         test_files = ['page_comments', 'page_no_comments']
-#         name_maker = lambda x: "%s/block_corrected/%s.block_corrected.txt" % (Testextract_gold_standard.datadir, x)
-#
-#         Testextract_gold_standard._remove_output(test_files, True, name_maker)
-#
-#         for f in test_files:
-#             data_processing.extract_gold_standard(Testextract_gold_standard.datadir, f)
-#             # check output file
-#             with io.open(name_maker(f), mode='r', encoding='utf-8') as fout:
-#                 corrected_blocks = fout.read()
-#
-#             with io.open(name_maker(f + '_expected'), mode='r', encoding='utf-8') as fexpected:
-#                 expected_blocks = fexpected.read()
-#
-#             self.assertEqual(expected_blocks, corrected_blocks)
-#
-#         Testextract_gold_standard._remove_output(test_files, False, name_maker)
-#
-#
-# if __name__ == "__main__":
-#     unittest.main()
+class TestReadGoldStandard(unittest.TestCase):
+
+    actual_chinese_content = u'<h>\u9ad8\u8003\u8bed\u6587\u5168\u7a0b\u68c0\u6d4b\u4e09:\u6b63\u786e\u4f7f\u7528\u8bcd\u8bed(\u719f\u8bed\u4e00)\n\n\n            <h>LEARNING.SOHU.COM    2004\u5e745\u670822\u65e515:36 '
+
+    def test_read_gold_standard(self):
+        tests = {'ascii': u'ascii yo!',
+                 'iso-8859-1': u'\xd3',
+                 'utf-8': u'\xae',
+                 'utf-16': u'\xae'}
+        for encoding, expected in tests.items():
+            content_comments = data_processing.read_gold_standard_file(
+                FIXTURES, encoding)
+            self.assertEqual(content_comments[0], u'Content here\nmore content\n' + expected)
+            self.assertEqual(content_comments[1], 'some comments')
+
+    def test_utf8_chinese(self):
+        gs = ' '.join(data_processing.read_gold_standard_file(FIXTURES, 'utf-8_chinese'))
+        self.assertEqual(gs, self.actual_chinese_content)
+
+
+class TestExtractGoldStandard(unittest.TestCase):
+
+    def test_extract_gold_standard(self):
+        make_filepath = lambda x: os.path.join(FIXTURES, 'block_corrected', '{}.block_corrected.txt'.format(x))
+
+        fileroots = ['page_comments', 'page_no_comments']
+        for fileroot in fileroots:
+            actual_filepath = make_filepath(fileroot)
+            expected_filepath = make_filepath(fileroot + '_expected')
+            data_processing.extract_gold_standard(FIXTURES, fileroot)
+
+            with io.open(actual_filepath, mode='rt') as f:
+                actual_blocks = f.read()
+            with io.open(expected_filepath, mode='rt') as f:
+                expected_blocks = f.read()
+
+            os.remove(actual_filepath)
+            self.assertEqual(expected_blocks, actual_blocks)
+
+
+if __name__ == "__main__":
+    unittest.main()

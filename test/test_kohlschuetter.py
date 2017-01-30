@@ -4,7 +4,8 @@ import re
 import numpy as np
 from html_for_testing import big_html_doc
 
-from dragnet import Blockifier, BlockifyError, kohlschuetter
+from dragnet import Blockifier, BlockifyError  # , kohlschuetter
+from dragnet.features import KohlschuetterFeatures
 from dragnet.compat import range_
 
 
@@ -35,6 +36,7 @@ class KohlschuetterUnitBase(unittest.TestCase):
 
 
 class TestBlockifier(KohlschuetterUnitBase):
+
     def test_lxml_error(self):
         """tests the case where lxml raises an error during parsing
 
@@ -278,18 +280,21 @@ class TestBlockifier(KohlschuetterUnitBase):
 class TestKohlschuetter(KohlschuetterUnitBase):
 
     def test_small_doc(self):
-        self.assertEqual((None, []), kohlschuetter.make_features('<html></html>'))
-        self.assertEqual('', kohlschuetter.analyze('<html></html>'))
+        kf = KohlschuetterFeatures()
+
+        s = '<html></html>'
+        with self.assertRaises(ValueError):
+            kf.transform(Blockifier.blockify(s))
 
         s = '<html> <p>a</p> <div>b</div> </html>'
-        features, blocks = kohlschuetter.make_features(s)
-        self.assertTrue(features is None)
-        self.block_output_tokens(blocks, [['a'], ['b']])
-        self.assertEqual('a b', kohlschuetter.analyze(s))
+        with self.assertRaises(ValueError):
+            kf.transform(Blockifier.blockify(s))
 
-    def test_make_features(self):
+    def test_transform(self):
+        kf = KohlschuetterFeatures()
         s = '<html> <p>first </p> <div> <p>second block with <a href=''>anchor</a> </p> <p>the third block</p> </div> </html>'
-        features, blocks = kohlschuetter.make_features(s)
+        blocks = Blockifier.blockify(s)
+        features = kf.transform(blocks)
         self.block_output_tokens(blocks, [['first'], ['second', 'block', 'with', 'anchor'], ['the', 'third', 'block']])
         self.link_output_tokens(blocks, [[], ['anchor'], []])
 
