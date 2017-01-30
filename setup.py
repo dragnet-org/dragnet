@@ -98,7 +98,6 @@ setup(
         'scikit-learn>=0.15.2,<0.19.0',
         'numpy',
         'scipy',
-        'mozsci',
         'ftfy>=4.1.0,<5.0.0'
         ]
     )

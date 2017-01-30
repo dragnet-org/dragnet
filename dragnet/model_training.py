@@ -89,7 +89,7 @@ def train_model(extractor, data_dir, output_dir=None):
     logging.info('preparing, splitting, and concatenating the data...')
     data = prepare_all_data(data_dir)
     training_data, test_data = train_test_split(
-        data, test_size=0.25, random_state=42)
+        data, test_size=0.2, random_state=42)
     train_blocks, train_labels, train_weights = extractor.concatenate_data(training_data)
     test_blocks, test_labels, test_weights = extractor.concatenate_data(test_data)
 
@@ -138,6 +138,10 @@ def train_many_models(extractor, param_grid, data_dir, output_dir=None,
     Returns:
         :class:`Extractor`: The trained extractor model with the best-scoring
             set of params.
+
+    See Also:
+        Documentation for grid search :class:`GridSearchCV` in ``scikit-learn``:
+            http://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GridSearchCV.html
     """
     # set up directories and file naming
     output_dir, fname_prefix = _set_up_output_dir_and_fname_prefix(output_dir, extractor)
@@ -146,7 +150,7 @@ def train_many_models(extractor, param_grid, data_dir, output_dir=None,
     logging.info('preparing, splitting, and concatenating the data...')
     data = prepare_all_data(data_dir)
     training_data, test_data = train_test_split(
-        data, test_size=0.25, random_state=42)
+        data, test_size=0.2, random_state=42)
     train_blocks, train_labels, train_weights = extractor.concatenate_data(training_data)
     test_blocks, test_labels, test_weights = extractor.concatenate_data(test_data)
 
@@ -210,6 +214,6 @@ def _report_model_performance(output_dir, fname_prefix, train_eval, test_eval):
 
 def _write_model_to_disk(output_dir, fname_prefix, extractor):
     if output_dir is not None:
-        output_fname = os.path.join(output_dir, fname_prefix + '_model.pickle.gz')
+        output_fname = os.path.join(output_dir, fname_prefix + '_model.pkl.gz')
         logging.info('writing model to file: %s', output_fname)
         joblib.dump(extractor, output_fname, compress=3)

@@ -311,7 +311,7 @@ def read_gold_standard_blocks_file(data_dir, fileroot, split_blocks=True):
     with io.open(fname, mode='rb') as f:
         data = f.read()
     if split_blocks:
-        return data[:-1].split('\n')
+        return data[:-1].split(b'\n')
     return data
 
 
@@ -356,7 +356,7 @@ def prepare_data(data_dir, fileroot, block_pct_tokens_thresh=0.1):
     content_blocks = []
     comments_blocks = []
     for block in blocks:
-        block_split = block.split('\t')
+        block_split = block.split(b'\t')
         num_block_tokens = len(block_split[2].split())
         # total number of tokens in block is used as weights
         content_blocks.append(
