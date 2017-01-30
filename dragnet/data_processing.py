@@ -267,10 +267,10 @@ def read_gold_standard_file(data_dir, fileroot, cetr=False):
     """
     fname = os.path.join(
         data_dir, GOLD_STANDARD_DIRNAME, fileroot + GOLD_STANDARD_EXT)
-    for encoding in ('utf-8', 'iso-8859-1'):
+    for encoding in ('utf-8', 'utf-16', 'iso-8859-1'):
         try:
             with io.open(fname, mode='rt', encoding=encoding) as f:
-                gold_standard = f.read().strip()
+                gold_standard = f.read()
             break
         except UnicodeDecodeError:
             gold_standard = None
@@ -287,8 +287,8 @@ def read_gold_standard_file(data_dir, fileroot, cetr=False):
         content_comments = [u' '.join(text_from_subtree(tree)), u'']
 
     # fix text in case of mangled encodings
-    content_comments = [ftfy.fix_text(content_comments[0]),
-                        ftfy.fix_text(content_comments[1])]
+    content_comments = [ftfy.fix_text(content_comments[0]).strip(),
+                        ftfy.fix_text(content_comments[1]).strip()]
 
     return content_comments
 

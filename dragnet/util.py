@@ -7,10 +7,13 @@ transpositions, etc. For the time being, however, it remains as presented in
 the article.
 """
 from __future__ import division
+import os
+import pkgutil
 
+from sklearn.externals import joblib
 from sklearn.pipeline import FeatureUnion, make_union
 
-from .compat import range_, string_
+from .compat import model_path, range_, string_
 from .features import get_feature
 
 
@@ -143,3 +146,23 @@ def get_and_union_features(features):
         return get_feature(features)
     else:
         return features
+
+
+def load_pickled_model(filename, dirname=None):
+    """
+    Load a pickled ``Extractor`` model from disk.
+
+    Args:
+        filename (str): Name of pickled model file under ``dirname``.
+        dirname (str): Name of directory on disk containing the pickled model.
+            If None, dragnet's default pickled model directory is used:
+            /path/to/dragnet/pickled_models/[PY_VERSION]_[SKLEARN_VERSION]
+
+    Returns:
+        :class:`dragnet.extractor.Extractor`
+    """
+    if dirname is None:
+        pkg_dirname = pkgutil.get_loader('dragnet').filename
+        dirname = os.path.join(pkg_dirname, 'pickled_models', model_path)
+    filepath = os.path.join(dirname, filename)
+    return joblib.load(filepath)
