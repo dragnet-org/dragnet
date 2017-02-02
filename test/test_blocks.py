@@ -1,7 +1,12 @@
+import io
+import os
 import unittest
 
 from dragnet import blocks
-from html_for_testing import big_html_doc
+
+
+with io.open(os.path.join('test', 'datafiles', 'HTML', 'page_for_testing.html'), 'r') as f:
+    big_html_doc = f.read()
 
 
 class Testencoding(unittest.TestCase):

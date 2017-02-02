@@ -96,7 +96,10 @@ def train_model(extractor, data_dir, output_dir=None):
     # fit the extractor on training data
     # then evaluate it on train and test data
     logging.info('fitting and evaluating the extractor features and model...')
-    extractor.fit(train_blocks, train_labels, weights=train_weights)
+    try:
+        extractor.fit(train_blocks, train_labels, weights=train_weights)
+    except (TypeError, ValueError):
+        extractor.fit(train_blocks, train_labels)
     train_eval = evaluate_model_predictions(
         train_labels, extractor.predict(train_blocks))
     test_eval = evaluate_model_predictions(

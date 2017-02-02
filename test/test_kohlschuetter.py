@@ -1,12 +1,18 @@
-import unittest
+import io
 from lxml import etree
+import os
 import re
-import numpy as np
-from html_for_testing import big_html_doc
+import unittest
 
-from dragnet import Blockifier, BlockifyError  # , kohlschuetter
+import numpy as np
+
+from dragnet import Blockifier, BlockifyError
 from dragnet.features import KohlschuetterFeatures
 from dragnet.compat import range_
+
+
+with io.open(os.path.join('test', 'datafiles', 'HTML', 'page_for_testing.html'), 'r') as f:
+    big_html_doc = f.read()
 
 
 class KohlschuetterUnitBase(unittest.TestCase):
