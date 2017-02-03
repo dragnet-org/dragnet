@@ -1,14 +1,14 @@
 
 Dragnet
-=====================================
+=======
 
 [![Build Status](https://api.travis-ci.org/seomoz/dragnet.png)](https://api.travis-ci.org/seomoz/dragnet.png)
 
-Dragnet isn't interested in the shiny chrome or boilerplate dressing of a 
-web page. It's interested in... 'just the facts.'  The machine learning
-models in Dragnet extract the main article content and optionally
-user generated comments from a web page.  They provide state
-of the art performance on variety of test benchmarks.
+Dragnet isn't interested in the shiny chrome or boilerplate dressing
+of a web page. It's interested in... 'just the facts.'  The machine
+learning models in Dragnet extract the main article content and
+optionally user generated comments from a web page.  They provide
+state of the art performance on variety of test benchmarks.
 
 For more information on our approach check out:
 
@@ -17,8 +17,8 @@ at WWW in 2013, gives an overview of the machine learning approach.
 * [A comparison](https://moz.com/devblog/benchmarking-python-content-extraction-algorithms-dragnet-readability-goose-and-eatiht/) of Dragnet and alternate content extraction packages.
 * [This blog post](https://moz.com/devblog/dragnet-content-extraction-from-diverse-feature-sets/) explains the intuition behind the algorithms.
 
-This project was originally inspired by 
-Kohlschütter et al, [Boilerplate Detection using Shallow Text Features](http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf) and 
+This project was originally inspired by
+Kohlschütter et al, [Boilerplate Detection using Shallow Text Features](http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf) and
 Weninger et al [CETR -- Content Extraction with Tag Ratios](http://web.engr.illinois.edu/~weninge1/cetr/), and more recently by [Readability](https://github.com/buriy/python-readability).
 
 # GETTING STARTED
@@ -79,8 +79,6 @@ virtual machine with Dragnet and it's dependencies.
 
 ```bash
 vagrant ssh
-# inside the vagrant vm
-$ cd /vagrant
 # these should now pass
 $ make test
 ```
