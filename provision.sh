@@ -18,6 +18,8 @@ export PATH=$HOME/py/bin:$PATH
 # configure conda for future login (for vagrant)
 echo "export PATH=$PATH" >> $HOME/.bashrc
 
+echo "cd /vagrant" >> $HOME/.bashrc
+
 pip install "Cython>=0.21.1"
 pip install -r requirements.txt
 
