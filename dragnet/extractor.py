@@ -78,10 +78,10 @@ class Extractor(BaseEstimator, ClassifierMixin):
             :class`Extractor`
         """
         features_mat = self.features.fit_transform(blocks)
-        if weights:
-            self.model.fit(features_mat, labels, sample_weight=weights)
-        else:
+        if weights is None:
             self.model.fit(features_mat, labels)
+        else:
+            self.model.fit(features_mat, labels, sample_weight=weights)
         return self
 
     def concatenate_data(self, data):

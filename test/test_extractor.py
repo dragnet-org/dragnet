@@ -10,7 +10,7 @@ from dragnet.blocks import TagCountNoCSSReadabilityBlockifier
 from dragnet.util import get_and_union_features
 
 
-with io.open(os.path.join('test', 'datafiles', 'HTML', 'page_for_testing.html'), 'r') as f:
+with io.open(os.path.join('test', 'datafiles', 'models_testing.html'), 'r') as f:
     big_html_doc = f.read()
 
 

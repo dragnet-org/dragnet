@@ -41,10 +41,10 @@ def extract_all_gold_standard_data(data_dir, nprocesses=1,
         nprocesses (int): If > 1, use a :class:`multiprocessing.Pool` to
             parallelize the extractions
         overwrite (bool): If True, overwrite existing gold-standard blocks files.
-        **kwargs: passed into :func:`extract_gold_standard`
+        **kwargs: passed into :func:`extract_gold_standard_blocks`
 
     See Also:
-        :func:`extract_gold_standard`
+        :func:`extract_gold_standard_blocks`
     """
     use_pool = nprocesses > 1
     if use_pool:
@@ -69,15 +69,16 @@ def extract_all_gold_standard_data(data_dir, nprocesses=1,
     gs_dir = os.path.join(data_dir, GOLD_STANDARD_DIRNAME)
     gs_filenames = get_filenames(
         gs_dir, full_path=False, match_regex=re.escape(GOLD_STANDARD_EXT))
-    for gs_filename in gs_filenames:
+    for i, gs_filename in enumerate(gs_filenames):
         gs_fileroot = re.search(r'(.+)' + re.escape(GOLD_STANDARD_EXT), gs_filename).group(1)
         if gs_fileroot in gs_blocks_fileroots:
             continue
-        print('Extracting gold standard blocks for file "{}"'.format(gs_filename))
+        if i % 100 == 0:
+            print('Extracting gold standard blocks for file "{}"'.format(gs_filename))
         if use_pool:
-            pool.apply_async(extract_gold_standard, (data_dir, gs_fileroot), kwargs)
+            pool.apply_async(extract_gold_standard_blocks, (data_dir, gs_fileroot), kwargs)
         else:
-            extract_gold_standard(data_dir, gs_fileroot, **kwargs)
+            extract_gold_standard_blocks(data_dir, gs_fileroot, **kwargs)
 
     # close out our pool
     if use_pool:
@@ -85,8 +86,8 @@ def extract_all_gold_standard_data(data_dir, nprocesses=1,
         pool.join()
 
 
-def extract_gold_standard(data_dir, fileroot,
-                          tokenizer=simple_tokenizer, cetr=False):
+def extract_gold_standard_blocks(data_dir, fileroot, encoding=None,
+                                 tokenizer=simple_tokenizer, cetr=False):
     """
     Extract the gold standard block-level content and comments for a single
     observation identified by ``fileroot``, and write the results to file.
@@ -97,6 +98,7 @@ def extract_gold_standard(data_dir, fileroot,
         fileroot (str): Unique identifier for a single observation of training
             data, corresponding to the start of its raw html and gold standard
             filenames under ``data_dir``.
+        encoding (str)
         tokenizer (Callable): Object that takes a string and returns the tokens
             as a list of strings.
         cetr (bool): If True, parse the gold standard in clean eval format.
@@ -114,10 +116,10 @@ def extract_gold_standard(data_dir, fileroot,
         text; ``comments_frac`` is the same but for comments text.
     """
     # read the raw html, split it into blocks, and tokenize each block
-    raw_html = read_html_file(data_dir, fileroot)
+    raw_html = read_html_file(data_dir, fileroot, encoding=encoding)  # text is unicode
     from dragnet.blocks import BlockifyError
     try:
-        blocks = [b.text for b in Blockifier.blockify(raw_html)]
+        blocks = [b.text for b in Blockifier.blockify(raw_html)]  # text is bytes
     except BlockifyError as e:
         print('BlockifyError for file "{}"'.format(fileroot))
         return
@@ -151,7 +153,8 @@ def extract_gold_standard(data_dir, fileroot,
         or comments.
 
         Returns:
-            Tuple[List[float], List[str]]
+            List[float]
+            List[str]
         """
         if isinstance(gs_txt, unicode_):
             gs_tokens = tokenizer(gs_txt.encode('utf-8'))
@@ -167,7 +170,7 @@ def extract_gold_standard(data_dir, fileroot,
                 blocks_tokens_in_gs_tokens[block_id].append(token)
 
         blocks_tokens_strs_in_gs = [
-            ' '.join(block_tokens_in_gs_tokens)
+            b' '.join(block_tokens_in_gs_tokens)
             for block_tokens_in_gs_tokens in blocks_tokens_in_gs_tokens]
         frac_blocks_tokens_in_gs = [
             num_block_tokens_in_gs / num_block_tokens
@@ -178,19 +181,19 @@ def extract_gold_standard(data_dir, fileroot,
 
     gs_content, gs_comments = read_gold_standard_file(data_dir, fileroot, cetr)
     frac_blocks_tokens_in_gs_content, blocks_tokens_strs_in_gs_content = \
-        get_frac_and_str_tokens_in_gs(gs_content)
+        get_frac_and_str_tokens_in_gs(gs_content.encode('utf-8'))
     frac_blocks_tokens_in_gs_comments, blocks_tokens_strs_in_gs_comments = \
-        get_frac_and_str_tokens_in_gs(gs_comments)
+        get_frac_and_str_tokens_in_gs(gs_comments.encode('utf-8'))
 
     output_fname = os.path.join(
         data_dir, GOLD_STANDARD_BLOCKS_DIRNAME, fileroot + GOLD_STANDARD_BLOCKS_EXT)
-    line_fmt = '{frac_content}\t{frac_comments}\t{block_tokens}\t{content_tokens}\t{comment_tokens}\n'
+    line_fmt = b'{frac_content}\t{frac_comments}\t{block_tokens}\t{content_tokens}\t{comment_tokens}\n'
     with io.open(output_fname, mode='wb') as f:
         for block_id, block_tokens in enumerate(blocks_tokens):
             line = line_fmt.format(
                 frac_content=frac_blocks_tokens_in_gs_content[block_id],
                 frac_comments=frac_blocks_tokens_in_gs_comments[block_id],
-                block_tokens=' '.join(block_tokens),
+                block_tokens=b' '.join(block_tokens),
                 content_tokens=blocks_tokens_strs_in_gs_content[block_id],
                 comment_tokens=blocks_tokens_strs_in_gs_comments[block_id])
             f.write(line)
@@ -226,7 +229,7 @@ def get_filenames(dirname, full_path=False, match_regex=None, extension=None):
             yield filename
 
 
-def read_html_file(data_dir, fileroot):
+def read_html_file(data_dir, fileroot, encoding=None):
     """
     Read the HTML file corresponding to identifier ``fileroot``
     in the raw HTML directory below the root ``data_dir``.
@@ -234,13 +237,15 @@ def read_html_file(data_dir, fileroot):
     Args:
         data_dir (str)
         fileroot (str)
+        encoding (str)
 
     Returns:
         str
     """
     fname = os.path.join(
         data_dir, RAW_HTML_DIRNAME, fileroot + RAW_HTML_EXT)
-    for encoding in ('utf-8', 'iso-8859-1'):
+    encodings = (encoding,) if encoding else ('utf-8', 'iso-8859-1')  # 'utf-16'
+    for encoding in encodings:
         try:
             with io.open(fname, mode='rt', encoding=encoding) as f:
                 raw_html = f.read()
@@ -248,10 +253,10 @@ def read_html_file(data_dir, fileroot):
         except UnicodeDecodeError:
             raw_html = None
 
-    return raw_html
+    return ftfy.fix_encoding(raw_html).strip()
 
 
-def read_gold_standard_file(data_dir, fileroot, cetr=False):
+def read_gold_standard_file(data_dir, fileroot, encoding=None, cetr=False):
     """
     Read the gold standard content file corresponding to identifier ``fileroot``
     in the gold standard directory below the root ``data_dir``.
@@ -259,6 +264,7 @@ def read_gold_standard_file(data_dir, fileroot, cetr=False):
     Args:
         data_dir (str)
         fileroot (str)
+        encoding (str)
         cetr (bool): if True, assume no comments and parse the gold standard
             to remove tags
 
@@ -267,13 +273,15 @@ def read_gold_standard_file(data_dir, fileroot, cetr=False):
     """
     fname = os.path.join(
         data_dir, GOLD_STANDARD_DIRNAME, fileroot + GOLD_STANDARD_EXT)
-    for encoding in ('utf-8', 'utf-16', 'iso-8859-1'):
+    encodings = (encoding,) if encoding else ('utf-8', 'utf-16', 'iso-8859-1')
+    for encoding in encodings:
         try:
             with io.open(fname, mode='rt', encoding=encoding) as f:
                 gold_standard = f.read()
             break
         except UnicodeDecodeError:
             gold_standard = None
+
     if not gold_standard:
         return [u'', u'']
 
@@ -287,8 +295,8 @@ def read_gold_standard_file(data_dir, fileroot, cetr=False):
         content_comments = [u' '.join(text_from_subtree(tree)), u'']
 
     # fix text in case of mangled encodings
-    content_comments = [ftfy.fix_text(content_comments[0]).strip(),
-                        ftfy.fix_text(content_comments[1]).strip()]
+    content_comments = [ftfy.fix_encoding(content_comments[0]).strip(),
+                        ftfy.fix_encoding(content_comments[1]).strip()]
 
     return content_comments
 
