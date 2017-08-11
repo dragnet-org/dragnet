@@ -19,7 +19,7 @@ from cython.operator cimport dereference as deref
 from libc.stdint cimport uint32_t
 
 # boilerplate from http://lxml.de/capi.html
-cimport etreepublic as cetree
+cimport lxml.includes.etreepublic as cetree
 cdef object etree
 from lxml import etree
 cetree.import_lxml__etree()
