@@ -156,10 +156,7 @@ def extract_gold_standard_blocks(data_dir, fileroot, encoding=None,
             List[float]
             List[str]
         """
-        if isinstance(gs_txt, unicode_):
-            gs_tokens = tokenizer(gs_txt.encode('utf-8'))
-        else:
-            gs_tokens = tokenizer(gs_txt)
+        gs_tokens = tokenizer(gs_txt)
 
         tokens_in_gs = check_inclusion(all_blocks_tokens, gs_tokens)
         num_blocks_tokens_in_gs = [0 for _ in range(len(blocks))]
@@ -170,7 +167,7 @@ def extract_gold_standard_blocks(data_dir, fileroot, encoding=None,
                 blocks_tokens_in_gs_tokens[block_id].append(token)
 
         blocks_tokens_strs_in_gs = [
-            b' '.join(block_tokens_in_gs_tokens)
+            ' '.join(block_tokens_in_gs_tokens)
             for block_tokens_in_gs_tokens in blocks_tokens_in_gs_tokens]
         frac_blocks_tokens_in_gs = [
             num_block_tokens_in_gs / num_block_tokens
@@ -181,19 +178,19 @@ def extract_gold_standard_blocks(data_dir, fileroot, encoding=None,
 
     gs_content, gs_comments = read_gold_standard_file(data_dir, fileroot, cetr)
     frac_blocks_tokens_in_gs_content, blocks_tokens_strs_in_gs_content = \
-        get_frac_and_str_tokens_in_gs(gs_content.encode('utf-8'))
+        get_frac_and_str_tokens_in_gs(gs_content)
     frac_blocks_tokens_in_gs_comments, blocks_tokens_strs_in_gs_comments = \
-        get_frac_and_str_tokens_in_gs(gs_comments.encode('utf-8'))
+        get_frac_and_str_tokens_in_gs(gs_comments)
 
     output_fname = os.path.join(
         data_dir, GOLD_STANDARD_BLOCKS_DIRNAME, fileroot + GOLD_STANDARD_BLOCKS_EXT)
-    line_fmt = b'{frac_content}\t{frac_comments}\t{block_tokens}\t{content_tokens}\t{comment_tokens}\n'
-    with io.open(output_fname, mode='wb') as f:
+    line_fmt = u'{frac_content}\t{frac_comments}\t{block_tokens}\t{content_tokens}\t{comment_tokens}\n'
+    with io.open(output_fname, mode='w') as f:
         for block_id, block_tokens in enumerate(blocks_tokens):
             line = line_fmt.format(
                 frac_content=frac_blocks_tokens_in_gs_content[block_id],
                 frac_comments=frac_blocks_tokens_in_gs_comments[block_id],
-                block_tokens=b' '.join(block_tokens),
+                block_tokens=' '.join(block_tokens),
                 content_tokens=blocks_tokens_strs_in_gs_content[block_id],
                 comment_tokens=blocks_tokens_strs_in_gs_comments[block_id])
             f.write(line)
@@ -250,7 +247,7 @@ def read_html_file(data_dir, fileroot, encoding=None):
             with io.open(fname, mode='rt', encoding=encoding) as f:
                 raw_html = f.read()
             break
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, UnicodeError):
             raw_html = None
 
     return ftfy.fix_encoding(raw_html).strip()
@@ -279,7 +276,7 @@ def read_gold_standard_file(data_dir, fileroot, encoding=None, cetr=False):
             with io.open(fname, mode='rt', encoding=encoding) as f:
                 gold_standard = f.read()
             break
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, UnicodeError):
             gold_standard = None
 
     if not gold_standard:
@@ -316,10 +313,10 @@ def read_gold_standard_blocks_file(data_dir, fileroot, split_blocks=True):
     """
     fname = os.path.join(
         data_dir, GOLD_STANDARD_BLOCKS_DIRNAME, fileroot + GOLD_STANDARD_BLOCKS_EXT)
-    with io.open(fname, mode='rb') as f:
+    with io.open(fname, mode='r') as f:
         data = f.read()
     if split_blocks:
-        return data[:-1].split(b'\n')
+        return data[:-1].split('\n')
     return data
 
 
@@ -364,7 +361,7 @@ def prepare_data(data_dir, fileroot, block_pct_tokens_thresh=0.1):
     content_blocks = []
     comments_blocks = []
     for block in blocks:
-        block_split = block.split(b'\t')
+        block_split = block.split('\t')
         num_block_tokens = len(block_split[2].split())
         # total number of tokens in block is used as weights
         content_blocks.append(

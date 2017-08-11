@@ -60,7 +60,7 @@ class TestGetFilenames(unittest.TestCase):
 
 class TestReadGoldStandard(unittest.TestCase):
 
-    actual_chinese_content = u'<h>\u9ad8\u8003\u8bed\u6587\u5168\u7a0b\u68c0\u6d4b\u4e09:\u6b63\u786e\u4f7f\u7528\u8bcd\u8bed(\u719f\u8bed\u4e00)\n\n\n            <h>LEARNING.SOHU.COM    2004\u5e745\u670822\u65e515:36 '
+    actual_chinese_content = u'<h>\u9ad8\u8003\u8bed\u6587\u5168\u7a0b\u68c0\u6d4b\u4e09\uff1a\u6b63\u786e\u4f7f\u7528\u8bcd\u8bed\uff08\u719f\u8bed\u4e00\uff09\n\n\n            <h>LEARNING.SOHU.COM    2004\u5e745\u670822\u65e515:36 '
 
     def test_read_gold_standard(self):
         tests = {'ascii': u'ascii yo!',
@@ -87,7 +87,7 @@ class TestExtractGoldStandard(unittest.TestCase):
         for fileroot in fileroots:
             actual_filepath = make_filepath(fileroot)
             expected_filepath = make_filepath(fileroot + '_expected')
-            data_processing.extract_gold_standard(FIXTURES, fileroot)
+            data_processing.extract_gold_standard_blocks(FIXTURES, fileroot)
 
             with io.open(actual_filepath, mode='rt') as f:
                 actual_blocks = f.read()
