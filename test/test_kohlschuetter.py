@@ -8,7 +8,7 @@ import numpy as np
 
 from dragnet import Blockifier, BlockifyError
 from dragnet.features import KohlschuetterFeatures
-from dragnet.compat import range_
+from dragnet.compat import range_, str_cast
 
 
 with io.open(os.path.join('test', 'datafiles', 'HTML', 'page_for_testing.html'), 'r') as f:
@@ -168,10 +168,10 @@ class TestBlockifier(KohlschuetterUnitBase):
         blocks = Blockifier.blockify(s)
         self.block_output_tokens(
             blocks,
-            [['the', 'registered', 'trademark', u'\xae'.encode('utf-8')]])
+            [['the', 'registered', 'trademark', u'\xae']])
         self.link_output_tokens(
             blocks,
-            [['the', 'registered', 'trademark', u'\xae'.encode('utf-8')]])
+            [['the', 'registered', 'trademark', u'\xae']])
 
     def test_all_non_english(self):
         s = u"""<div> <div> \u03b4\u03bf\u03b3 </div> <div> <a href="summer">\xe9t\xe9</a> </div>
@@ -179,14 +179,14 @@ class TestBlockifier(KohlschuetterUnitBase):
         blocks = Blockifier.blockify(s)
         self.block_output_tokens(
             blocks,
-            [[u'\u03b4\u03bf\u03b3'.encode('utf-8')],
-             [u'\xe9t\xe9'.encode('utf-8')],
-             [u'\u62a5\u9053\u4e00\u51fa'.encode('utf-8')]]
+            [[u'\u03b4\u03bf\u03b3'],
+             [u'\xe9t\xe9'],
+             [u'\u62a5\u9053\u4e00\u51fa']]
             )
         self.link_output_tokens(
             blocks,
             [[],
-             [u'\xe9t\xe9'.encode('utf-8')],
+             [u'\xe9t\xe9'],
              []]
             )
 
@@ -204,7 +204,7 @@ class TestBlockifier(KohlschuetterUnitBase):
             blocks, 'class', [['d1'], [''], ['nested']])
 
     def test_class_id_unicode(self):
-        s = """<div CLASS=' class1 \xc2\xae'>text in div
+        s = b"""<div CLASS=' class1 \xc2\xae'>text in div
                 <h1 id="HEADER">header</h1>
                 </div>"""
         blocks = Blockifier.blockify(s, encoding='utf-8')
@@ -213,14 +213,14 @@ class TestBlockifier(KohlschuetterUnitBase):
         self.css_output_tokens(
             blocks, 'id', [[''], ['header']])
         self.css_output_tokens(
-            blocks, 'class', [['class1', '\xc2\xae'], ['']])
+            blocks, 'class', [['class1', str_cast(b'\xc2\xae')], ['']])
 
     def test_invalid_bytes(self):
         # \x80 is invalid utf-8
-        s = """<div CLASS='\x80'>text in div</div><p>invalid bytes \x80</p>"""
+        s = b"""<div CLASS='\x80'>text in div</div><p>invalid bytes \x80</p>"""
         blocks = Blockifier.blockify(s, encoding='utf-8')
         self.block_output_tokens(blocks, [['text', 'in', 'div']])
-        self.css_output_tokens(blocks, 'class', [['\xc2\x80']])
+        self.css_output_tokens(blocks, 'class', [[str_cast(b'\xc2\x80')]])
 
     def test_big_html(self):
         s = big_html_doc
