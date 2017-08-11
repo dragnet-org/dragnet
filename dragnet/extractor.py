@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import ExtraTreesClassifier
 
-from .compat import string_
+from .compat import string_, str_cast
 from .util import get_and_union_features
 
 
@@ -196,7 +196,7 @@ class Extractor(BaseEstimator, ClassifierMixin):
                 self._positive_idx or list(self.model.classes_).index(1))
             preds = (self.model.predict_proba(features_mat) > self.prob_threshold)[:, self._positive_idx]
         if as_blocks is False:
-            return '\n'.join(blocks[ind].text for ind in np.flatnonzero(preds))
+            return '\n'.join(str_cast(blocks[ind].text) for ind in np.flatnonzero(preds))
         else:
             return [blocks[ind] for ind in np.flatnonzero(preds)]
 

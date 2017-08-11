@@ -8,6 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from dragnet import Extractor
 from dragnet.blocks import TagCountNoCSSReadabilityBlockifier
 from dragnet.util import get_and_union_features
+from dragnet.compat import str_cast
 
 
 with io.open(os.path.join('test', 'datafiles', 'models_testing.html'), 'r') as f:
@@ -56,7 +57,7 @@ class TestExtractor(unittest.TestCase):
         features_mat = features.transform(blocks)
         positive_idx = list(model.classes_).index(1)
         preds = (model.predict_proba(features_mat) > prob_threshold)[:, positive_idx].astype(int)
-        components_content = '\n'.join(blocks[ind].text for ind in np.flatnonzero(preds))
+        components_content = '\n'.join(str_cast(blocks[ind].text) for ind in np.flatnonzero(preds))
 
         self.assertIsNotNone(extractor_content)
         self.assertEqual(extractor_content, components_content)
