@@ -20,10 +20,12 @@ cdef extern from "_readability.cc":
         int &,
         double*)
 
+from ..compat import bytes_block_list_cast
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
 def make_readability_features(blocks):
+    blocks = bytes_block_list_cast(blocks) # ensure we're working w/ bytes
     cdef int nblocks = len(blocks)
     cdef np.ndarray[np.float64_t, ndim=2, mode='c'] features = \
         np.ascontiguousarray(np.zeros((nblocks, 1)), dtype=np.float64)
@@ -44,9 +46,9 @@ def make_readability_features(blocks):
     for block in blocks:
         block_text_len.push_back(len(block.text))
         block_readability_class_weights.push_back(
-            block.features['readability_class_weights'])
-        block_ancestors.push_back(block.features['ancestors'])
-        block_start_tag.push_back(block.features['block_start_tag'])
+            block.features[b'readability_class_weights'])
+        block_ancestors.push_back(block.features[b'ancestors'])
+        block_start_tag.push_back(block.features[b'block_start_tag'])
         block_link_density.push_back(block.link_density)
 
     _readability_features(

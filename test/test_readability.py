@@ -21,7 +21,7 @@ class TestReadabilityFeatures(unittest.TestCase):
         with io.open(os.path.join(FIXTURES, 'readability_features.json')) as fin:
             expected_features = np.array(json.loads(fin.read()))
         self.assertTrue(
-            np.allclose(actual_features.flatten(), expected_features))
+            np.allclose(actual_features.flatten(), expected_features, rtol=0.0005))
         self.assertEqual(actual_features.shape[1], 1)
 
 
