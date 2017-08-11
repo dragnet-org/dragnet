@@ -45,7 +45,7 @@ class Test_text_subtree(unittest.TestCase):
     def test_text_from_subtree_decode_error(self):
         from lxml import etree
         # this is an invalid utf-8 character
-        s = '<div>\x92</div>'
+        s = b'<div>\x92</div>'
         tree = etree.fromstring(s, etree.HTMLParser(recover=True, encoding='utf-8'))
         text_list = blocks.text_from_subtree(tree)
         text_str = ' '.join([ele.strip() for ele in text_list if ele.strip() != ''])

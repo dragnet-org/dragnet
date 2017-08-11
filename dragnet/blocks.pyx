@@ -29,6 +29,7 @@ import re
 import numpy as np
 import math
 
+from compat import str_list_cast, str_dict_cast, str_block_cast, str_block_list_cast, str_cast, bytes_cast
 
 RE_HTML_ENCODING = re.compile(
     r'<\s*meta[^>]+charset\s*?=\s*?[\'"]?([^>]*?)[ /;\'">]',
@@ -42,6 +43,7 @@ re_tokenizer_nounicode = re.compile('[\W_]+')
 
 
 def simple_tokenizer(x):
+    x = str_cast(x)
     return [ele for ele in re_tokenizer.split(x) if len(ele) > 0]
 
 # need a typedef for the callback function in text_from_subtree
@@ -182,7 +184,7 @@ cdef vector[string] _text_from_subtree(cetree.tree.xmlNode *tree,
     while node != NULL:
 
         # get the tag
-        tag = cetree.namespacedName(node)
+        tag = <string> cetree.namespacedName(node).encode('utf-8')
 
         # call the feature extractor child hooks
         callback(klass, tag)
@@ -336,7 +338,7 @@ cdef class PartialBlock:
         self.reinit_css(True)
         self.do_css = do_css
 
-        self.block_start_tag = ''
+        self.block_start_tag = b''
         self.block_start_element = None
 
         self.do_readability = do_readability
@@ -429,8 +431,9 @@ cdef class PartialBlock:
         cdef string cssa
         if len(block_tokens) > 0:
             # only process blocks with something other then white space
-            block_text = ' '.join(block_tokens)
-            link_text = ' '.join(self.link_tokens)
+            # NOTE: These are outbound values, so they can stay as strings after being cast
+            block_text = ' '.join(str_list_cast(block_tokens))
+            link_text = ' '.join(str_list_cast(self.link_tokens))
 
             # compute link/text density
             at = re_tokenizer_nounicode.split(link_text)
@@ -451,16 +454,18 @@ cdef class PartialBlock:
             if self.do_css:
                 for k in range(self.css_attrib.size()):
                     cssa = self.css_attrib[k]
-                    css[cssa] = ' '.join(
-                        _tokens_from_text(self.css[cssa])).lower()
+                    # NOTE: These are outbound values, so they can stay as strings after being cast
+                    css[cssa] = ' '.join( str_list_cast(
+                        _tokens_from_text(self.css[cssa]))).lower()
 
             kwargs = self._add_readability()
             kwargs.update(self._extract_features(True))
             kwargs['block_start_tag'] = self.block_start_tag
             kwargs['block_start_element'] = self.block_start_element
-            results.append(Block(block_text, link_d,
-                        text_d, self.anchors, self.link_tokens, css,
-                        **kwargs))
+            # NOTE: These are outbound values, so they are cast to strings
+            results.append(str_block_cast(Block(block_text, link_d,
+                                                text_d, self.anchors, self.link_tokens, css,
+                                                **str_dict_cast(kwargs))))
         else:
             self._extract_features(False)
 
@@ -512,7 +517,7 @@ cdef class PartialBlock:
 
         cdef vector[string] anchor_tokens
         anchor_tokens = _tokens_from_text(anchor_text_list)
-        for k in range(anchor_tokens.size()):
+        for k in range(len(anchor_tokens)):
             self.link_tokens.push_back(anchor_tokens[k])
 
 
@@ -539,7 +544,7 @@ cdef class PartialBlock:
         cdef int weight = 0
         cdef cetree.tree.xmlAttr* attr
         cdef size_t k
-        cdef string id_class
+        id_class = ''
         cdef string attrib
         cdef string tag
 
@@ -555,15 +560,15 @@ cdef class PartialBlock:
             attr = cetree.tree.xmlHasProp(node,
                 <cetree.tree.const_xmlChar*> attrib.c_str())
             if attr is not NULL:
-                id_class = <string>cetree.attributeValue(
-                    node, attr).encode('utf-8')
+                id_class = str_cast(cetree.attributeValue(
+                    node, attr))
                 if re_readability_negative.search(id_class):
                     weight -= 25
                 if re_readability_positive.search(id_class):
                     weight += 25
 
         # now the tag name specific weight
-        tag = cetree.namespacedName(node)
+        tag = <string> cetree.namespacedName(node).encode('utf-8')
         if tag == DIV:
             weight += 5
         elif READABILITY_PLUS3.find(tag) != READABILITY_PLUS3.end():
@@ -616,7 +621,7 @@ cdef class PartialBlock:
             self.next_tag_id += 1
 
             # get the tag
-            tag = cetree.namespacedName(node)
+            tag = <string> cetree.namespacedName(node).encode('utf-8')
 
             if self._tag_func.size() > 0:
                 self._tag_fe(tag)
@@ -785,10 +790,10 @@ def guess_encoding(markup, default='utf-8'):
     """
     xml_endpos = 1024
     html_endpos = max(2048, int(len(markup) * 0.05))
-    mo = RE_XML_ENCODING.search(markup, endpos=xml_endpos)
+    mo = RE_XML_ENCODING.search(str_cast(markup), endpos=xml_endpos)
     if mo:
         return mo.group(1)
-    moh = RE_HTML_ENCODING.search(markup, endpos=html_endpos)
+    moh = RE_HTML_ENCODING.search(str_cast(markup), endpos=html_endpos)
     if moh:
         return moh.group(1)
     if default.lower() == 'chardet':
@@ -844,6 +849,7 @@ class Blockifier(object):
             List[Block]: ordered sequence of blocks with text content
         """
         # First, we need to parse the thing
+        s = bytes_cast(s) # ensure we're working w/ bytes
         encoding = encoding or guess_encoding(s, default='utf-8')
         try:
             html = etree.fromstring(s,
@@ -861,7 +867,7 @@ class Blockifier(object):
             parse_callback(html)
 
         # only return blocks with some text content
-        return [ele for ele in blocks if RE_TEXT.search(ele.text)]
+        return [ele for ele in str_block_list_cast(blocks) if RE_TEXT.search(ele.text)]
 
 
 class TagCountBlockifier(Blockifier):
