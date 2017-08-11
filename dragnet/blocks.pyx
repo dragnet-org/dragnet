@@ -797,11 +797,8 @@ def guess_encoding(markup, default='utf-8'):
     if moh:
         return moh.group(1)
     if default.lower() == 'chardet':
-        from chardet.universaldetector import UniversalDetector
-        u = UniversalDetector()
-        u.feed(markup)
-        u.close()
-        return u.result['encoding']
+        import chardet
+        return chardet.detect(markup)['encoding']
     return default
 
 
