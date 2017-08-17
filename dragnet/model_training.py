@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.pipeline import FeatureUnion
 
 from .blocks import simple_tokenizer
-from .compat import GridSearchCV, model_path, string_, train_test_split
+from .compat import GridSearchCV, model_path, string_, train_test_split, str_cast
 from .data_processing import prepare_all_data
 from .util import dameraulevenshtein
 
@@ -202,11 +202,11 @@ def _report_model_performance(output_dir, fname_prefix, train_eval, test_eval):
     if output_dir is not None:
         output_fname = os.path.join(output_dir, fname_prefix + '_block_errors.txt')
         logging.info('writing evaluation metrics to file: %s', output_fname)
-        with io.open(output_fname, mode='wb') as f:
-            f.write('Training errors for final model (block level):\n')
-            pprint.pprint(train_eval, f)
-            f.write('\nTest errors for final model (block level):\n')
-            pprint.pprint(test_eval, f)
+        with io.open(output_fname, mode='w') as f:
+            f.write(u'Training errors for final model (block level):\n')
+            f.write(str_cast(pprint.pformat(train_eval)))
+            f.write(u'\nTest errors for final model (block level):\n')
+            f.write(str_cast(pprint.pformat(test_eval)))
     # or just print it out
     else:
         print('Training errors for final model (block level):\n')
