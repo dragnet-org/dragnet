@@ -4,6 +4,8 @@ cimport numpy as np
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
+from dragnet.compat import bytes_block_list_cast, str_list_cast
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -16,7 +18,7 @@ cpdef _blocks_to_ctrs(blocks):
     cdef int i
     for i in range(0, nblocks):
         block_lengths[i] = len(blocks[i].text)
-        tag_counts[i] = blocks[i].features['tagcount']
+        tag_counts[i] = blocks[i].features[b'tagcount']
 
     return block_lengths / np.maximum(tag_counts, 1.0)
 
@@ -69,4 +71,5 @@ cpdef sx_sdx(np.ndarray[np.float64_t, ndim=1] x, float sigma=1.0):
 
 
 def make_weninger_features(blocks, sigma=1.0):
-    return sx_sdx(_blocks_to_ctrs(blocks), sigma=sigma)
+    # NOTE: These are outbound values, so they are cast to strings
+    return str_list_cast(sx_sdx(_blocks_to_ctrs(bytes_block_list_cast(blocks)), sigma=sigma))
