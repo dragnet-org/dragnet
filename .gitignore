@@ -5,6 +5,9 @@ build/*
 dist/*
 dragnet.egg-info
 
+# IDEs
+.idea/*
+
 # cython temporary files
 dragnet/blocks.cpp
 dragnet/blocks.html

@@ -19,3 +19,6 @@ unittest:
 
 install: build
 	python setup.py install
+
+install-pip: build
+	pip install .
