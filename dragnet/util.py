@@ -13,7 +13,7 @@ import pkgutil
 from sklearn.externals import joblib
 from sklearn.pipeline import FeatureUnion, make_union
 
-from .compat import model_path, range_, string_
+from .compat import model_path, range_, string_, PY2
 from .features import get_feature
 
 
@@ -162,7 +162,10 @@ def load_pickled_model(filename, dirname=None):
         :class:`dragnet.extractor.Extractor`
     """
     if dirname is None:
-        pkg_dirname = pkgutil.get_loader('dragnet').filename
+        if PY2:
+            pkg_dirname = pkgutil.get_loader('dragnet').filename
+        else:
+            pkg_dirname = pkgutil.get_loader('dragnet').name
         dirname = os.path.join(pkg_dirname, 'pickled_models', model_path)
     filepath = os.path.join(dirname, filename)
     return joblib.load(filepath)
