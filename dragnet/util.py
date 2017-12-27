@@ -162,10 +162,8 @@ def load_pickled_model(filename, dirname=None):
         :class:`dragnet.extractor.Extractor`
     """
     if dirname is None:
-        if PY2:
-            pkg_dirname = pkgutil.get_loader('dragnet').filename
-        else:
-            pkg_dirname = pkgutil.get_loader('dragnet').name
+        pkg_filename = pkgutil.get_loader('dragnet').get_filename()
+        pkg_dirname = os.path.dirname(pkg_filename)
         dirname = os.path.join(pkg_dirname, 'pickled_models', model_path)
     filepath = os.path.join(dirname, filename)
     return joblib.load(filepath)
