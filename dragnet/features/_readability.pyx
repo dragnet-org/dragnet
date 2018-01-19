@@ -20,7 +20,7 @@ cdef extern from "_readability.cc":
         int &,
         double*)
 
-from ..compat import bytes_block_list_cast
+from dragnet.compat import bytes_block_list_cast
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
