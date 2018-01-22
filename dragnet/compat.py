@@ -23,11 +23,12 @@ else:
 
 def str_cast(maybe_bytes, encoding='utf-8'):
     """
-    Converts any bytes-like input to a string-like output, with respect to python version
+    Converts any bytes-like input to a string-like output, with respect to
+    python version
 
     Parameters
     ----------
-    maybe_bytes : if this is a bytes-like object, it will be converted to a utf-8 string
+    maybe_bytes : if this is a bytes-like object, it will be converted to a string
     encoding  : str, default='utf-8'
         encoding to be used when decoding bytes
     """
@@ -39,11 +40,12 @@ def str_cast(maybe_bytes, encoding='utf-8'):
 
 def bytes_cast(maybe_str, encoding='utf-8'):
     """
-    Converts any string-like input to a bytes-like output, with respect to python version
+    Converts any string-like input to a bytes-like output, with respect to
+    python version
 
     Parameters
     ----------
-    maybe_str : if this is a string-like object, it will be converted to bytes(assumes utf-8 encoding)
+    maybe_str : if this is a string-like object, it will be converted to bytes
     encoding  : str, default='utf-8'
         encoding to be used when encoding string
     """
@@ -55,12 +57,14 @@ def bytes_cast(maybe_str, encoding='utf-8'):
 
 def str_list_cast(list_, **kwargs):
     """
-    Converts any bytes-like items in input list to string-like values, with respect to python version
+    Converts any bytes-like items in input list to string-like values, with
+    respect to python version
 
     Parameters
     ----------
     list_ : list
-        any bytes-like objects contained in the list will be converted to strings (assumed utf-8 encoding)
+        any bytes-like objects contained in the list will be converted to
+        strings
     kwargs:
         encoding: str, default: 'utf-8'
             encoding to be used when decoding bytes
@@ -70,12 +74,13 @@ def str_list_cast(list_, **kwargs):
 
 def bytes_list_cast(list_, **kwargs):
     """
-    Converts any string-like items in input list to bytes-like values, with respect to python version
+    Converts any string-like items in input list to bytes-like values, with
+    respect to python version
 
     Parameters
     ----------
     list_ : list
-        any string-like objects contained in the list will be converted to bytes (assumed utf-8 encoding)
+        any string-like objects contained in the list will be converted to bytes
     kwargs:
         encoding: str, default: 'utf-8'
             encoding to be used when encoding string
@@ -85,12 +90,14 @@ def bytes_list_cast(list_, **kwargs):
 
 def str_dict_cast(dict_, include_keys=True, include_vals=True, **kwargs):
     """
-    Converts any bytes-like items in input dict to string-like values, with respect to python version
+    Converts any bytes-like items in input dict to string-like values, with
+    respect to python version
 
     Parameters
     ----------
     dict_ : dict
-        any bytes-like objects contained in the dict will be converted to a string (assumed utf-8 encoding)
+        any bytes-like objects contained in the dict will be converted to a
+        string
     include_keys : bool, default=True
         if True, cast keys to a string, else ignore
     include_values : bool, default=True
@@ -99,22 +106,21 @@ def str_dict_cast(dict_, include_keys=True, include_vals=True, **kwargs):
         encoding: str, default: 'utf-8'
             encoding to be used when decoding bytes
     """
-    old_keys = dict_.keys()
-    old_vals = dict_.values()
-    new_keys = str_list_cast(old_keys, **kwargs) if include_keys else old_keys
-    new_vals = str_list_cast(old_vals, **kwargs) if include_vals else old_vals
-    new_dict = dict(zip(new_keys, new_vals))
+    new_keys = str_list_cast(dict_.keys(), **kwargs) if include_keys else dict_.keys()
+    new_vals = str_list_cast(dict_.values(), **kwargs) if include_vals else dict_.values()
+    new_dict = dict(zip_(new_keys, new_vals))
     return new_dict
 
 
 def bytes_dict_cast(dict_, include_keys=True, include_vals=True, **kwargs):
     """
-    Converts any string-like items in input dict to bytes-like values, with respect to python version
+    Converts any string-like items in input dict to bytes-like values, with
+    respect to python version
 
     Parameters
     ----------
     dict_ : dict
-        any string-like objects contained in the dict will be converted to bytes (assumed utf-8 encoding)
+        any string-like objects contained in the dict will be converted to bytes
     include_keys : bool, default=True
         if True, cast keys to bytes, else ignore
     include_values : bool, default=True
@@ -123,11 +129,9 @@ def bytes_dict_cast(dict_, include_keys=True, include_vals=True, **kwargs):
         encoding: str, default: 'utf-8'
             encoding to be used when encoding string
     """
-    old_keys = dict_.keys()
-    old_vals = dict_.values()
-    new_keys = bytes_list_cast(old_keys, **kwargs) if include_keys else old_keys
-    new_vals = bytes_list_cast(old_vals, **kwargs) if include_vals else old_vals
-    new_dict = dict(zip(new_keys, new_vals))
+    new_keys = bytes_list_cast(dict_.keys(), **kwargs) if include_keys else dict_.keys()
+    new_vals = bytes_list_cast(dict_.values(), **kwargs) if include_vals else dict_.values()
+    new_dict = dict(zip_(new_keys, new_vals))
     return new_dict
 
 
@@ -138,12 +142,14 @@ def str_block_cast(block,
                    include_features=True,
                    **kwargs):
     """
-    Converts any bytes-like items in input Block object to string-like values, with respect to python version
+    Converts any bytes-like items in input Block object to string-like values,
+    with respect to python version
 
     Parameters
     ----------
     block : blocks.Block
-        any bytes-like objects contained in the block object will be converted to a string (assumed utf-8 encoding)
+        any bytes-like objects contained in the block object will be converted
+        to a string
     include_text : bool, default=True
         if True, cast text to a string, else ignore
     include_link_tokens : bool, default=True
@@ -156,10 +162,14 @@ def str_block_cast(block,
         encoding: str, default: 'utf-8'
             encoding to be used when decoding bytes
     """
-    block.text = str_cast(block.text, **kwargs)                    if include_text        else block.text
-    block.link_tokens = str_list_cast(block.link_tokens, **kwargs) if include_link_tokens else block.link_tokens
-    block.css = str_dict_cast(block.css, **kwargs)                 if include_css         else block.css
-    block.features = str_dict_cast(block.features, **kwargs)       if include_features    else block.features
+    if include_text:
+        block.text = str_cast(block.text, **kwargs)
+    if include_link_tokens:
+        block.link_tokens = str_list_cast(block.link_tokens, **kwargs)
+    if include_css:
+        block.css = str_dict_cast(block.css, **kwargs)
+    if include_features:
+        block.features = str_dict_cast(block.features, **kwargs)
     return block
 
 
@@ -170,12 +180,14 @@ def bytes_block_cast(block,
                      include_features=True,
                      **kwargs):
     """
-    Converts any string-like items in input Block object to bytes-like values, with respect to python version
+    Converts any string-like items in input Block object to bytes-like values,
+    with respect to python version
 
     Parameters
     ----------
     block : blocks.Block
-        any string-like objects contained in the block object will be converted to bytes (assumed utf-8 encoding)
+        any string-like objects contained in the block object will be converted
+        to bytes
     include_text : bool, default=True
         if True, cast text to bytes, else ignore
     include_link_tokens : bool, default=True
@@ -188,21 +200,27 @@ def bytes_block_cast(block,
         encoding: str, default: 'utf-8'
             encoding to be used when encoding string
     """
-    block.text = bytes_cast(block.text, **kwargs)                    if include_text        else block.text
-    block.link_tokens = bytes_list_cast(block.link_tokens, **kwargs) if include_link_tokens else block.link_tokens
-    block.css = bytes_dict_cast(block.css, **kwargs)                 if include_css         else block.css
-    block.features = bytes_dict_cast(block.features, **kwargs)       if include_features    else block.features
+    if include_text:
+        block.text = bytes_cast(block.text, **kwargs)
+    if include_link_tokens:
+        block.link_tokens = bytes_list_cast(block.link_tokens, **kwargs)
+    if include_css:
+        block.css = bytes_dict_cast(block.css, **kwargs)
+    if include_features:
+        block.features = bytes_dict_cast(block.features, **kwargs)
     return block
 
 
 def str_block_list_cast(blocks, **kwargs):
     """
-    Converts any bytes-like items in input lxml.Blocks to string-like values, with respect to python version
+    Converts any bytes-like items in input lxml.Blocks to string-like values,
+    with respect to python version
 
     Parameters
     ----------
     blocks : list[lxml.Block]
-        any bytes-like objects contained in the block object will be converted to a string (assumed utf-8 encoding)
+        any bytes-like objects contained in the block object will be converted
+        to a string
     kwargs:
         include_text : bool, default=True
             if True, cast text to a string, else ignore
@@ -220,12 +238,14 @@ def str_block_list_cast(blocks, **kwargs):
 
 def bytes_block_list_cast(blocks, **kwargs):
     """
-    Converts any string-like items in input lxml.Blocks to bytes-like values, with respect to python version
+    Converts any string-like items in input lxml.Blocks to bytes-like values,
+    with respect to python version
 
     Parameters
     ----------
     blocks : list[lxml.Block]
-        any string-like objects contained in the block object will be converted to bytes (assumed utf-8 encoding)
+        any string-like objects contained in the block object will be converted
+        to bytes
     kwargs:
         include_text : bool, default=True
             if True, cast text to bytes, else ignore
