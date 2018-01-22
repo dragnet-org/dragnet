@@ -23,7 +23,7 @@ class TestModels(unittest.TestCase):
             actual_content = json.load(f)
 
         for i, model in enumerate(models):
-            gold_standard = actual_content[i].encode('utf-8')
+            gold_standard = actual_content[i]
             passed = False
             for i in range(10):
                 content = model(self._html)

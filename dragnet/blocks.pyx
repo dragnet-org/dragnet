@@ -32,18 +32,17 @@ import math
 from compat import str_list_cast, str_dict_cast, str_block_cast, str_block_list_cast, str_cast, bytes_cast
 
 RE_HTML_ENCODING = re.compile(
-    r'<\s*meta[^>]+charset\s*?=\s*?[\'"]?([^>]*?)[ /;\'">]',
+    b'<\s*meta[^>]+charset\s*?=\s*?[\'"]?([^>]*?)[ /;\'">]',
     flags=re.IGNORECASE)
 RE_XML_ENCODING = re.compile(
-    r'^<\?.*?encoding\s*?=\s*?[\'"](.*?)[\'"].*?\?>',
+    b'^<\?.*?encoding\s*?=\s*?[\'"](.*?)[\'"].*?\?>',
     flags=re.IGNORECASE)
 RE_TEXT = re.compile(r'[^\W_]+', flags=re.UNICODE)
-re_tokenizer = re.compile('[\W_]+', re.UNICODE)
-re_tokenizer_nounicode = re.compile('[\W_]+')
+re_tokenizer = re.compile(r'[\W_]+', re.UNICODE)
+re_tokenizer_nounicode = re.compile(b'[\W_]+')
 
 
 def simple_tokenizer(x):
-    x = str_cast(x)
     return [ele for ele in re_tokenizer.split(x) if len(ele) > 0]
 
 # need a typedef for the callback function in text_from_subtree
@@ -78,7 +77,7 @@ cdef cpp_set[string] BLOCKS
 BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'map'}
 
 # define some commonly used strings here, otherwise Cython will always add
-# a little python overhead when using them even though they are constat
+# a little python overhead when using them even though they are constant
 cdef string CTEXT = <string>'text'
 cdef string CTAIL = <string>'tail'
 cdef string A = <string>'a'
@@ -393,20 +392,19 @@ cdef class PartialBlock:
             for k in range(self.css_attrib.size()):
                 self.css[self.css_attrib[k]].clear()
 
-    cdef cpp_map[string, int] _extract_features(self, bool append):
+    cdef object _extract_features(self, bool append):
         # call self.fe_name(append=True/False) where
         # append is True if this PartialBlock is appended
         # or False if it is not.
-        cdef cpp_map[string, int] ret
+        ret = {}
         cdef cpp_map[string, int] to_add
         cdef cpp_map[string, int].iterator it
         cdef size_t k
-        ret.clear()
         for k in range(self._name_func.size()):
             to_add = self._name_func[k](self, append)
             it = to_add.begin()
             while it != to_add.end():
-                ret[deref(it).first] = deref(it).second
+                ret[str_cast(deref(it).first)] = deref(it).second
                 inc(it)
         return ret
 
@@ -431,9 +429,8 @@ cdef class PartialBlock:
         cdef string cssa
         if len(block_tokens) > 0:
             # only process blocks with something other then white space
-            # NOTE: These are outbound values, so they can stay as strings after being cast
-            block_text = ' '.join(str_list_cast(block_tokens))
-            link_text = ' '.join(str_list_cast(self.link_tokens))
+            block_text = b' '.join(block_tokens)
+            link_text = b' '.join(self.link_tokens)
 
             # compute link/text density
             at = re_tokenizer_nounicode.split(link_text)
@@ -454,18 +451,15 @@ cdef class PartialBlock:
             if self.do_css:
                 for k in range(self.css_attrib.size()):
                     cssa = self.css_attrib[k]
-                    # NOTE: These are outbound values, so they can stay as strings after being cast
-                    css[cssa] = ' '.join( str_list_cast(
-                        _tokens_from_text(self.css[cssa]))).lower()
+                    css[cssa] = b' '.join(
+                        _tokens_from_text(self.css[cssa])).lower()
 
             kwargs = self._add_readability()
             kwargs.update(self._extract_features(True))
             kwargs['block_start_tag'] = self.block_start_tag
             kwargs['block_start_element'] = self.block_start_element
-            # NOTE: These are outbound values, so they are cast to strings
-            results.append(str_block_cast(Block(block_text, link_d,
-                                                text_d, self.anchors, self.link_tokens, css,
-                                                **str_dict_cast(kwargs))))
+            results.append(Block(block_text, link_d, text_d, self.anchors,
+                                 self.link_tokens, css, **kwargs))
         else:
             self._extract_features(False)
 
@@ -560,8 +554,7 @@ cdef class PartialBlock:
             attr = cetree.tree.xmlHasProp(node,
                 <cetree.tree.const_xmlChar*> attrib.c_str())
             if attr is not NULL:
-                id_class = str_cast(cetree.attributeValue(
-                    node, attr))
+                id_class = cetree.attributeValue(node, attr)
                 if re_readability_negative.search(id_class):
                     weight -= 25
                 if re_readability_positive.search(id_class):
@@ -790,10 +783,10 @@ def guess_encoding(markup, default='utf-8'):
     """
     xml_endpos = 1024
     html_endpos = max(2048, int(len(markup) * 0.05))
-    mo = RE_XML_ENCODING.search(str_cast(markup), endpos=xml_endpos)
+    mo = RE_XML_ENCODING.search(markup, endpos=xml_endpos)
     if mo:
         return mo.group(1)
-    moh = RE_HTML_ENCODING.search(str_cast(markup), endpos=html_endpos)
+    moh = RE_HTML_ENCODING.search(markup, endpos=html_endpos)
     if moh:
         return moh.group(1)
     if default.lower() == 'chardet':
