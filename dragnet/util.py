@@ -6,8 +6,15 @@ It may eventually be updated to use different scores for insertions, deletions,
 transpositions, etc. For the time being, however, it remains as presented in
 the article.
 """
+from __future__ import division
+import os
+import pkgutil
 
-from .compat import range_
+from sklearn.externals import joblib
+from sklearn.pipeline import FeatureUnion, make_union
+
+from .compat import model_path, range_, string_, PY2
+from .features import get_feature
 
 
 def dameraulevenshtein(seq1, seq2):
@@ -38,7 +45,7 @@ def dameraulevenshtein(seq1, seq2):
     # However, only the current and two previous rows are needed at once,
     # so we only store those.
     oneago = None
-    thisrow = range(1, len(seq2) + 1) + [0]
+    thisrow = list(range_(1, len(seq2) + 1)) + [0]
     for x in range_(len(seq1)):
         # Python lists wrap around for negative indices, so put the
         # leftmost column at the *end* of the list. This matches with
@@ -90,20 +97,73 @@ def evaluation_metrics(predicted, actual, bow=True):
         p = predicted
         a = actual
 
-    if len(p) == 0:
+    try:
+        precision = true_positive / len(p)
+    except ZeroDivisionError:
         precision = 0.0
-    else:
-        precision = true_positive / float(len(p))
-
-    if len(a) == 0:
+    try:
+        recall = true_positive / len(a)
+    except ZeroDivisionError:
         recall = 0.0
-    else:
-        recall = true_positive / float(len(a))
-
-    if precision + recall == 0:
+    try:
+        f1 = 2.0 * (precision * recall) / (precision + recall)
+    except ZeroDivisionError:
         f1 = 0.0
-    else:
-        f1 = 2.0 * precision * recall / (precision + recall)
 
     # return (precision, recall, f1, dameraulevenshtein(predicted, actual))
     return (precision, recall, f1)
+
+
+def get_and_union_features(features):
+    """
+    Get and combine features in a :class:`FeatureUnion`.
+
+    Args:
+        features (str or List[str], ``Features`` or List[``Features``], or List[Tuple[str, ``Features``]]):
+            One or more features to be used to transform blocks into a matrix of
+            numeric values. If more than one, a :class:`FeatureUnion` is
+            automatically constructed. Example inputs::
+
+                features = 'weninger'
+                features = ['weninger', 'kohlschuetter']
+                features = WeningerFeatures()
+                features = [WeningerFeatures(), KohlschuetterFeatures()]
+                features = [('weninger', WeningerFeatures()), ('kohlschuetter', KohlschuetterFeatures())]
+
+    Returns:
+        :class:`FeatureUnion` or ``Features``
+    """
+    if not features:
+        raise ValueError('invalid `features`: may not be null')
+    if isinstance(features, (list, tuple)):
+        if isinstance(features[0], tuple):
+            return FeatureUnion(features)
+        elif isinstance(features[0], string_):
+            return FeatureUnion([(feature, get_feature(feature)) for feature in features])
+        else:
+            return make_union(*features)
+    elif isinstance(features, string_):
+        return get_feature(features)
+    else:
+        return features
+
+
+def load_pickled_model(filename, dirname=None):
+    """
+    Load a pickled ``Extractor`` model from disk.
+
+    Args:
+        filename (str): Name of pickled model file under ``dirname``.
+        dirname (str): Name of directory on disk containing the pickled model.
+            If None, dragnet's default pickled model directory is used:
+            /path/to/dragnet/pickled_models/[PY_VERSION]_[SKLEARN_VERSION]
+
+    Returns:
+        :class:`dragnet.extractor.Extractor`
+    """
+    if dirname is None:
+        pkg_filename = pkgutil.get_loader('dragnet').get_filename()
+        pkg_dirname = os.path.dirname(pkg_filename)
+        dirname = os.path.join(pkg_dirname, 'pickled_models', model_path)
+    filepath = os.path.join(dirname, filename)
+    return joblib.load(filepath)

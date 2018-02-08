@@ -5,6 +5,9 @@ build/*
 dist/*
 dragnet.egg-info
 
+# IDEs
+.idea/*
+
 # cython temporary files
 dragnet/blocks.cpp
 dragnet/blocks.html
@@ -12,6 +15,9 @@ dragnet/lcs.cpp
 dragnet/lcs.html
 dragnet/_weninger.cpp
 dragnet/readability.cpp
+dragnet/features/_readability.cpp
+dragnet/features/_kohlschuetter.cpp
+dragnet/features/_weninger.cpp
 
 
 documents/*

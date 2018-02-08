@@ -1,29 +1,27 @@
 from dragnet.blocks import Blockifier, PartialBlock, BlockifyError
-from dragnet.features import NormalizedFeature, CSSFeatures
-from dragnet.content_extraction_model import ContentExtractionModel
-from dragnet.kohlschuetter import kohlschuetter_features, kohlschuetter
-from dragnet.util import evaluation_metrics
-from dragnet.weninger import weninger_features_kmeans
-from dragnet.readability import readability_features
-from dragnet.models import content_extractor, content_comments_extractor
+from dragnet import features
+from dragnet.extractor import Extractor
+from dragnet.util import load_pickled_model
+
+_LOADED_MODELS = {}
 
 
-class AllFeatures(object):
-    """Easy access to feature instances.
+def extract_content(html, encoding=None, as_blocks=False):
+    if 'content' not in _LOADED_MODELS:
+        _LOADED_MODELS['content'] = load_pickled_model(
+            'kohlschuetter_readability_weninger_content_model.pkl.gz')
+    return _LOADED_MODELS['content'].extract(html, encoding=encoding, as_blocks=as_blocks)
 
-    We need a way to get instances of the feature classes.
-    Since these classes are potentially mutated by clients,
-    we create a new instance on each access"""
 
-    @staticmethod
-    def get(key, *args, **kwargs):
-        if key == 'kohlschuetter':
-            return NormalizedFeature(kohlschuetter_features)
-        elif key == 'css':
-            return CSSFeatures()
-        elif key == 'weninger':
-            return weninger_features_kmeans
-        elif key == 'readability':
-            return NormalizedFeature(readability_features)
-        else:
-            raise KeyError
+def extract_comments(html, encoding=None, as_blocks=False):
+    if 'comments' not in _LOADED_MODELS:
+        _LOADED_MODELS['comments'] = load_pickled_model(
+            'kohlschuetter_readability_weninger_comments_model.pkl.gz')
+    return _LOADED_MODELS['comments'].extract(html, encoding=encoding, as_blocks=as_blocks)
+
+
+def extract_content_and_comments(html, encoding=None, as_blocks=False):
+    if 'content_and_comments' not in _LOADED_MODELS:
+        _LOADED_MODELS['content_and_comments'] = load_pickled_model(
+            'kohlschuetter_readability_weninger_comments_content_model.pkl.gz')
+    return _LOADED_MODELS['content_and_comments'].extract(html, encoding=encoding, as_blocks=as_blocks)
