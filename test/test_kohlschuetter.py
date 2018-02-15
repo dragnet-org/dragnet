@@ -48,7 +48,6 @@ class TestBlockifier(KohlschuetterUnitBase):
 
         also handles case where lxml returns None for the tree"""
         # this raises an error in parsing
-        self.assertRaises(etree.XMLSyntaxError, etree.fromstring, '', etree.HTMLParser(recover=True))
         self.assertRaises(BlockifyError, Blockifier.blockify, '')
 
         # this returns None in lxml
