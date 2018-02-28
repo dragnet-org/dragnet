@@ -121,8 +121,7 @@ request.
 
 # More details about the code structure
 
-The `Extractor` class encapsulates a blockifier, some feature extractors, and
-and a machine learning model.
+The `Extractor` class encapsulates a blockifier, some feature extractors and a machine learning model.
 
 A blockifier implements `blockify` that takes a HTML string and returns a list
 of block objects.  A feature extractor is a callable that takes a list
