@@ -1,0 +1,10 @@
+Training errors for final model (block level):
+{'accuracy': 0.9205167323012377,
+ 'f1': 0.9404319043625426,
+ 'precision': 0.9184194567439528,
+ 'recall': 0.9635254409178062}
+Test errors for final model (block level):
+{'accuracy': 0.8960239564871967,
+ 'f1': 0.9161795830853575,
+ 'precision': 0.8729650256683729,
+ 'recall': 0.9638954889057517}
