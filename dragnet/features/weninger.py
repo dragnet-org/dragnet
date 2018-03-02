@@ -20,7 +20,7 @@ class WeningerFeatures(BaseEstimator, TransformerMixin):
     __name__ = 'weninger'
 
     def __init__(self, sigma=1.0):
-        self.sigma = 1.0
+        self.sigma = sigma
 
     def fit(self, blocks, y=None):
         """
