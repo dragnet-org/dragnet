@@ -4,8 +4,9 @@ import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.ensemble import ExtraTreesClassifier
 
-from .compat import string_, str_cast
+from .compat import string_, str_cast, unicode_
 from .util import get_and_union_features
+from .blocks import TagCountNoCSSReadabilityBlockifier
 
 
 class Extractor(BaseEstimator, ClassifierMixin):
@@ -36,7 +37,7 @@ class Extractor(BaseEstimator, ClassifierMixin):
             ``predict_proba()`` method.
     """
 
-    def __init__(self, blockifier,
+    def __init__(self, blockifier=TagCountNoCSSReadabilityBlockifier,
                  features=('kohlschuetter', 'weninger', 'readability'),
                  model=None,
                  to_extract='content', prob_threshold=0.5, max_block_weight=200):
@@ -65,7 +66,7 @@ class Extractor(BaseEstimator, ClassifierMixin):
     def features(self, feats):
         self._features = get_and_union_features(feats)
 
-    def fit(self, blocks, labels, weights=None):
+    def fit(self, documents, labels, weights=None):
         """
         Fit :class`Extractor` features and model to a training dataset.
 
@@ -77,16 +78,25 @@ class Extractor(BaseEstimator, ClassifierMixin):
         Returns:
             :class`Extractor`
         """
-        features_mat = self.features.fit_transform(blocks)
+        block_groups = np.array([self.blockifier.blockify(doc) for doc in documents])
+        mask = [self._has_enough_blocks(blocks) for blocks in block_groups]
+        block_groups = block_groups[mask]
+        labels = np.concatenate(np.array(labels)[mask])
+
+        # TODO: This only 'fit's one doc at a time. No feature fitting actually
+        # happens for now, but this might be important if the features change
+        features_mat = np.concatenate([self.features.fit_transform(blocks)
+                                       for blocks in block_groups])
         if weights is None:
             self.model.fit(features_mat, labels)
         else:
+            weights = np.concatenate(np.array(weights)[mask])
             self.model.fit(features_mat, labels, sample_weight=weights)
         return self
 
-    def concatenate_data(self, data):
+    def get_html_labels_weights(self, data):
         """
-        Concatenate the blocks, labels, and weights of many files' data.
+        Gather the html, labels, and weights of many files' data.
         Primarily useful for training/testing an :class`Extractor`.
 
         Args:
@@ -96,19 +106,16 @@ class Extractor(BaseEstimator, ClassifierMixin):
             Tuple[List[Block], np.array(int), np.array(int)]: All blocks, all
                 labels, and all weights, respectively.
         """
-        all_blocks = []
-        all_labels = np.empty(0, dtype=int)
-        all_weights = np.empty(0, dtype=int)
+        all_html = []
+        all_labels = []
+        all_weights = []
         for html, content, comments in data:
-            blocks = self.blockifier.blockify(html)
-            if not self._has_enough_blocks(blocks):
-                continue
-            all_blocks.extend(blocks)
-            labels, weights, _ = self._get_labels_and_weights(
+            all_html.append(html)
+            labels, weights = self._get_labels_and_weights(
                 content, comments)
-            all_labels = np.hstack((all_labels, labels))
-            all_weights = np.hstack((all_weights, weights))
-        return all_blocks, all_labels, all_weights
+            all_labels.append(labels)
+            all_weights.append(weights)
+        return np.array(all_html), np.array(all_labels), np.array(all_weights)
 
     def _has_enough_blocks(self, blocks):
         if len(blocks) < 3:
@@ -126,29 +133,22 @@ class Extractor(BaseEstimator, ClassifierMixin):
         Returns:
             Tuple[np.array[int], np.array[int], List[str]]
         """
-        # TODO: get rid of the third element here and elsewhere?
         # extract content and comments
         if 'content' in self.to_extract and 'comments' in self.to_extract:
-            if self.max_block_weight is None:
-                return (np.logical_or(content[0], comments[0]).astype(int),
-                        content[1],
-                        content[2] + comments[2])
-            else:
-                return (np.logical_or(content[0], comments[0]).astype(int),
-                        np.minimum(content[1], self.max_block_weight),
-                        content[2] + comments[2])
+            labels = np.logical_or(content[0], comments[0]).astype(int)
+            weights = content[1],
         # extract content only
         elif 'content' in self.to_extract:
-            if self.max_block_weight is None:
-                return content
-            else:
-                return (content[0], np.minimum(content[1], self.max_block_weight), content[2])
+            labels = content[0]
+            weights = content[1]
         # extract comments only
         else:
-            if self.max_block_weight is None:
-                return comments
-            else:
-                return (comments[0], np.minimum(comments[1], self.max_block_weight), comments[2])
+            labels = comments[0]
+            weights = comments[1]
+        if self.max_block_weight is None:
+            weights = np.minimum(weights, self.max_block_weight)
+
+        return labels, weights
 
     def extract(self, html, encoding=None, as_blocks=False):
         """
@@ -166,55 +166,62 @@ class Extractor(BaseEstimator, ClassifierMixin):
         Returns:
             str or List[Block]
         """
-        blocks = self.blockifier.blockify(html, encoding=encoding)
-        return self.extract_from_blocks(blocks, as_blocks=as_blocks)
-
-    def extract_from_blocks(self, blocks, as_blocks=False):
-        """
-        Extract the main content and/or comments from a sequence of (all) blocks
-        and return it as a string or as a sequence of block objects.
-
-        Args:
-            blocks (List[Block]): Blockify'd HTML document.
-            as_blocks (bool): If False, return the main content as a combined
-                string; if True, return the content-holding blocks as a list of
-                block objects.
-
-        Returns:
-            str or List[Block]
-        """
-        if not self._has_enough_blocks(blocks):
-            if as_blocks is False:
-                return ''
-            else:
-                return []
-        features_mat = self.features.transform(blocks)
-        if self.prob_threshold is None:
-            preds = self.model.predict(features_mat)
-        else:
-            self._positive_idx = (
-                self._positive_idx or list(self.model.classes_).index(1))
-            preds = (self.model.predict_proba(features_mat) > self.prob_threshold)[:, self._positive_idx]
+        preds, blocks = self.predict(html, encoding=encoding, return_blocks=True)
         if as_blocks is False:
             return str_cast(b'\n'.join(blocks[ind].text for ind in np.flatnonzero(preds)))
         else:
             return [blocks[ind] for ind in np.flatnonzero(preds)]
 
-    def predict(self, blocks):
+
+    def predict(self, documents, **kwargs):
         """
-        Predict class (content=1 or not-content=0) of each block in a sequence.
+        Predict class (content=1 or not-content=0) of the blocks in one or many
+        HTML document(s).
 
         Args:
-            blocks (List[Block]): Blockify'd HTML document.
+            documents (str or List[str]): HTML document(s)
 
         Returns:
-            ``np.ndarray``: 1D array of block-level, binary predictions for
-                content (1) or not-content (0).
+            ``np.ndarray`` or List[``np.ndarray``]: array of binary predictions
+                for content (1) or not-content (0).
         """
-        features_mat = self.features.transform(blocks)
-        if self.prob_threshold is None:
-            return self.model.predict(features_mat)
+        if isinstance(documents, (str, bytes, unicode_, np.unicode_)):
+            return self._predict_one(documents, **kwargs)
         else:
-            self._positive_idx = (
-                self._positive_idx or list(self.model.classes_).index(1))
-            return (self.model.predict_proba(features_mat) > self.prob_threshold)[:, self._positive_idx].astype(int)
+            return np.concatenate([self._predict_one(doc, **kwargs) for doc in documents])
+
+
+    def _predict_one(self, document, encoding=None, return_blocks=False):
+        """
+        Predict class (content=1 or not-content=0) of each block in an HTML
+        document.
+
+        Args:
+            documents (str): HTML document
+
+        Returns:
+            ``np.ndarray``: array of binary predictions for content (1) or
+            not-content (0).
+        """
+        # blockify
+        blocks = self.blockifier.blockify(document, encoding=encoding)
+        # get features
+        try:
+            features = self.features.transform(blocks)
+        except ValueError: # Can't make features, predict no content
+            preds = np.zeros((len(blocks)))
+        # make predictions
+        else:
+            if self.prob_threshold is None:
+                preds = self.model.predict(features)
+            else:
+                self._positive_idx = (
+                    self._positive_idx or list(self.model.classes_).index(1))
+                preds = self.model.predict_proba(features) > self.prob_threshold
+                preds = preds[:, self._positive_idx].astype(int)
+
+        if return_blocks:
+            return preds, blocks
+        else:
+            return preds
+
