@@ -167,7 +167,6 @@ The training and test data is available at [dragnet_data](https://github.com/seo
     and the CETR features from Weninger et al.:
 
     ```python
-    from dragnet.blocks import TagCountNoCSSReadabilityBlockifier
     from dragnet.extractor import Extractor
     from dragnet.model_training import train_model
     from sklearn.ensemble import ExtraTreesClassifier
@@ -176,14 +175,14 @@ The training and test data is available at [dragnet_data](https://github.com/seo
 
     features = ['kohlschuetter', 'weninger', 'readability']
 
-    to_extract = 'both'   # or 'content'
+    to_extract = ['content', 'comments']   # or ['content']
 
     model = ExtraTreesClassifier(
         n_estimators=10,
         max_features=None,
         min_samples_leaf=75
     )
-    base_extractor = Extractor(TagCountNoCSSReadabilityBlockifier,
+    base_extractor = Extractor(
         features=features,
         to_extract=to_extract,
         model=model
@@ -216,11 +215,12 @@ rootdir = '/path/to/dragnet_data/'
 data = prepare_all_data(rootdir)
 training_data, test_data = train_test_split(data, test_size=0.2, random_state=42)
 
-test_blocks, test_labels, test_weights = extractor.concatenate_data(test_data)
-train_blocks, train_labels, train_weights = extractor.concatenate_data(training_data)
+test_html, test_labels, test_weights = extractor.get_html_labels_weights(test_data)
+train_html, train_labels, train_weights = extractor.get_html_labels_weights(training_data)
 
-extractor.fit(train_blocks, train_labels, weights=train_weights)
-predictions = extractor.predict(test_blocks)
-scores = evaluate_model_predictions(test_labels, predictions)
+extractor.fit(train_html, train_labels, weights=train_weights)
+predictions = extractor.predict(test_html)
+scores = evaluate_model_predictions(test_labels, predictions, test_weights)
 ```
 
+Note that this is the same evaluation that is run/printed in `train_model`
