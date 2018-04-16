@@ -95,7 +95,7 @@ setup(
     install_requires = [
         'Cython>=0.21.1',
         'lxml',
-        'scikit-learn>=0.15.2,<0.19.0',
+        'scikit-learn>=0.15.2,<=0.19.2',
         'numpy',
         'scipy',
         'ftfy>=4.1.0,<5.0.0'
