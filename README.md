@@ -99,8 +99,8 @@ $ make test
 
 ### Installing without Vagrant
 
-1.  Install the dependencies need for Dragnet.  The build depends on numpy,
-Cython and lxml (which in turn depends on `libxml2`).  We use `provision.sh`
+1.  Install the dependencies need for Dragnet. The build depends on GCC, numpy,
+Cython and lxml (which in turn depends on `libxml2`). We use `provision.sh`
 to provision the Vagrant VM so you can use it as a template and modify
 as appropriate for your operation system.
 2.  Clone the master branch: `git clone git@github.com:seomoz/dragnet.git`
