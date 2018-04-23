@@ -1,12 +1,13 @@
 # compiled files
 *.pyc
 *.so
-build/*
-dist/*
+build/
+dist/
+venv/
 dragnet.egg-info
 
 # IDEs
-.idea/*
+.idea/
 
 # cython temporary files
 dragnet/blocks.cpp
@@ -19,9 +20,8 @@ dragnet/features/_readability.cpp
 dragnet/features/_kohlschuetter.cpp
 dragnet/features/_weninger.cpp
 
-
-documents/*
-output/*
+documents/
+output/
 
 .coverage
 
