@@ -30,6 +30,7 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 from Cython.Build import cythonize
 
+
 def find_libxml2_include():
     include_dirs = []
     for d in ['/usr/include/libxml2', '/usr/local/include/libxml2']:
@@ -37,15 +38,14 @@ def find_libxml2_include():
             include_dirs.append(d)
     return include_dirs
 
-
 ext_modules = [
     Extension('dragnet.lcs',
               sources=["dragnet/lcs.pyx"],
-              include_dirs = [get_include()],
+              include_dirs=[get_include()],
               language="c++"),
     Extension('dragnet.blocks',
               sources=["dragnet/blocks.pyx"],
-              include_dirs = lxml.get_include() + find_libxml2_include(),
+              include_dirs=(lxml.get_include() + find_libxml2_include()),
               language="c++",
               libraries=['xml2']),
     Extension('dragnet.features._readability',
@@ -63,18 +63,17 @@ ext_modules = [
               language="c++"),
 ]
 
-
 setup(
-    name             = 'dragnet',
-    version          = '2.0.2',
-    description      = 'Extract the main article content (and optionally comments) from a web page',
-    author           = 'Matt Peters, Dan Lecocq',
-    author_email     = 'matt@moz.com, dan@moz.com',
-    url              = 'http://github.com/seomoz/dragnet',
-    license          = 'MIT',
-    platforms        = 'Posix; MacOS X',
-    keywords         = 'automatic content extraction, web page dechroming, HTML parsing',
-    classifiers      = [
+    name='dragnet',
+    version='2.0.2',
+    description='Extract the main article content (and optionally comments) from a web page',
+    author='Matt Peters, Dan Lecocq',
+    author_email='matt@moz.com, dan@moz.com',
+    url='http://github.com/seomoz/dragnet',
+    license='MIT',
+    platforms='Posix; MacOS X',
+    keywords='automatic content extraction, web page dechroming, HTML parsing',
+    classifiers=[
         'License :: OSI Approved :: MIT License',
         'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
@@ -86,13 +85,13 @@ setup(
         'Intended Audience :: Science/Research',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
-        ],
-    packages         = ['dragnet', 'dragnet.features'],
-    package_dir      = {'dragnet':'dragnet', 'dragnet.features':'dragnet/features'},
-    package_data     = {'dragnet':['pickled_models/*/*']},
-    cmdclass         = {'build_ext': build_ext},
-    ext_modules      = cythonize(ext_modules),
-    install_requires = [
+    ],
+    packages=['dragnet', 'dragnet.features'],
+    package_dir={'dragnet': 'dragnet', 'dragnet.features': 'dragnet/features'},
+    package_data={'dragnet': ['pickled_models/*/*']},
+    cmdclass={'build_ext': build_ext},
+    ext_modules=cythonize(ext_modules),
+    install_requires=[
         'Cython>=0.21.1',
         'lxml',
         'scikit-learn>=0.15.2,<=0.19.2',
