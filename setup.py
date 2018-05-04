@@ -23,6 +23,7 @@
 
 import os.path
 import lxml
+import sys
 
 from setuptools import setup
 from numpy import get_include
@@ -51,7 +52,7 @@ ext_modules = [
     Extension('dragnet.features._readability',
               sources=["dragnet/features/_readability.pyx"],
               include_dirs=[get_include()],
-              extra_compile_args=['-std=c++11', '-mmacosx-version-min=10.9'],
+              extra_compile_args=['-std=c++11'] + (['-mmacosx-version-min=10.9'] if sys.platform.startswith("darwin") else []),
               language="c++"),
     Extension('dragnet.features._kohlschuetter',
               sources=["dragnet/features/_kohlschuetter.pyx"],
