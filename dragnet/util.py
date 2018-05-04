@@ -147,6 +147,23 @@ def get_and_union_features(features):
     else:
         return features
 
+def _package_path(name):
+    """Returns the path to the package containing the named module or
+    None if the path could not be identified (e.g., if
+    ``name == "__main__"``).
+    """
+    loader = pkgutil.get_loader(name)
+    if loader is None or name == b'__main__':
+        return None
+
+    if hasattr(loader, 'get_filename'):
+        filepath = loader.get_filename(name)
+    else:
+        # Fall back to importing the specified module.
+        __import__(name)
+        filepath = sys.modules[name].__file__
+
+    return os.path.dirname(os.path.abspath(filepath)) 
 
 def load_pickled_model(filename, dirname=None):
     """
@@ -162,7 +179,8 @@ def load_pickled_model(filename, dirname=None):
         :class:`dragnet.extractor.Extractor`
     """
     if dirname is None:
-        pkg_filename = pkgutil.get_loader('dragnet').get_filename()
+        # pkg_filename = pkgutil.get_loader('dragnet').get_filename('dragnet')
+        pkg_filename = _package_path('dragnet')
         pkg_dirname = os.path.dirname(pkg_filename)
         dirname = os.path.join(pkg_dirname, 'pickled_models', model_path)
     filepath = os.path.join(dirname, filename)

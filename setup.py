@@ -51,7 +51,7 @@ ext_modules = [
     Extension('dragnet.features._readability',
               sources=["dragnet/features/_readability.pyx"],
               include_dirs=[get_include()],
-              extra_compile_args=['-std=c++0x'],
+              extra_compile_args=['-std=c++11', '-mmacosx-version-min=10.9'],
               language="c++"),
     Extension('dragnet.features._kohlschuetter',
               sources=["dragnet/features/_kohlschuetter.pyx"],
