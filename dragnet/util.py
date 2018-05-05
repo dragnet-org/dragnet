@@ -147,7 +147,6 @@ def get_and_union_features(features):
     else:
         return features
 
-
 def load_pickled_model(filename, dirname=None):
     """
     Load a pickled ``Extractor`` model from disk.
@@ -162,7 +161,7 @@ def load_pickled_model(filename, dirname=None):
         :class:`dragnet.extractor.Extractor`
     """
     if dirname is None:
-        pkg_filename = pkgutil.get_loader('dragnet').get_filename()
+        pkg_filename = pkgutil.get_loader('dragnet').get_filename('dragnet')
         pkg_dirname = os.path.dirname(pkg_filename)
         dirname = os.path.join(pkg_dirname, 'pickled_models', model_path)
     filepath = os.path.join(dirname, filename)

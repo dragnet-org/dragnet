@@ -17,8 +17,12 @@ nose:
 unittest:
 	python -m unittest discover -s test
 
-install: build
-	python setup.py install
+# using python setup.py deploys as .egg, causing the model file not found
+# using pip install deploys as a directory, so the model file can be found
+# install: build
+#	python setup.py install
 
 install-pip: build
 	pip install .
+
+install: install-pip
