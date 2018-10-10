@@ -316,8 +316,8 @@ def read_gold_standard_blocks_file(data_dir, fileroot, split_blocks=True):
     with io.open(fname, mode='r') as f:
         data = f.read()
     if split_blocks:
-        return data[:-1].split('\n')
-    return data
+        return filter(None, data[:-1].split('\n'))
+    return filter(None, data)
 
 
 def _parse_content_or_comments_blocks(blocks, block_pct_tokens_thresh):

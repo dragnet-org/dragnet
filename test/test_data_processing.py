@@ -97,6 +97,14 @@ class TestExtractGoldStandard(unittest.TestCase):
             os.remove(actual_filepath)
             self.assertEqual(expected_blocks, actual_blocks)
 
+    def test_extract_blank_label(self):
+        blank_label = data_processing.read_gold_standard_blocks_file(FIXTURES, 'blank_label')
+        assert len(list(blank_label)) == 0
+
+        blank_data = data_processing.prepare_data(FIXTURES, 'blank_label')
+        assert len(blank_data[0]) > 0
+
+
 
 if __name__ == "__main__":
     unittest.main()
