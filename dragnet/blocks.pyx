@@ -846,10 +846,10 @@ class Blockifier(object):
                 etree.HTMLParser(recover=True, encoding=encoding,
                 remove_comments=True, remove_pis=True))
         except:
-            raise BlockifyError
+            raise BlockifyError, 'Could not blockify HTML'
         if html is None:
             # lxml sometimes doesn't raise an error but returns None
-            raise BlockifyError
+            raise BlockifyError, 'Could not blockify HTML'
 
         blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability)
 
