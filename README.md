@@ -19,7 +19,7 @@ at WWW in 2013, gives an overview of the machine learning approach.
 
 This project was originally inspired by
 Kohlschütter et al, [Boilerplate Detection using Shallow Text Features](http://www.l3s.de/~kohlschuetter/publications/wsdm187-kohlschuetter.pdf) and
-Weninger et al [CETR -- Content Extraction with Tag Ratios](http://web.engr.illinois.edu/~weninge1/cetr/), and more recently by [Readability](https://github.com/buriy/python-readability).
+Weninger et al [CETR -- Content Extraction with Tag Ratios](https://www3.nd.edu/~tweninge/cetr/#main-content-area), and more recently by [Readability](https://github.com/buriy/python-readability).
 
 # GETTING STARTED
 
