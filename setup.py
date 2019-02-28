@@ -22,14 +22,10 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os.path
-import lxml
 import sys
 
-from setuptools import setup
-from numpy import get_include
-from distutils.extension import Extension
-from Cython.Distutils import build_ext
-from Cython.Build import cythonize
+from setuptools import setup, Extension
+from setuptools.command.build_ext import build_ext
 
 
 def find_libxml2_include():
@@ -39,28 +35,38 @@ def find_libxml2_include():
             include_dirs.append(d)
     return include_dirs
 
+
+class CustomBuildExt(build_ext):
+    def finalize_options(self):
+        build_ext.finalize_options(self)
+
+        __builtins__.__NUMPY_SETUP__ = False
+
+        import Cython
+        import lxml
+        import numpy
+
+        include_dirs = [numpy.get_include()] + lxml.get_include() + find_libxml2_include()
+
+        self.include_dirs.extend(include_dirs)
+
 ext_modules = [
     Extension('dragnet.lcs',
-              sources=["dragnet/lcs.pyx"],
-              include_dirs=[get_include()],
+              sources=["dragnet/lcs.cpp"],
               language="c++"),
     Extension('dragnet.blocks',
-              sources=["dragnet/blocks.pyx"],
-              include_dirs=(lxml.get_include() + find_libxml2_include()),
+              sources=["dragnet/blocks.cpp"],
               language="c++",
               libraries=['xml2']),
     Extension('dragnet.features._readability',
-              sources=["dragnet/features/_readability.pyx"],
-              include_dirs=[get_include()],
+              sources=["dragnet/features/_readability.cpp"],
               extra_compile_args=['-std=c++11'] + (['-mmacosx-version-min=10.9'] if sys.platform.startswith("darwin") else []),
               language="c++"),
     Extension('dragnet.features._kohlschuetter',
-              sources=["dragnet/features/_kohlschuetter.pyx"],
-              include_dirs=[get_include()],
+              sources=["dragnet/features/_kohlschuetter.cpp"],
               language="c++"),
     Extension('dragnet.features._weninger',
-              sources=["dragnet/features/_weninger.pyx"],
-              include_dirs=[get_include()],
+              sources=["dragnet/features/_weninger.cpp"],
               language="c++"),
 ]
 
@@ -93,8 +99,13 @@ setup(
     packages=['dragnet', 'dragnet.features'],
     package_dir={'dragnet': 'dragnet', 'dragnet.features': 'dragnet/features'},
     package_data={'dragnet': ['pickled_models/*/*']},
-    cmdclass={'build_ext': build_ext},
-    ext_modules=cythonize(ext_modules),
+    cmdclass={'build_ext': CustomBuildExt},
+    ext_modules=ext_modules,
+    setup_requires=[
+        'Cython>=0.21.1',
+        'lxml',
+        'numpy'
+    ],
     install_requires=[
         'Cython>=0.21.1',
         'lxml',
