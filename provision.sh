@@ -4,8 +4,8 @@ set -e
 
 sudo apt-get update
 
-sudo apt-get -y install libatlas-base-dev libatlas-dev lib{blas,lapack}-dev
-sudo apt-get -y install libxslt-dev libxml2-dev gcc g++
+sudo apt-get -y install build-essential libatlas-base-dev libatlas-dev  libblas-dev liblapack-dev
+sudo apt-get -y install libxslt-dev libxml2-dev gcc g++ curl
 
 curl -O https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
 bash Miniconda2-latest-Linux-x86_64.sh -b
