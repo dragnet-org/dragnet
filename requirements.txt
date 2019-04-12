@@ -1,8 +1,8 @@
-nose
 coverage
 Cython>=0.21.1
-lxml
-scikit-learn>=0.15.2,<=0.20
-numpy
-scipy
 ftfy>=4.1.0,<5.0.0
+lxml
+nose
+numpy>=1.11.0
+scikit-learn>=0.15.2,<0.21.0
+scipy>=0.17.0
