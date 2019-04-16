@@ -97,10 +97,10 @@ setup(
     ext_modules=cythonize(ext_modules),
     install_requires=[
         'Cython>=0.21.1',
+        'ftfy>=4.1.0,<5.0.0',
         'lxml',
-        'scikit-learn>=0.15.2,<=0.20',
-        'numpy',
-        'scipy',
-        'ftfy>=4.1.0,<5.0.0'
+        'numpy>=1.11.0',
+        'scikit-learn>=0.15.2,<0.21.0',
+        'scipy>=0.17.0',
     ]
 )
