@@ -44,7 +44,7 @@ def css_output_tokens(blocks, attrib, true_tokens):
         assert css_tokens == true_tokens[k]
 
 
-class TestBlockifier1(object):
+class TestBlockifier(object):
 
     def test_lxml_error(self):
         """tests the case where lxml raises an error during parsing
@@ -278,7 +278,7 @@ class TestBlockifier1(object):
         )
 
 
-class TestKohlschuetter1(object):
+class TestKohlschuetter(object):
 
     def test_small_doc(self):
         kf = KohlschuetterFeatures()
