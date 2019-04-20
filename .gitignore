@@ -23,7 +23,7 @@ dragnet/features/_weninger.cpp
 documents/
 output/
 
-.coverage
+.coverage*
 
 # vim temp files
 *.swp
