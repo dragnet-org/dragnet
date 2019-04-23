@@ -81,7 +81,7 @@ class TestBlockifier(object):
     @staticmethod
     def count_divs(tree):
         div_xpath = etree.XPath("//div")
-        TestBlockifier1.div_count = len(div_xpath(tree))
+        TestBlockifier.div_count = len(div_xpath(tree))
 
     def test_callback(self):
         s = """<div>some text <i>in italic</i> and something else
