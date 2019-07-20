@@ -22,16 +22,16 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os.path
-import lxml
 import platform
+from setuptools import setup
+# have to import `Extension` after `setuptools.setup`
+from distutils.extension import Extension
 import sys
 
-from setuptools import setup
-from numpy import get_include
-from distutils.extension import Extension
 from Cython.Distutils import build_ext
 from Cython.Build import cythonize
-
+import lxml
+from numpy import get_include
 
 def find_libxml2_include():
     include_dirs = []
