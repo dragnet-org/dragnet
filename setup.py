@@ -96,6 +96,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     packages=['dragnet', 'dragnet.features'],
     package_dir={'dragnet': 'dragnet', 'dragnet.features': 'dragnet/features'},
