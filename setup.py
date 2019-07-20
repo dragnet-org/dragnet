@@ -23,6 +23,7 @@
 
 import os.path
 import lxml
+import platform
 import sys
 
 from setuptools import setup
@@ -39,6 +40,12 @@ def find_libxml2_include():
             include_dirs.append(d)
     return include_dirs
 
+# set min MacOS version, if necessary
+if sys.platform == 'darwin':
+    os_version = '.'.join(platform.mac_ver()[0].split('.')[:2])
+    # this seems to work better than the -mmacosx-version-min flag
+    os.environ['MACOSX_DEPLOYMENT_TARGET'] = os_version
+
 ext_modules = [
     Extension('dragnet.lcs',
               sources=["dragnet/lcs.pyx"],
@@ -52,7 +59,7 @@ ext_modules = [
     Extension('dragnet.features._readability',
               sources=["dragnet/features/_readability.pyx"],
               include_dirs=[get_include()],
-              extra_compile_args=['-std=c++11'] + (['-mmacosx-version-min=10.9'] if sys.platform.startswith("darwin") else []),
+              extra_compile_args=['-std=c++11'],
               language="c++"),
     Extension('dragnet.features._kohlschuetter',
               sources=["dragnet/features/_kohlschuetter.pyx"],
