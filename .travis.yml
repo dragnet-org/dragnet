@@ -1,54 +1,35 @@
-language: python
-python:
-  - 3.5
-
-env:
-  global:
-    - CONDA_INSTALL_PATH=$HOME/conda
-    - PROJ_DIR=$HOME/miniconda
-  matrix:
-    - PYTHON_VERSION='3.5'
-    - PYTHON_VERSION='2.7'
-
+language: generic
 sudo: required
 
-#cache:
-#  apt: true
-#  pip: true
-#  directories:
-#    - $PROJ_DIR
+os:
+  - linux
+  - osx
 
-before_install:
-  - ls /etc/profile.d/
+env:
+  matrix:
+    - PYTHON=2.7
+    - PYTHON=3.5
+    - PYTHON=3.6
+    - PYTHON=3.7
 
 install:
-  - export MINICONDA_VER='4.2.12'
-  - export MINICONDA_VARIANT='3'
-  - export OS_TYPE="Linux-x86_64.sh"
-  - sudo chmod 777 /etc/profile.d
-  - ls -la /etc/profile.d/
-  - wget -O - https://raw.githubusercontent.com/bomboradata/bootstrap-conda/master/bootstrap-conda.sh | bash
-  - sudo chmod 755 /etc/profile.d
-  - ls -la /etc/profile.d/
-  - source /etc/profile
-  - source /etc/profile.d/conda.sh
-  - echo "$PATH"
-  - echo "$PWD"
-  - ls -la $HOME
-  - conda update --all --yes --quiet
-  - conda info
-  - conda list
-  - echo "$PATH"
-  - echo "$PWD"
+  # use miniconda until travis supports python on osx
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+    wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O ~/miniconda.sh;
+    elif [ "$TRAVIS_OS_NAME" == "linux" ]; then
+    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh;
+    fi
+  - bash ~/miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - conda create --yes -n python-env python=$PYTHON
+  - source activate python-env
+
+  - pip install -r requirements.txt
+  - pip list
+  - pip install .
 
 after_install:
-  - ls /etc/profile.d/
+  - pip list
 
 script:
-  - conda create --yes --quiet --name=dragnet-$PYTHON_VERSION python=$PYTHON_VERSION
-  - conda env update --quiet --name=dragnet-$PYTHON_VERSION --file=./env/env_dragnet.yml
-  - conda info
-  - conda list
-  - source activate dragnet-$PYTHON_VERSION
-  - make install-pip
-  - make test
+  - pytest

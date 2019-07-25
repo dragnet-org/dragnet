@@ -22,15 +22,16 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import os.path
-import lxml
+import platform
+from setuptools import setup
+# have to import `Extension` after `setuptools.setup`
+from distutils.extension import Extension
 import sys
 
-from setuptools import setup
-from numpy import get_include
-from distutils.extension import Extension
 from Cython.Distutils import build_ext
 from Cython.Build import cythonize
-
+import lxml
+from numpy import get_include
 
 def find_libxml2_include():
     include_dirs = []
@@ -38,6 +39,12 @@ def find_libxml2_include():
         if os.path.exists(os.path.join(d, 'libxml/tree.h')):
             include_dirs.append(d)
     return include_dirs
+
+# set min MacOS version, if necessary
+if sys.platform == 'darwin':
+    os_version = '.'.join(platform.mac_ver()[0].split('.')[:2])
+    # this seems to work better than the -mmacosx-version-min flag
+    os.environ['MACOSX_DEPLOYMENT_TARGET'] = os_version
 
 ext_modules = [
     Extension('dragnet.lcs',
@@ -52,7 +59,7 @@ ext_modules = [
     Extension('dragnet.features._readability',
               sources=["dragnet/features/_readability.pyx"],
               include_dirs=[get_include()],
-              extra_compile_args=['-std=c++11'] + (['-mmacosx-version-min=10.9'] if sys.platform.startswith("darwin") else []),
+              extra_compile_args=['-std=c++11'],
               language="c++"),
     Extension('dragnet.features._kohlschuetter',
               sources=["dragnet/features/_kohlschuetter.pyx"],
@@ -89,6 +96,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     packages=['dragnet', 'dragnet.features'],
     package_dir={'dragnet': 'dragnet', 'dragnet.features': 'dragnet/features'},
