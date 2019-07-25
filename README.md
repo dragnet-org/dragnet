@@ -87,7 +87,7 @@ virtual machine with Dragnet and it's dependencies.
 
 1. Install [vagrant](https://www.vagrantup.com/downloads.html).
 2. Install [Virtual Box](https://www.virtualbox.org/wiki/Downloads).
-3. Clone the master branch: `git clone git@github.com:seomoz/dragnet.git`
+3. Clone the master branch: `git clone https://github.com/dragnet-org/dragnet.git`
 4. Bring up the vagrant box: `vagrant up`
 5. Log into the vagrant box:
 
@@ -103,7 +103,7 @@ $ make test
 Cython and lxml (which in turn depends on `libxml2`). We use `provision.sh`
 to provision the Vagrant VM so you can use it as a template and modify
 as appropriate for your operation system.
-2.  Clone the master branch: `git clone git@github.com:seomoz/dragnet.git`
+2.  Clone the master branch: `git clone https://github.com/dragnet-org/dragnet.git`
 3.  Install the requirements: `sudo pip install -r dragnet/requirements.txt`
 4.  Build dragnet
 
