@@ -2,7 +2,7 @@
 Dragnet
 =======
 
-[![Build Status](https://api.travis-ci.org/seomoz/dragnet.png)](https://api.travis-ci.org/seomoz/dragnet.png)
+[![Build Status](https://travis-ci.com/dragnet-org/dragnet.svg?branch=master)](https://travis-ci.com/dragnet-org/dragnet)
 
 Dragnet isn't interested in the shiny chrome or boilerplate dressing
 of a web page. It's interested in... 'just the facts.'  The machine
