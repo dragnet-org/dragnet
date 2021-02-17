@@ -134,7 +134,7 @@ the content/no-content prediction for each block.
 
 # Training/test data
 
-The training and test data is available at [dragnet_data](https://github.com/seomoz/dragnet_data).
+The training and test data is available at [dragnet_data](https://github.com/dragnet-org/dragnet_data).
 
 # Training content extraction models
 
