@@ -1,4 +1,3 @@
-
 Dragnet
 =======
 
@@ -8,7 +7,7 @@ Dragnet isn't interested in the shiny chrome or boilerplate dressing
 of a web page. It's interested in... 'just the facts.'  The machine
 learning models in Dragnet extract the main article content and
 optionally user generated comments from a web page.  They provide
-state of the art performance on variety of test benchmarks.
+state of the art performance on a variety of test benchmarks.
 
 For more information on our approach check out:
 
@@ -80,36 +79,35 @@ for HTML parsing.
 We recommend installing from the master branch to ensure you have the latest
 version.
 
-### Installing with Vagrant:
+### Installing with Docker:
 
-This is the easiest method to install Dragnet and builds a Vagrant
-virtual machine with Dragnet and it's dependencies.
+This is the easiest method to install Dragnet and builds a Docker
+container with Dragnet and its dependencies.
 
-1. Install [vagrant](https://www.vagrantup.com/downloads.html).
-2. Install [Virtual Box](https://www.virtualbox.org/wiki/Downloads).
-3. Clone the master branch: `git clone https://github.com/dragnet-org/dragnet.git`
-4. Bring up the vagrant box: `vagrant up`
-5. Log into the vagrant box:
+1. Install [Docker](https://docs.docker.com/get-docker/).
+2. Clone the master branch: `git clone https://github.com/dragnet-org/dragnet.git`
+3. Build the docker container: `docker build -t dragnet .`
+4. Run the tests: `docker run dragnet make test`
 
+You can also run an interactive Python session:
 ```bash
-vagrant ssh
-# these should now pass
-$ make test
+docker run -ti dragnet python3
 ```
 
-### Installing without Vagrant
+### Installing without Docker
 
-1.  Install the dependencies need for Dragnet. The build depends on GCC, numpy,
-Cython and lxml (which in turn depends on `libxml2`). We use `provision.sh`
-to provision the Vagrant VM so you can use it as a template and modify
-as appropriate for your operation system.
+1.  Install the dependencies needed for Dragnet. The build depends on
+GCC, numpy, Cython and lxml (which in turn depends on `libxml2`). We
+use `provision.sh` to setup the dependencies in the Docker container,
+so you can use it as a template and modify as appropriate for your
+operation system.
 2.  Clone the master branch: `git clone https://github.com/dragnet-org/dragnet.git`
-3.  Install the requirements: `sudo pip install -r dragnet/requirements.txt`
-4.  Build dragnet
+3.  Install the requirements: `cd dragnet; pip install -r requirements.txt`
+4.  Build dragnet:
 
 ```bash
 $ cd dragnet
-$ sudo make install
+$ make install
 # these should now pass
 $ make test
 ```
