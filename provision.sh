@@ -1,27 +1,25 @@
-
 # die on error
 set -e
 
-sudo apt-get update
+apt-get update
 
-sudo apt-get -y install libatlas-base-dev libatlas-dev lib{blas,lapack}-dev
-sudo apt-get -y install libxslt-dev libxml2-dev gcc g++
+export DEBIAN_FRONTEND=noninteractive
 
-curl -O https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh
-bash Miniconda2-latest-Linux-x86_64.sh -b
-rm Miniconda2-latest-Linux-x86_64.sh
-export PATH=$HOME/miniconda2/bin:$PATH
+apt-get install -y --no-install-recommends \
+  build-essential ca-certificates curl \
+  libxslt-dev libxml2-dev
+
+curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b
+rm Miniconda3-latest-Linux-x86_64.sh
+hash -r
 conda_deps='pip numpy scipy'
-conda create -m -p $HOME/py --yes $conda_deps python=2.7
-export PATH=$HOME/py/bin:$PATH
-
-# configure conda for future login (for vagrant)
-echo "export PATH=$PATH" >> $HOME/.bashrc
-
-echo "cd /vagrant" >> $HOME/.bashrc
+conda create -m -p $HOME/py --yes $conda_deps python=3.7
 
 pip install "Cython>=0.21.1"
-pip install -r requirements.txt
 
-make install
+chown -R dragnet:dragnet $HOME
 
+# Clean up after installing packages to keep docker image smaller
+apt-get clean
+rm -rf /var/lib/apt/lists/*
