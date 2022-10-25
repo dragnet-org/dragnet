@@ -60,8 +60,8 @@ ctypedef void (*subtree_t)(PartialBlock, int)
 cdef inline int int_min(int a, int b): return a if a <= b else b
 
 # tags we'll ignore completely
-cdef cpp_set[string] BLACKLIST
-BLACKLIST = {
+cdef cpp_set[string] IGNORELIST
+IGNORELIST = {
     b'applet', b'area', b'base', b'basefont', b'bdo', b'button',
     b'caption', b'fieldset', b'fram', b'frameset',
     b'iframe', b'img', b'input', b'legend', b'link', b'menu', b'meta',
@@ -81,6 +81,8 @@ BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'ma
 cdef string CTEXT = <string>'text'
 cdef string CTAIL = <string>'tail'
 cdef string A = <string>'a'
+cdef string BR = <string>'br'
+cdef string NEWLINE = <string>'\n'
 cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>'tagcount_since_last_block'
 cdef string TAGCOUNT = <string>'tagcount'
 cdef string ANCHOR_COUNT = <string>'anchor_count'
@@ -189,7 +191,7 @@ cdef vector[string] _text_from_subtree(cetree.tree.xmlNode *tree,
         callback(klass, tag)
 
         # check whether in black list
-        if BLACKLIST.find(tag) == BLACKLIST.end():
+        if IGNORELIST.find(tag) == IGNORELIST.end():
             to_add = _text_from_subtree(node, True, callback, klass)
             for k in range(to_add.size()):
                 text.push_back(to_add[k])
@@ -302,8 +304,9 @@ cdef class PartialBlock:
     cdef vector[subtree_t] _subtree_func
 
     cdef bool do_css
-
     cdef bool do_readability
+    cdef bool do_br_newline
+
     # nodes are identified by a tag_id.  this tracks the id of the current
     # node in the recursion
     cdef uint32_t tag_id
@@ -328,7 +331,7 @@ cdef class PartialBlock:
         self.css_attrib.push_back('id')
         self.css_attrib.push_back('class')
 
-    def __init__(self, do_css=True, do_readability=False):
+    def __init__(self, do_css=True, do_readability=False, do_br_newline=False):
         self._tag_func.clear()
         self._reinit_func.clear()
         self._name_func.clear()
@@ -352,6 +355,9 @@ cdef class PartialBlock:
                 <subtree_t>PartialBlock.subtree_readability)
             self._reinit_func.push_back(
                 <reinit_t>PartialBlock.reinit_readability)
+
+        self.do_br_newline = do_br_newline
+        print(f"Initialized PartialBlock!   {do_br_newline}")
 
     cdef void _fe_reinit(self):
         # each subclass implements reinit_fename()
@@ -619,7 +625,7 @@ cdef class PartialBlock:
             if self._tag_func.size() > 0:
                 self._tag_fe(tag)
 
-            if BLACKLIST.find(tag) != BLACKLIST.end():
+            if IGNORELIST.find(tag) != IGNORELIST.end():
                 # in the blacklist
                 # in this case, skip the entire tag,
                 # but it might have some tail text we need
@@ -643,6 +649,10 @@ cdef class PartialBlock:
                 self.add_anchor(node, doc)
                 if self.do_css:
                     self.update_css(node, False)
+
+            elif tag == BR and self.do_br_newline:
+                # Add a new line to text
+                self.text.push_back(NEWLINE)
 
             else:
                 # a standard tag.
@@ -804,11 +814,11 @@ class Blockifier(object):
     """
 
     @staticmethod
-    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False):
+    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False, do_br_newline=False):
         cdef list results = []
         cdef cetree._Element ctree
 
-        cdef PartialBlock partial_block = pb(do_css, do_readability)
+        cdef PartialBlock partial_block = pb(do_css, do_readability, do_br_newline)
         ctree = tree
         partial_block.recurse(ctree._c_node, results, ctree._doc)
 
@@ -820,7 +830,7 @@ class Blockifier(object):
     @staticmethod
     def blockify(s, encoding=None,
                  pb=PartialBlock, do_css=True, do_readability=False,
-                 parse_callback=None):
+                 parse_callback=None, do_br_newline=False):
         """
         Given HTML string ``s`` return a sequence of blocks with text content.
 
@@ -851,7 +861,7 @@ class Blockifier(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError, 'Could not blockify HTML'
 
-        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability)
+        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability, do_br_newline)
 
         if parse_callback is not None:
             parse_callback(html)
