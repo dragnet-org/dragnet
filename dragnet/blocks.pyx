@@ -108,30 +108,36 @@ READABILITY_MINUS5 = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'th'}
 cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
     <char>'\r', <char>'\f', <char>'\v'])
 
-cdef vector[string] _tokens_from_text(vector[string] text):
+cdef vector[string] _tokens_from_text(vector[string] text, bool remove_whitespace):
     '''
     Given a vector of text, return a vector of individual tokens
     '''
     cdef size_t i, j, start
     cdef bool token
     cdef vector[string] ret
-    for i in range(text.size()):
-        token = False
-        for j in range(text[i].length()):
-            if WHITESPACE.find(text[i][j]) == WHITESPACE.end():
-                # current char is not whitespace
-                if not token:
-                    token = True
-                    start = j
-            else:
-                # a white space character
-                if token:
-                    # write out token
-                    ret.push_back(text[i].substr(start, j - start))
-                    token = False
-        # check last token
-        if token:
-            ret.push_back(text[i].substr(start, text[i].length() - start))
+
+    if remove_whitespace:
+        for i in range(text.size()):
+            token = False
+            for j in range(text[i].length()):
+                if WHITESPACE.find(text[i][j]) == WHITESPACE.end():
+                    # current char is not whitespace
+                    if not token:
+                        token = True
+                        start = j
+                else:
+                    # a white space character
+                    if token:
+                        # write out token
+                        ret.push_back(text[i].substr(start, j - start))
+                        token = False
+            # check last token
+            if token:
+                ret.push_back(text[i].substr(start, text[i].length() - start))
+    else:
+        # Just keep everything.
+        ret.push_back(b''.join(text))
+
     return ret
 
 
@@ -305,7 +311,7 @@ cdef class PartialBlock:
 
     cdef bool do_css
     cdef bool do_readability
-    cdef bool do_br_newline
+    cdef bool do_all_whitespace
 
     # nodes are identified by a tag_id.  this tracks the id of the current
     # node in the recursion
@@ -331,7 +337,7 @@ cdef class PartialBlock:
         self.css_attrib.push_back('id')
         self.css_attrib.push_back('class')
 
-    def __init__(self, do_css=True, do_readability=False, do_br_newline=False):
+    def __init__(self, do_css=True, do_readability=False, do_all_whitespace=False):
         self._tag_func.clear()
         self._reinit_func.clear()
         self._name_func.clear()
@@ -356,8 +362,7 @@ cdef class PartialBlock:
             self._reinit_func.push_back(
                 <reinit_t>PartialBlock.reinit_readability)
 
-        self.do_br_newline = do_br_newline
-        print(f"Initialized PartialBlock!   {do_br_newline}")
+        self.do_all_whitespace = do_all_whitespace
 
     cdef void _fe_reinit(self):
         # each subclass implements reinit_fename()
@@ -430,7 +435,7 @@ cdef class PartialBlock:
         and append it to results.  Reset the partial block"""
 
         # compute block and link tokens!
-        block_tokens = _tokens_from_text(self.text)
+        block_tokens = _tokens_from_text(self.text, not self.do_all_whitespace)
         cdef size_t k
         cdef string cssa
         if len(block_tokens) > 0:
@@ -458,7 +463,7 @@ cdef class PartialBlock:
                 for k in range(self.css_attrib.size()):
                     cssa = self.css_attrib[k]
                     css[cssa] = b' '.join(
-                        _tokens_from_text(self.css[cssa])).lower()
+                        _tokens_from_text(self.css[cssa], True)).lower()
 
             kwargs = self._add_readability()
             kwargs.update(self._extract_features(True))
@@ -516,7 +521,7 @@ cdef class PartialBlock:
             pass
 
         cdef vector[string] anchor_tokens
-        anchor_tokens = _tokens_from_text(anchor_text_list)
+        anchor_tokens = _tokens_from_text(anchor_text_list, not self.do_all_whitespace)
         for k in range(len(anchor_tokens)):
             self.link_tokens.push_back(anchor_tokens[k])
 
@@ -650,7 +655,7 @@ cdef class PartialBlock:
                 if self.do_css:
                     self.update_css(node, False)
 
-            elif tag == BR and self.do_br_newline:
+            elif tag == BR and self.do_all_whitespace:
                 # Add a new line to text
                 self.text.push_back(NEWLINE)
 
@@ -814,11 +819,11 @@ class Blockifier(object):
     """
 
     @staticmethod
-    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False, do_br_newline=False):
+    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False, do_all_whitespace=False):
         cdef list results = []
         cdef cetree._Element ctree
 
-        cdef PartialBlock partial_block = pb(do_css, do_readability, do_br_newline)
+        cdef PartialBlock partial_block = pb(do_css, do_readability, do_all_whitespace)
         ctree = tree
         partial_block.recurse(ctree._c_node, results, ctree._doc)
 
@@ -830,7 +835,7 @@ class Blockifier(object):
     @staticmethod
     def blockify(s, encoding=None,
                  pb=PartialBlock, do_css=True, do_readability=False,
-                 parse_callback=None, do_br_newline=False):
+                 parse_callback=None, do_all_whitespace=False):
         """
         Given HTML string ``s`` return a sequence of blocks with text content.
 
@@ -861,13 +866,16 @@ class Blockifier(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError, 'Could not blockify HTML'
 
-        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability, do_br_newline)
+        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability, do_all_whitespace)
 
         if parse_callback is not None:
             parse_callback(html)
 
-        # only return blocks with some text content
-        return [ele for ele in str_block_list_cast(blocks) if RE_TEXT.search(ele.text)]
+        if do_all_whitespace:
+            return str_block_list_cast(blocks)
+        else:
+            # only return blocks with some text content
+            return [ele for ele in str_block_list_cast(blocks) if RE_TEXT.search(ele.text)]
 
 
 class TagCountBlockifier(Blockifier):
