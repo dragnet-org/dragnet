@@ -10,7 +10,7 @@ from __future__ import division
 import os
 import pkgutil
 
-from sklearn.externals import joblib
+import joblib
 from sklearn.pipeline import FeatureUnion, make_union
 
 from .compat import model_path, range_, string_, PY2
