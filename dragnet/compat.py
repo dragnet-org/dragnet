@@ -271,6 +271,12 @@ else:
     from sklearn.model_selection import train_test_split
     from sklearn.model_selection import GridSearchCV
 
+try:
+    from sklearn.externals import joblib
+except:
+    import joblib
+
+
 # generate model paths
 if '0.15.2' <= sklearn_version <= '0.17.1':
     if PY2:
