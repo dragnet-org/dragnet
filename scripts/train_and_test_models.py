@@ -30,7 +30,7 @@ def main():
         help='directory to which models, training errors, etc. will be saved')
     parser.add_argument(
         '--content_or_comments', type=str, required=True,
-        choices=['content', 'both'],
+        choices=['content', 'comments', 'both'],
         help="""type of information to be extracted by the model: just "content",
              or "both" content and comments""")
     parser.add_argument(
@@ -44,6 +44,8 @@ def main():
     # train and evaluate model
     if args['content_or_comments'] == 'content':
         to_extract = 'content'
+    elif args['content_or_comments'] == 'comments':
+        to_extract = 'comments'
     elif args['content_or_comments'] == 'both':
         to_extract = ['content', 'comments']
     extractor = Extractor(features=args['features'], model=MODEL, to_extract=to_extract)
