@@ -83,6 +83,8 @@ cdef string CTEXT = <string>'text'
 cdef string CTAIL = <string>'tail'
 cdef string A = <string>'a'
 cdef string BR = <string>'br'
+cdef string TD = <string>'td'
+cdef string SPACE = <string>' '
 # for BR, we use this as a newline (that can be cleaned up in post-processing) so that it isn't whitespace collapsed
 cdef string NEWLINE = <string>'\u2028'.encode("utf-8")
 cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>'tagcount_since_last_block'
@@ -124,14 +126,18 @@ cdef vector[string] _tokens_from_text(vector[string] text, bool collapse_whitesp
 
     if collapse_whitespace:
         last_element_of_text_ended_in_token = False
+
         for i in range(text.size()):
+
             token = False
             for j in range(text[i].length()):
+
                 if WHITESPACE.find(text[i][j]) == WHITESPACE.end():
                     # current char is not whitespace
                     if not token:
                         token = True
                         start = j
+
                 else:
                     # a white space character
                     if token:
@@ -144,10 +150,13 @@ cdef vector[string] _tokens_from_text(vector[string] text, bool collapse_whitesp
                         this_token_starts_with_newline = token_to_append.length() >= 3 and token_to_append.substr(token_to_append.length() - 3, 3) == NEWLINE
                         if not ret.empty() and ((start == 0 and last_element_of_text_ended_in_token) or last_token_was_newline or this_token_starts_with_newline):
                             ret[ret.size() - 1].append(token_to_append)
-                            last_element_of_text_ended_in_token = False
+                            #last_element_of_text_ended_in_token = False
                         else:
                             ret.push_back(token_to_append)
                         token = False
+
+                    last_element_of_text_ended_in_token = False
+
             # check last token
             if token:
                 token_to_append = text[i].substr(start, text[i].length() - start)
@@ -160,6 +169,7 @@ cdef vector[string] _tokens_from_text(vector[string] text, bool collapse_whitesp
                 last_element_of_text_ended_in_token = True
             else:
                 last_element_of_text_ended_in_token = False
+
     else:
         # Just keep everything.
         ret.push_back(b''.join(text))
@@ -222,12 +232,13 @@ cdef vector[string] _text_from_subtree(cetree.tree.xmlNode *tree,
         # call the feature extractor child hooks
         callback(klass, tag)
 
-        # check whether in black list
+        # check whether in ignore list
         if IGNORELIST.find(tag) == IGNORELIST.end():
             to_add = _text_from_subtree(node, True, callback, klass)
             for k in range(to_add.size()):
                 text.push_back(to_add[k])
         else:
+            text.push_back(SPACE)
             # get the tail
             try:
                 t = cetree.tailOf(node)
@@ -660,6 +671,7 @@ cdef class PartialBlock:
                 # in the ignorelist.
                 # in this case, skip the entire tag,
                 # but it might have some tail text we need
+                self.text.push_back(SPACE)
                 self.add_text(node, CTAIL, False)
 
             elif BLOCKS.find(tag) != BLOCKS.end():
@@ -691,6 +703,9 @@ cdef class PartialBlock:
                 if tag == BR:
                     # Add a new line to text
                     self.text.push_back(NEWLINE)
+                if tag == TD:
+                    # Add a space between table data.
+                    self.text.push_back(SPACE)
                 self.add_text(node, CTAIL, False)
 
             # reset for next iteration
