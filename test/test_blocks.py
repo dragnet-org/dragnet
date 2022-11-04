@@ -140,3 +140,72 @@ class TestReadabilityBlocks(object):
         actual = [blk.features['block_start_tag'] for blk in blks]
         expected = ['div', 'p', 'p', 'div', 'p', 'p', 'h1']
         assert actual == expected
+
+
+def _run_blockifier_whitespace_test(html, expected_text):
+    parsed_blocks = blocks.Blockifier.blockify(html)
+    print([b.text for b in parsed_blocks])
+    parsed_text = "\n".join([b.text for b in parsed_blocks])
+    assert parsed_text.replace("\u2028", "\n") == expected_text
+
+
+class TestBlockifierWhitespace:
+    def test_collapse_whitespace_simple(self):
+        html = """<html><body><p>paragraph</p><div>   A simple    test   <a href="url">with a    link</a>.  \n
+                </div></body></html>"""
+        expected_text = "paragraph\nA simple test with a link."
+        _run_blockifier_whitespace_test(html, expected_text)
+
+    def test_collapse_whitespace_2(self):
+        html = """<html><body><div>A<a href="url">anchor <i>text</i>1</a> .  </div></body></html>"""
+        expected_text = "Aanchor text1 ."
+        _run_blockifier_whitespace_test(html, expected_text)
+
+    def test_collapse_whitespace_3(self):
+        html = """<html><body><div>A<a href="url">anchor <i>text</i> 1</a>.  </div></body></html>"""
+        expected_text = "Aanchor text 1."
+        _run_blockifier_whitespace_test(html, expected_text)
+
+    def test_collapse_whitespace_nbsp(self):
+        html = """<html><body><div>  Some     text&nbsp;as a    test  &nbsp;case&nbsp;&nbsp;?
+            </div>      <div>more&ensp;and more&emsp;spaces</div></body></html>"""
+        expected_text = 'Some text\xa0as a test \xa0case\xa0\xa0?\nmore\u2002and more\u2003spaces'
+        _run_blockifier_whitespace_test(html, expected_text)
+
+    def test_br_whitespace(self):
+        html = """
+        <html><body>
+        <div>Text first div</div>
+        <div>Second <div>nested div</div>  with br  <br>New line<br> another </div>
+        </body></html>
+        """
+        expected_text = "Text first div\nSecond\nnested div\nwith br\nNew line\nanother"
+        _run_blockifier_whitespace_test(html, expected_text)
+
+    def test_p_whitespace(self):
+        html = """
+        <html><body>
+        <div>Text first div</div>
+
+        <p></p>
+
+        Something <br> here
+        </body></html>
+        """
+        expected_text = 'Text first div\n\nSomething\nhere'
+        _run_blockifier_whitespace_test(html, expected_text)
+
+    def test_p_whitespace_2(self):
+        html = """
+        <html><body>
+        <div>Text first div</div>
+
+        <p></p>
+
+        <div> Something <div> <br> here <br><br> <br>&nbsp;<br>end</div>
+        </body></html>
+        """
+        expected_text = "Text first div\nSomething\n\nhere\n\n\n\xa0\nend"
+        _run_blockifier_whitespace_test(html, expected_text)
+
+# <pre>

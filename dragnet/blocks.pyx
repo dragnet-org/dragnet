@@ -37,7 +37,8 @@ RE_HTML_ENCODING = re.compile(
 RE_XML_ENCODING = re.compile(
     b'^<\?.*?encoding\s*?=\s*?[\'"](.*?)[\'"].*?\?>',
     flags=re.IGNORECASE)
-RE_TEXT = re.compile(r'[^\W_]+', flags=re.UNICODE)
+#RE_TEXT = re.compile(r'[^\W_]+', flags=re.UNICODE)
+RE_TEXT = re.compile(r'([^\W_]|\u2028)', flags=re.UNICODE)
 re_tokenizer = re.compile(r'[\W_]+', re.UNICODE)
 re_tokenizer_nounicode = re.compile(b'[\W_]+')
 
@@ -82,7 +83,8 @@ cdef string CTEXT = <string>'text'
 cdef string CTAIL = <string>'tail'
 cdef string A = <string>'a'
 cdef string BR = <string>'br'
-cdef string NEWLINE = <string>'\n'
+# for BR, we use this as a newline (that can be cleaned up in post-processing) so that it isn't whitespace collapsed
+cdef string NEWLINE = <string>'\u2028'.encode("utf-8")
 cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>'tagcount_since_last_block'
 cdef string TAGCOUNT = <string>'tagcount'
 cdef string ANCHOR_COUNT = <string>'anchor_count'
@@ -108,15 +110,20 @@ READABILITY_MINUS5 = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'th'}
 cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
     <char>'\r', <char>'\f', <char>'\v'])
 
-cdef vector[string] _tokens_from_text(vector[string] text, bool remove_whitespace):
+cdef vector[string] _tokens_from_text(vector[string] text, bool collapse_whitespace):
     '''
-    Given a vector of text, return a vector of individual tokens
+    Given a vector of text, return a vector of individual tokens.
     '''
-    cdef size_t i, j, start
+    cdef size_t i, j, start, length_ret_back
     cdef bool token
+    cdef bool last_element_of_text_ended_in_token
+    cdef bool last_token_was_newline
+    cdef bool this_token_starts_with_newline
     cdef vector[string] ret
+    cdef string token_to_append
 
-    if remove_whitespace:
+    if collapse_whitespace:
+        last_element_of_text_ended_in_token = False
         for i in range(text.size()):
             token = False
             for j in range(text[i].length()):
@@ -128,12 +135,31 @@ cdef vector[string] _tokens_from_text(vector[string] text, bool remove_whitespac
                 else:
                     # a white space character
                     if token:
-                        # write out token
-                        ret.push_back(text[i].substr(start, j - start))
+                        # write out token.
+                        # If the token starts at the beginning of this element
+                        # then it should be appended to the previous token as
+                        # there was not any white space separating them.
+                        token_to_append = text[i].substr(start, j - start)
+                        last_token_was_newline = not ret.empty() and ret.back().length() >= 3 and ret.back().substr(ret.back().length() - 3, 3) == NEWLINE
+                        this_token_starts_with_newline = token_to_append.length() >= 3 and token_to_append.substr(token_to_append.length() - 3, 3) == NEWLINE
+                        if not ret.empty() and ((start == 0 and last_element_of_text_ended_in_token) or last_token_was_newline or this_token_starts_with_newline):
+                            ret[ret.size() - 1].append(token_to_append)
+                            last_element_of_text_ended_in_token = False
+                        else:
+                            ret.push_back(token_to_append)
                         token = False
             # check last token
             if token:
-                ret.push_back(text[i].substr(start, text[i].length() - start))
+                token_to_append = text[i].substr(start, text[i].length() - start)
+                last_token_was_newline = not ret.empty() and ret.back().length() >= 3 and ret.back().substr(ret.back().length() - 3, 3) == NEWLINE
+                this_token_starts_with_newline = token_to_append.length() >= 3 and token_to_append.substr(token_to_append.length() - 3, 3) == NEWLINE
+                if not ret.empty() and ((start == 0 and last_element_of_text_ended_in_token) or last_token_was_newline or this_token_starts_with_newline):
+                    ret[ret.size() - 1].append(token_to_append)
+                else:
+                    ret.push_back(token_to_append)
+                last_element_of_text_ended_in_token = True
+            else:
+                last_element_of_text_ended_in_token = False
     else:
         # Just keep everything.
         ret.push_back(b''.join(text))
@@ -311,7 +337,6 @@ cdef class PartialBlock:
 
     cdef bool do_css
     cdef bool do_readability
-    cdef bool do_all_whitespace
 
     # nodes are identified by a tag_id.  this tracks the id of the current
     # node in the recursion
@@ -337,7 +362,7 @@ cdef class PartialBlock:
         self.css_attrib.push_back('id')
         self.css_attrib.push_back('class')
 
-    def __init__(self, do_css=True, do_readability=False, do_all_whitespace=False):
+    def __init__(self, do_css=True, do_readability=False):
         self._tag_func.clear()
         self._reinit_func.clear()
         self._name_func.clear()
@@ -361,8 +386,6 @@ cdef class PartialBlock:
                 <subtree_t>PartialBlock.subtree_readability)
             self._reinit_func.push_back(
                 <reinit_t>PartialBlock.reinit_readability)
-
-        self.do_all_whitespace = do_all_whitespace
 
     cdef void _fe_reinit(self):
         # each subclass implements reinit_fename()
@@ -435,7 +458,7 @@ cdef class PartialBlock:
         and append it to results.  Reset the partial block"""
 
         # compute block and link tokens!
-        block_tokens = _tokens_from_text(self.text, not self.do_all_whitespace)
+        block_tokens = _tokens_from_text(self.text, True)
         cdef size_t k
         cdef string cssa
         if len(block_tokens) > 0:
@@ -478,7 +501,7 @@ cdef class PartialBlock:
         if self.do_css:
             self.reinit_css(False)
 
-    cdef void add_text(self, cetree.tree.xmlNode *ele, string text_or_tail):
+    cdef void add_text(self, cetree.tree.xmlNode *ele, string text_or_tail, bool insert_new_line):
         """Add the text/tail from the element
         text_or_tail is 'text' or 'tail'"""
         cdef object t
@@ -488,6 +511,9 @@ cdef class PartialBlock:
             else:
                 t = cetree.tailOf(ele)
             if t is not None:
+                if insert_new_line and len(t.strip()) > 0:
+                    # Only need the line break if there are some non-whitespace characters.
+                    self.text.push_back("\u2028".encode("utf-8"))
                 self.text.push_back(t.encode('utf-8'))
         except UnicodeDecodeError:
             pass
@@ -521,7 +547,7 @@ cdef class PartialBlock:
             pass
 
         cdef vector[string] anchor_tokens
-        anchor_tokens = _tokens_from_text(anchor_text_list, not self.do_all_whitespace)
+        anchor_tokens = _tokens_from_text(anchor_text_list, True)
         for k in range(len(anchor_tokens)):
             self.link_tokens.push_back(anchor_tokens[k])
 
@@ -631,10 +657,10 @@ cdef class PartialBlock:
                 self._tag_fe(tag)
 
             if IGNORELIST.find(tag) != IGNORELIST.end():
-                # in the blacklist
+                # in the ignorelist.
                 # in this case, skip the entire tag,
                 # but it might have some tail text we need
-                self.add_text(node, CTAIL)
+                self.add_text(node, CTAIL, False)
 
             elif BLOCKS.find(tag) != BLOCKS.end():
                 # this is the start of a new block
@@ -643,11 +669,11 @@ cdef class PartialBlock:
                 self.add_block_to_results(results)
                 self.block_start_tag = tag
                 self.block_start_element = cetree.elementFactory(doc, node)
-                self.add_text(node, CTEXT)
+                self.add_text(node, CTEXT, False)
                 if self.do_css:
                     self.update_css(node, False)
                 self.recurse(node, results, doc)
-                self.add_text(node, CTAIL)
+                self.add_text(node, CTAIL, True)
 
             elif tag == A:
                 # an anchor tag
@@ -655,18 +681,17 @@ cdef class PartialBlock:
                 if self.do_css:
                     self.update_css(node, False)
 
-            elif tag == BR and self.do_all_whitespace:
-                # Add a new line to text
-                self.text.push_back(NEWLINE)
-
             else:
                 # a standard tag.
                 # we need to get its text and then recurse over the subtree
-                self.add_text(node, CTEXT)
+                self.add_text(node, CTEXT, False)
                 if self.do_css:
                     self.update_css(node, False)
                 self.recurse(node, results, doc)
-                self.add_text(node, CTAIL)
+                if tag == BR:
+                    # Add a new line to text
+                    self.text.push_back(NEWLINE)
+                self.add_text(node, CTAIL, False)
 
             # reset for next iteration
             next_node = cetree.nextElement(node)
@@ -819,11 +844,11 @@ class Blockifier(object):
     """
 
     @staticmethod
-    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False, do_all_whitespace=False):
+    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False):
         cdef list results = []
         cdef cetree._Element ctree
 
-        cdef PartialBlock partial_block = pb(do_css, do_readability, do_all_whitespace)
+        cdef PartialBlock partial_block = pb(do_css, do_readability)
         ctree = tree
         partial_block.recurse(ctree._c_node, results, ctree._doc)
 
@@ -835,7 +860,7 @@ class Blockifier(object):
     @staticmethod
     def blockify(s, encoding=None,
                  pb=PartialBlock, do_css=True, do_readability=False,
-                 parse_callback=None, do_all_whitespace=False):
+                 parse_callback=None):
         """
         Given HTML string ``s`` return a sequence of blocks with text content.
 
@@ -866,12 +891,12 @@ class Blockifier(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError, 'Could not blockify HTML'
 
-        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability, do_all_whitespace)
+        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability)
 
         if parse_callback is not None:
             parse_callback(html)
 
-        if do_all_whitespace:
+        if False:
             return str_block_list_cast(blocks)
         else:
             # only return blocks with some text content
