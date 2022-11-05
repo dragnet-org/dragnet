@@ -75,7 +75,8 @@ IGNORELIST = {
 
 # tags defining the blocks we'll extract
 cdef cpp_set[string] BLOCKS
-BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'map'}
+#BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'map'}
+BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'map', b'pre'}
 
 # define some commonly used strings here, otherwise Cython will always add
 # a little python overhead when using them even though they are constant
@@ -83,6 +84,7 @@ cdef string CTEXT = <string>'text'
 cdef string CTAIL = <string>'tail'
 cdef string A = <string>'a'
 cdef string BR = <string>'br'
+cdef string PRE = <string>'pre'
 cdef string TD = <string>'td'
 cdef string SPACE = <string>' '
 # for BR, we use this as a newline (that can be cleaned up in post-processing) so that it isn't whitespace collapsed
@@ -349,6 +351,8 @@ cdef class PartialBlock:
     cdef bool do_css
     cdef bool do_readability
 
+    cdef bool in_pre
+
     # nodes are identified by a tag_id.  this tracks the id of the current
     # node in the recursion
     cdef uint32_t tag_id
@@ -372,6 +376,7 @@ cdef class PartialBlock:
         self.css_attrib.clear()
         self.css_attrib.push_back('id')
         self.css_attrib.push_back('class')
+        self.in_pre = False
 
     def __init__(self, do_css=True, do_readability=False):
         self._tag_func.clear()
@@ -469,7 +474,7 @@ cdef class PartialBlock:
         and append it to results.  Reset the partial block"""
 
         # compute block and link tokens!
-        block_tokens = _tokens_from_text(self.text, True)
+        block_tokens = _tokens_from_text(self.text, not self.in_pre)
         cdef size_t k
         cdef string cssa
         if len(block_tokens) > 0:
@@ -558,7 +563,7 @@ cdef class PartialBlock:
             pass
 
         cdef vector[string] anchor_tokens
-        anchor_tokens = _tokens_from_text(anchor_text_list, True)
+        anchor_tokens = _tokens_from_text(anchor_text_list, not self.in_pre)
         for k in range(len(anchor_tokens)):
             self.link_tokens.push_back(anchor_tokens[k])
 
@@ -681,11 +686,23 @@ cdef class PartialBlock:
                 self.add_block_to_results(results)
                 self.block_start_tag = tag
                 self.block_start_element = cetree.elementFactory(doc, node)
+                if tag == PRE:
+                    self.in_pre = True
+                    # <pre> is often rendered with an extra new line
+                    self.text.push_back(NEWLINE)
                 self.add_text(node, CTEXT, False)
                 if self.do_css:
                     self.update_css(node, False)
                 self.recurse(node, results, doc)
                 self.add_text(node, CTAIL, True)
+
+                if self.in_pre:
+                    # When ending recursing through a pre block,
+                    # we start another block so whitespace is preserved,
+                    # but keep the the same block_start_tag
+                    self.text.push_back(NEWLINE)
+                    self.add_block_to_results(results)
+                    self.in_pre = False
 
             elif tag == A:
                 # an anchor tag

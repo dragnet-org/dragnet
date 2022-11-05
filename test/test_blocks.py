@@ -144,7 +144,6 @@ class TestReadabilityBlocks(object):
 
 def _run_blockifier_whitespace_test(html, expected_text):
     parsed_blocks = blocks.Blockifier.blockify(html)
-    print([b.text for b in parsed_blocks])
     parsed_text = "\n".join([b.text for b in parsed_blocks])
     assert parsed_text.replace("\u2028", "\n") == expected_text
 
@@ -208,4 +207,7 @@ class TestBlockifierWhitespace:
         expected_text = "Text first div\nSomething\n\nhere\n\n\n\xa0\nend"
         _run_blockifier_whitespace_test(html, expected_text)
 
-# <pre>
+    def test_whitespace_pre(self):
+        html = '<div>First text <pre>  Pre <div>    formatted\n        <a href="url">link   </a>.  </div> after  .  the</pre>   between      </div> last    <pre>   last pre </pre>'
+        expected_text = 'First text\n\n  Pre \n    formatted\n        link   .  \n after  .  the\n\n\nbetween\nlast\n\n   last pre \n'
+        _run_blockifier_whitespace_test(html, expected_text)
