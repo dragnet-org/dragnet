@@ -1,3 +1,5 @@
+# cython: language_level=3
+
 """
 Implementation of the blockifier interface and some classes
 to manipulate blocks
@@ -29,7 +31,7 @@ import re
 import numpy as np
 import math
 
-from compat import str_list_cast, str_dict_cast, str_block_cast, str_block_list_cast, str_cast, bytes_cast
+from .compat import str_list_cast, str_dict_cast, str_block_cast, str_block_list_cast, str_cast, bytes_cast
 
 RE_HTML_ENCODING = re.compile(
     b'<\s*meta[^>]+charset\s*?=\s*?[\'"]?([^>]*?)[ /;\'">]',
@@ -80,26 +82,26 @@ BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'ma
 
 # define some commonly used strings here, otherwise Cython will always add
 # a little python overhead when using them even though they are constant
-cdef string CTEXT = <string>'text'
-cdef string CTAIL = <string>'tail'
-cdef string A = <string>'a'
-cdef string BR = <string>'br'
-cdef string PRE = <string>'pre'
-cdef string TD = <string>'td'
-cdef string SPACE = <string>' '
+cdef string CTEXT = <string>b'text'
+cdef string CTAIL = <string>b'tail'
+cdef string A = <string>b'a'
+cdef string BR = <string>b'br'
+cdef string PRE = <string>b'pre'
+cdef string TD = <string>b'td'
+cdef string SPACE = <string>b' '
 # for BR, we use this as a newline (that can be cleaned up in post-processing) so that it isn't whitespace collapsed
 cdef string NEWLINE = <string>'\u2028'.encode("utf-8")
-cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>'tagcount_since_last_block'
-cdef string TAGCOUNT = <string>'tagcount'
-cdef string ANCHOR_COUNT = <string>'anchor_count'
-cdef string MIN_DEPTH_SINCE_LAST_BLOCK = <string>'min_depth_since_last_block'
+cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>b'tagcount_since_last_block'
+cdef string TAGCOUNT = <string>b'tagcount'
+cdef string ANCHOR_COUNT = <string>b'anchor_count'
+cdef string MIN_DEPTH_SINCE_LAST_BLOCK = <string>b'min_depth_since_last_block'
 
 
 # for the class/id readability score
 re_readability_negative = re.compile('combx|comment|com-|contact|foot|footer|footnote|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget', re.I)
 re_readability_positive = re.compile('article|body|content|entry|hentry|main|page|pagination|post|text|blog|story', re.I)
 
-cdef string DIV = <string>'div'
+cdef string DIV = <string>b'div'
 
 cdef cpp_set[string] READABILITY_PLUS3
 READABILITY_PLUS3 = {b'pre', b'td', b'blockquote'}
@@ -111,8 +113,8 @@ cdef cpp_set[string] READABILITY_MINUS5
 READABILITY_MINUS5 = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'th'}
 
 
-cdef cpp_set[char] WHITESPACE = set([<char>' ', <char>'\t', <char>'\n',
-    <char>'\r', <char>'\f', <char>'\v'])
+cdef cpp_set[char] WHITESPACE = set([<char>b' ', <char>b'\t', <char>b'\n',
+    <char>b'\r', <char>b'\f', <char>b'\v'])
 
 cdef vector[string] _tokens_from_text(vector[string] text, bool collapse_whitespace):
     '''
@@ -374,8 +376,8 @@ cdef class PartialBlock:
 
     def __cinit__(self, *args, **kwargs):
         self.css_attrib.clear()
-        self.css_attrib.push_back('id')
-        self.css_attrib.push_back('class')
+        self.css_attrib.push_back(b'id')
+        self.css_attrib.push_back(b'class')
         self.in_pre = False
 
     def __init__(self, do_css=True, do_readability=False):
