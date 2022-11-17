@@ -78,7 +78,7 @@ IGNORELIST = {
 # tags defining the blocks we'll extract
 cdef cpp_set[string] BLOCKS
 #BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'map'}
-BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'map', b'pre'}
+BLOCKS = {b'h1', b'h2', b'h3', b'h4', b'h5', b'h6', b'p', b'div', b'table', b'map', b'pre', b'blockquote'}
 
 # define some commonly used strings here, otherwise Cython will always add
 # a little python overhead when using them even though they are constant
