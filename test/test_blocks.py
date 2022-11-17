@@ -143,16 +143,22 @@ class TestReadabilityBlocks(object):
 
 
 def _run_blockifier_whitespace_test(html, expected_text):
-    parsed_blocks = blocks.Blockifier.blockify(html)
+    parsed_blocks = blocks.Blockifier.blockify(html, do_paragraph_newline=True)
     parsed_text = "\n".join([b.text for b in parsed_blocks])
-    assert parsed_text.replace("\u2028", "\n") == expected_text
+    parsed_text_u2028_replaced = parsed_text.replace("\u2028", "\n")
+    if parsed_text_u2028_replaced != expected_text:
+        print("Error in _run_blockifier_whitespace_test. Got: ")
+        print(parsed_text_u2028_replaced)
+        print("Expected: ")
+        print(expected_text)
+    assert parsed_text_u2028_replaced == expected_text
 
 
 class TestBlockifierWhitespace:
     def test_collapse_whitespace_simple(self):
         html = """<html><body><p>paragraph</p><div>   A simple    test   <a href="url">with a    link</a>.  \n
                 </div></body></html>"""
-        expected_text = "paragraph\nA simple test with a link."
+        expected_text = "\nparagraph\nA simple test with a link."
         _run_blockifier_whitespace_test(html, expected_text)
 
     def test_collapse_whitespace_2(self):
@@ -191,7 +197,7 @@ class TestBlockifierWhitespace:
         Something <br> here
         </body></html>
         """
-        expected_text = 'Text first div\n\nSomething\nhere'
+        expected_text = 'Text first div\n\n\nSomething\nhere'
         _run_blockifier_whitespace_test(html, expected_text)
 
     def test_p_whitespace_2(self):
@@ -204,7 +210,7 @@ class TestBlockifierWhitespace:
         <div> Something <div> <br> here <br><br> <br>&nbsp;<br>end</div>
         </body></html>
         """
-        expected_text = "Text first div\nSomething\n\nhere\n\n\n\xa0\nend"
+        expected_text = "Text first div\n\n\nSomething\n\nhere\n\n\n\xa0\nend"
         _run_blockifier_whitespace_test(html, expected_text)
 
     def test_whitespace_pre(self):

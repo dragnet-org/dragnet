@@ -89,6 +89,7 @@ cdef string BR = <string>b'br'
 cdef string PRE = <string>b'pre'
 cdef string TD = <string>b'td'
 cdef string SPACE = <string>b' '
+cdef string PARAGRAPH = <string>b'p'
 # for BR, we use this as a newline (that can be cleaned up in post-processing) so that it isn't whitespace collapsed
 cdef string NEWLINE = <string>'\u2028'.encode("utf-8")
 cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>b'tagcount_since_last_block'
@@ -352,6 +353,7 @@ cdef class PartialBlock:
 
     cdef bool do_css
     cdef bool do_readability
+    cdef bool do_paragraph_newline
 
     cdef bool in_pre
 
@@ -380,7 +382,7 @@ cdef class PartialBlock:
         self.css_attrib.push_back(b'class')
         self.in_pre = False
 
-    def __init__(self, do_css=True, do_readability=False):
+    def __init__(self, do_css=True, do_readability=False, do_paragraph_newline=False):
         self._tag_func.clear()
         self._reinit_func.clear()
         self._name_func.clear()
@@ -393,6 +395,7 @@ cdef class PartialBlock:
         self.block_start_element = None
 
         self.do_readability = do_readability
+        self.do_paragraph_newline = do_paragraph_newline
         self.ancestors.clear()
         self.ancestors_write.clear()
         self.tag_id = 0
@@ -692,6 +695,9 @@ cdef class PartialBlock:
                     self.in_pre = True
                     # <pre> is often rendered with an extra new line
                     self.text.push_back(NEWLINE)
+                if tag == PARAGRAPH and self.do_paragraph_newline:
+                    # <p> has an extra new line
+                    self.text.push_back(NEWLINE)
                 self.add_text(node, CTEXT, False)
                 if self.do_css:
                     self.update_css(node, False)
@@ -878,11 +884,11 @@ class Blockifier(object):
     """
 
     @staticmethod
-    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False):
+    def blocks_from_tree(tree, pb=PartialBlock, do_css=True, do_readability=False, do_paragraph_newline=False):
         cdef list results = []
         cdef cetree._Element ctree
 
-        cdef PartialBlock partial_block = pb(do_css, do_readability)
+        cdef PartialBlock partial_block = pb(do_css, do_readability, do_paragraph_newline)
         ctree = tree
         partial_block.recurse(ctree._c_node, results, ctree._doc)
 
@@ -894,7 +900,7 @@ class Blockifier(object):
     @staticmethod
     def blockify(s, encoding=None,
                  pb=PartialBlock, do_css=True, do_readability=False,
-                 parse_callback=None):
+                 parse_callback=None, do_paragraph_newline=False):
         """
         Given HTML string ``s`` return a sequence of blocks with text content.
 
@@ -925,7 +931,7 @@ class Blockifier(object):
             # lxml sometimes doesn't raise an error but returns None
             raise BlockifyError, 'Could not blockify HTML'
 
-        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability)
+        blocks = Blockifier.blocks_from_tree(html, pb, do_css, do_readability, do_paragraph_newline)
 
         if parse_callback is not None:
             parse_callback(html)
