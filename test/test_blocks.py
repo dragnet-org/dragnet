@@ -217,3 +217,40 @@ class TestBlockifierWhitespace:
         html = '<div>First text <pre>  Pre <div>    formatted\n        <a href="url">link   </a>.  </div> after  .  the</pre>   between      </div> last    <pre>   last pre </pre>'
         expected_text = 'First text\n\n  Pre \n    formatted\n        link   .  \n after  .  the\n\n\nbetween\nlast\n\n   last pre \n'
         _run_blockifier_whitespace_test(html, expected_text)
+
+
+class TestLists:
+    def test_list_simple(self):
+        html = """
+            <html><body>
+            <div>
+            The first text.
+            <ul><li>ul first</li><li>second </li><li>third with <a href="url">a link</a> embedded</li></ul>
+            some middle text
+            <ol><li>ordered</li><li>  list
+                here     with
+                                lots of white space</li>
+            </ol>
+            final text
+            </div>
+            </html></body>
+        """
+        expected_text = "The first text.\n\n* ul first\n* second\n* third with a link embedded\n\nsome middle text\n\n1. ordered\n2. list here with lots of white space\n\nfinal text"
+        _run_blockifier_whitespace_test(html, expected_text)
+
+    def test_list_nested(self):
+        html = """
+            <html><body>
+            <div>
+            The first text.
+            <ul><li>ul first</li><li>second </li>
+                <ul><li> first nested </li> <li> second nested </li></ul>
+            <li>asdf</li>
+                <ol><li> nested ol </li> <li> nested ol2 </li> <li> ol3 </li> </ol>
+            </ul>
+            final text
+            </div>
+            </html></body>
+        """
+        expected_text = 'The first text.\n\n* ul first\n* second\n\n* first nested\n* second nested\n\n\n* asdf\n\n\n\n1. nested ol\n2. nested ol2\n3. ol3\n\nfinal text'
+        _run_blockifier_whitespace_test(html, expected_text)

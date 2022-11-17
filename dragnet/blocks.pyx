@@ -11,7 +11,7 @@ returns a list of Block instances
 # cython imports
 cimport cython
 from libcpp.set cimport set as cpp_set
-from libcpp.string cimport string
+from libcpp.string cimport string, to_string
 from libcpp.vector cimport vector
 from libcpp.map cimport map as cpp_map
 from libcpp.pair cimport pair
@@ -90,6 +90,11 @@ cdef string PRE = <string>b'pre'
 cdef string TD = <string>b'td'
 cdef string SPACE = <string>b' '
 cdef string PARAGRAPH = <string>b'p'
+cdef string UL = <string>b'ul'
+cdef string OL = <string>b'ol'
+cdef string LI = <string>b'li'
+cdef string ASTERISK_SPACE = <string>b'* '
+cdef string PERIOD_SPACE = <string>b'. '
 # for BR, we use this as a newline (that can be cleaned up in post-processing) so that it isn't whitespace collapsed
 cdef string NEWLINE = <string>'\u2028'.encode("utf-8")
 cdef string TAGCOUNT_SINCE_LAST_BLOCK = <string>b'tagcount_since_last_block'
@@ -357,6 +362,10 @@ cdef class PartialBlock:
 
     cdef bool in_pre
 
+    # We keep track of which list environment we are in.
+    cdef vector[string] list_context
+    cdef vector[int] ol_count
+
     # nodes are identified by a tag_id.  this tracks the id of the current
     # node in the recursion
     cdef uint32_t tag_id
@@ -381,6 +390,9 @@ cdef class PartialBlock:
         self.css_attrib.push_back(b'id')
         self.css_attrib.push_back(b'class')
         self.in_pre = False
+
+        self.list_context.clear()
+        self.ol_count.clear()
 
     def __init__(self, do_css=True, do_readability=False, do_paragraph_newline=False):
         self._tag_func.clear()
@@ -721,6 +733,29 @@ cdef class PartialBlock:
             else:
                 # a standard tag.
                 # we need to get its text and then recurse over the subtree
+
+                if tag == UL or tag == OL:
+                    self.list_context.push_back(tag)
+                    if tag == OL:
+                        self.ol_count.push_back(0)
+                    self.text.push_back(NEWLINE)   # lists are often rendered with a full new line before list
+
+                if tag == LI:
+                    # A new list item.  Add a * or 1. depending on list type.
+                    if self.list_context.empty() or self.list_context.back() == UL:
+                        # Unordered List, add "* "
+                        self.text.push_back(NEWLINE)
+                        self.text.push_back(ASTERISK_SPACE)
+                    else:
+                        # Ordered List.
+                        self.text.push_back(NEWLINE)
+                        if not self.ol_count.empty():
+                            self.ol_count[self.ol_count.size() - 1] += 1
+                            self.text.push_back(to_string(self.ol_count.back()))
+                        else:
+                            self.text.push_back(to_string(1))
+                        self.text.push_back(PERIOD_SPACE)
+
                 self.add_text(node, CTEXT, False)
                 if self.do_css:
                     self.update_css(node, False)
@@ -731,6 +766,18 @@ cdef class PartialBlock:
                 if tag == TD:
                     # Add a space between table data.
                     self.text.push_back(SPACE)
+
+                # If we have entered a list, we need to clear it out from the context.
+                # We do this before adding the tail so there is a gap between the list
+                # and following text.
+                if tag == UL or tag == OL:
+                    if not self.list_context.empty():
+                        self.list_context.pop_back()
+                    if tag == OL and not self.ol_count.empty():
+                        self.ol_count.pop_back()
+                    self.text.push_back(NEWLINE)   # lists are often rendered with a blank new line after list
+                    self.text.push_back(NEWLINE)
+
                 self.add_text(node, CTAIL, False)
 
             # reset for next iteration
