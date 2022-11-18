@@ -93,6 +93,7 @@ cdef string PARAGRAPH = <string>b'p'
 cdef string UL = <string>b'ul'
 cdef string OL = <string>b'ol'
 cdef string LI = <string>b'li'
+cdef string HR = <string>b'hr'
 cdef string ASTERISK_SPACE = <string>b'* '
 cdef string PERIOD_SPACE = <string>b'. '
 # for BR, we use this as a newline (that can be cleaned up in post-processing) so that it isn't whitespace collapsed
@@ -696,10 +697,13 @@ cdef class PartialBlock:
                 self.text.push_back(SPACE)
                 self.add_text(node, CTAIL, False)
 
-            elif BLOCKS.find(tag) != BLOCKS.end():
+            elif (BLOCKS.find(tag) != BLOCKS.end()) and self.list_context.empty():
                 # this is the start of a new block
                 # add the existing block to the list,
                 # start the new block and recurse
+                # Note: we don't start new blocks inside lists as they have their
+                #    own formatting below.  We check if we are inside a list context
+                #    with self.list_context.empty()
                 self.add_block_to_results(results)
                 self.block_start_tag = tag
                 self.block_start_element = cetree.elementFactory(doc, node)
@@ -733,6 +737,10 @@ cdef class PartialBlock:
             else:
                 # a standard tag.
                 # we need to get its text and then recurse over the subtree
+
+                if tag == HR:
+                    # add a blank new line for HR
+                    self.text.push_back(NEWLINE)
 
                 if tag == UL or tag == OL:
                     self.list_context.push_back(tag)
