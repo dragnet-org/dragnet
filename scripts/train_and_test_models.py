@@ -4,7 +4,8 @@ import sys
 
 from sklearn.ensemble import ExtraTreesClassifier
 
-from dragnet.model_training import evaluate_models_tokens, train_models
+from dragnet.model_training import train_model
+from dragnet.extractor import Extractor
 
 
 MODEL = ExtraTreesClassifier(
@@ -29,7 +30,7 @@ def main():
         help='directory to which models, training errors, etc. will be saved')
     parser.add_argument(
         '--content_or_comments', type=str, required=True,
-        choices=['content', 'both'],
+        choices=['content', 'comments', 'both'],
         help="""type of information to be extracted by the model: just "content",
              or "both" content and comments""")
     parser.add_argument(
@@ -40,18 +41,15 @@ def main():
              be one of the features known by `dragnet.AllFeatures`""")
     args = vars(parser.parse_args())
 
-    # train the model
-    dragnet_model = train_models(
-        args['data_dir'], args['output_dir'], args['features'], MODEL,
-        content_or_comments=args['content_or_comments'])
-
-    # and evaluate it
-    figname_prefix = '_'.join(args['features']) + \
-        '_content_' if args['content_or_comments'] == 'content' else '_content_comments_'
-    evaluate_models_tokens(
-        args['data_dir'], dragnet_model,
-        content_or_comments=args['content_or_comments'],
-        figname_root=os.path.join(args['output_dir'], figname_prefix))
+    # train and evaluate model
+    if args['content_or_comments'] == 'content':
+        to_extract = 'content'
+    elif args['content_or_comments'] == 'comments':
+        to_extract = 'comments'
+    elif args['content_or_comments'] == 'both':
+        to_extract = ['content', 'comments']
+    extractor = Extractor(features=args['features'], model=MODEL, to_extract=to_extract)
+    trained_extractor = train_model(extractor, args['data_dir'], args['output_dir'])
 
 
 if __name__ == '__main__':

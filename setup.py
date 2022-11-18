@@ -108,7 +108,7 @@ setup(
         'ftfy>=4.1.0,<5.0.0',
         'lxml',
         'numpy>=1.11.0',
-        'scikit-learn>=0.15.2,<0.21.0',
+        'scikit-learn>=0.15.2',
         'scipy>=0.17.0',
     ]
 )

@@ -271,16 +271,27 @@ else:
     from sklearn.model_selection import train_test_split
     from sklearn.model_selection import GridSearchCV
 
+try:
+    from sklearn.externals import joblib
+except:
+    import joblib
+
+
 # generate model paths
 if '0.15.2' <= sklearn_version <= '0.17.1':
     if PY2:
         model_path = 'py2_sklearn_0.15.2_0.17.1'
     else:
         model_path = 'py3_sklearn_0.15.2_0.17.1'
-elif sklearn_version >= '0.18.0':
+elif sklearn_version >= '0.18.0' and sklearn_version < '1.0.0':
     if PY2:
         model_path = 'py2_sklearn_0.18.0'
     else:
         model_path = 'py3_sklearn_0.18.0'
+elif sklearn_version >= '1.0.0':
+    if PY2:
+        raise Exception('incompatible scikit-learn version: "{}" with Python 2.'.format(sklearn_version))
+    else:
+        model_path = 'py3_sklearn_1.1.2'
 else:
     raise Exception('incompatible scikit-learn version: "{}"'.format(sklearn_version))
