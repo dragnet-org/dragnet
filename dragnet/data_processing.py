@@ -6,7 +6,6 @@ import multiprocessing
 import os
 import re
 
-import ftfy
 from lxml import etree
 import numpy as np
 
@@ -239,6 +238,8 @@ def read_html_file(data_dir, fileroot, encoding=None):
     Returns:
         str
     """
+    import ftfy
+
     fname = os.path.join(
         data_dir, RAW_HTML_DIRNAME, fileroot + RAW_HTML_EXT)
     encodings = (encoding,) if encoding else ('utf-8', 'iso-8859-1')  # 'utf-16'
@@ -268,6 +269,8 @@ def read_gold_standard_file(data_dir, fileroot, encoding=None, cetr=False):
     Returns:
         List[str, str]: contents string and comments string, respectively
     """
+    import ftfy
+
     fname = os.path.join(
         data_dir, GOLD_STANDARD_DIRNAME, fileroot + GOLD_STANDARD_EXT)
     encodings = (encoding,) if encoding else ('utf-8', 'utf-16', 'iso-8859-1')
